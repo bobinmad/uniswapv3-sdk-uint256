@@ -468,3 +468,192 @@ func (p *Pool) swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 func (p *Pool) tickSpacing() int {
 	return constants.TickSpacings[p.Fee]
 }
+
+type StepFeeResult struct {
+	ZeroForOne bool
+	Tick       int
+	FeeAmount  utils.Uint256
+	AmountIn   utils.Uint256
+	Liquidity  utils.Uint256
+}
+
+type SwapResultV2 struct {
+	AmountCalculated   *utils.Int256
+	SqrtRatioX96       *utils.Uint160
+	Liquidity          *utils.Uint128
+	RemainingAmountIn  *utils.Int256
+	CurrentTick        int
+	CrossInitTickLoops int
+	StepsFee           []StepFeeResult
+}
+
+func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLimitX96 *utils.Uint160) (*SwapResultV2, error) {
+	var err error
+	if sqrtPriceLimitX96 == nil {
+		if zeroForOne {
+			sqrtPriceLimitX96 = new(uint256.Int).AddUint64(utils.MinSqrtRatioU256, 1)
+		} else {
+			sqrtPriceLimitX96 = new(uint256.Int).SubUint64(utils.MaxSqrtRatioU256, 1)
+		}
+	}
+
+	if zeroForOne {
+		if sqrtPriceLimitX96.Cmp(utils.MinSqrtRatioU256) < 0 {
+			return nil, ErrSqrtPriceLimitX96TooLow
+		}
+		if sqrtPriceLimitX96.Cmp(p.SqrtRatioX96) >= 0 {
+			return nil, ErrSqrtPriceLimitX96TooHigh
+		}
+	} else {
+		if sqrtPriceLimitX96.Cmp(utils.MaxSqrtRatioU256) > 0 {
+			return nil, ErrSqrtPriceLimitX96TooHigh
+		}
+		if sqrtPriceLimitX96.Cmp(p.SqrtRatioX96) <= 0 {
+			return nil, ErrSqrtPriceLimitX96TooLow
+		}
+	}
+
+	exactInput := amountSpecified.Sign() >= 0
+
+	// keep track of swap state
+
+	state := struct {
+		amountSpecifiedRemaining *utils.Int256
+		amountCalculated         *utils.Int256
+		sqrtPriceX96             *utils.Uint160
+		tick                     int
+		liquidity                *utils.Uint128
+	}{
+		amountSpecifiedRemaining: new(utils.Int256).Set(amountSpecified),
+		amountCalculated:         int256.NewInt(0),
+		sqrtPriceX96:             new(utils.Uint160).Set(p.SqrtRatioX96),
+		tick:                     p.TickCurrent,
+		liquidity:                new(utils.Uint128).Set(p.Liquidity),
+	}
+
+	// crossInitTickLoops is the number of loops that cross an initialized tick.
+	// We only count when tick passes an initialized tick, since gas only significant in this case.
+	crossInitTickLoops := 0
+
+	stepsFee := []StepFeeResult{}
+	// start swap while loop
+	for !state.amountSpecifiedRemaining.IsZero() && state.sqrtPriceX96.Cmp(sqrtPriceLimitX96) != 0 {
+		var step StepComputations
+		step.sqrtPriceStartX96.Set(state.sqrtPriceX96)
+
+		// because each iteration of the while loop rounds, we can't optimize this code (relative to the smart contract)
+		// by simply traversing to the next available tick, we instead need to exactly replicate
+		// tickBitmap.nextInitializedTickWithinOneWord
+		step.tickNext, step.initialized, err = p.TickDataProvider.NextInitializedTickIndex(state.tick, zeroForOne)
+		if err != nil {
+			return nil, err
+		}
+
+		if step.tickNext < utils.MinTick {
+			step.tickNext = utils.MinTick
+		} else if step.tickNext > utils.MaxTick {
+			step.tickNext = utils.MaxTick
+		}
+
+		err = utils.GetSqrtRatioAtTickV2(step.tickNext, &step.sqrtPriceNextX96)
+		if err != nil {
+			return nil, err
+		}
+		var targetValue utils.Uint160
+		if zeroForOne {
+			if step.sqrtPriceNextX96.Cmp(sqrtPriceLimitX96) < 0 {
+				targetValue.Set(sqrtPriceLimitX96)
+			} else {
+				targetValue.Set(&step.sqrtPriceNextX96)
+			}
+		} else {
+			if step.sqrtPriceNextX96.Cmp(sqrtPriceLimitX96) > 0 {
+				targetValue.Set(sqrtPriceLimitX96)
+			} else {
+				targetValue.Set(&step.sqrtPriceNextX96)
+			}
+		}
+
+		var nxtSqrtPriceX96 utils.Uint160
+		err = utils.ComputeSwapStep(state.sqrtPriceX96, &targetValue, state.liquidity, state.amountSpecifiedRemaining, p.Fee,
+			&nxtSqrtPriceX96, &step.amountIn, &step.amountOut, &step.feeAmount)
+		if err != nil {
+			return nil, err
+		}
+		state.sqrtPriceX96.Set(&nxtSqrtPriceX96)
+
+		var amountInPlusFee utils.Uint256
+		amountInPlusFee.Add(&step.amountIn, &step.feeAmount)
+
+		var amountInPlusFeeSigned utils.Int256
+		err = utils.ToInt256(&amountInPlusFee, &amountInPlusFeeSigned)
+		if err != nil {
+			return nil, err
+		}
+
+		var amountOutSigned utils.Int256
+		err = utils.ToInt256(&step.amountOut, &amountOutSigned)
+		if err != nil {
+			return nil, err
+		}
+
+		stepFee := StepFeeResult{Tick: state.tick,
+			FeeAmount:  step.feeAmount,
+			AmountIn:   step.amountIn,
+			ZeroForOne: zeroForOne,
+			Liquidity:  *state.liquidity}
+
+		stepsFee = append(stepsFee, stepFee)
+
+		if exactInput {
+			state.amountSpecifiedRemaining.Sub(state.amountSpecifiedRemaining, &amountInPlusFeeSigned)
+			state.amountCalculated.Sub(state.amountCalculated, &amountOutSigned)
+		} else {
+			state.amountSpecifiedRemaining.Add(state.amountSpecifiedRemaining, &amountOutSigned)
+			state.amountCalculated.Add(state.amountCalculated, &amountInPlusFeeSigned)
+		}
+
+		// TODO
+		if state.sqrtPriceX96.Cmp(&step.sqrtPriceNextX96) == 0 {
+			// if the tick is initialized, run the tick transition
+			if step.initialized {
+				tick, err := p.TickDataProvider.GetTick(step.tickNext)
+				if err != nil {
+					return nil, err
+				}
+
+				liquidityNet := tick.LiquidityNet
+				// if we're moving leftward, we interpret liquidityNet as the opposite sign
+				// safe because liquidityNet cannot be type(int128).min
+				if zeroForOne {
+					liquidityNet = new(utils.Int128).Neg(liquidityNet)
+				}
+				utils.AddDeltaInPlace(state.liquidity, liquidityNet)
+
+				crossInitTickLoops++
+			}
+			if zeroForOne {
+				state.tick = step.tickNext - 1
+			} else {
+				state.tick = step.tickNext
+			}
+
+		} else if state.sqrtPriceX96.Cmp(&step.sqrtPriceStartX96) != 0 {
+			// recompute unless we're on a lower tick boundary (i.e. already transitioned ticks), and haven't moved
+			state.tick, err = utils.GetTickAtSqrtRatioV2(state.sqrtPriceX96)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	return &SwapResultV2{
+		AmountCalculated:   state.amountCalculated,
+		SqrtRatioX96:       state.sqrtPriceX96,
+		Liquidity:          state.liquidity,
+		CurrentTick:        state.tick,
+		RemainingAmountIn:  state.amountSpecifiedRemaining,
+		CrossInitTickLoops: crossInitTickLoops,
+		StepsFee:           stepsFee,
+	}, nil
+}
