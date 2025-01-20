@@ -65,8 +65,8 @@ func (p *Position) Token0PriceUpper() (*entities.Price, error) {
 }
 
 // Amount0 Returns the amount of token0 that this position's liquidity could be burned for at the current pool price
-func (p *Position) Amount0() (*entities.CurrencyAmount, error) {
-	if p.token0Amount == nil {
+func (p *Position) Amount0(forceRecalc bool) (*entities.CurrencyAmount, error) {
+	if forceRecalc || p.token0Amount == nil {
 		if p.Pool.TickCurrent < p.TickLower {
 			sqrtTickLower, err := utils.GetSqrtRatioAtTick(p.TickLower)
 			if err != nil {
@@ -91,8 +91,8 @@ func (p *Position) Amount0() (*entities.CurrencyAmount, error) {
 }
 
 // Amount1 Returns the amount of token1 that this position's liquidity could be burned for at the current pool price
-func (p *Position) Amount1() (*entities.CurrencyAmount, error) {
-	if p.token1Amount == nil {
+func (p *Position) Amount1(forceRecalc bool) (*entities.CurrencyAmount, error) {
+	if forceRecalc || p.token1Amount == nil {
 		if p.Pool.TickCurrent < p.TickLower {
 			p.token1Amount = entities.FromRawAmount(p.Pool.Token1, constants.Zero)
 		} else if p.Pool.TickCurrent < p.TickUpper {
@@ -235,11 +235,11 @@ func (p *Position) BurnAmountsWithSlippage(slippageTolerance *entities.Percent) 
 	if err != nil {
 		return nil, nil, err
 	}
-	a0, err := pUpper.Amount0()
+	a0, err := pUpper.Amount0(false)
 	if err != nil {
 		return nil, nil, err
 	}
-	a1, err := pLower.Amount1()
+	a1, err := pLower.Amount1(false)
 	if err != nil {
 		return nil, nil, err
 	}
