@@ -45,7 +45,7 @@ func GetAmount0Delta(sqrtRatioAX96, sqrtRatioBX96, liquidity *big.Int, roundUp b
 
 func GetAmount0DeltaV2(sqrtRatioAX96, sqrtRatioBX96 *Uint160, liquidity *Uint128, roundUp bool, result *Uint256) error {
 	// https://github.com/Uniswap/v3-core/blob/d8b1c635c275d2a9450bd6a78f3fa2484fef73eb/contracts/libraries/SqrtPriceMath.sol#L159
-	if sqrtRatioAX96.Cmp(sqrtRatioBX96) > 0 {
+	if sqrtRatioAX96.Gt(sqrtRatioBX96) {
 		sqrtRatioAX96, sqrtRatioBX96 = sqrtRatioBX96, sqrtRatioAX96
 	}
 
@@ -90,7 +90,7 @@ func GetAmount1Delta(sqrtRatioAX96, sqrtRatioBX96, liquidity *big.Int, roundUp b
 
 func GetAmount1DeltaV2(sqrtRatioAX96, sqrtRatioBX96 *Uint160, liquidity *Uint128, roundUp bool, result *Uint256) error {
 	// https://github.com/Uniswap/v3-core/blob/d8b1c635c275d2a9450bd6a78f3fa2484fef73eb/contracts/libraries/SqrtPriceMath.sol#L188
-	if sqrtRatioAX96.Cmp(sqrtRatioBX96) > 0 {
+	if sqrtRatioAX96.Gt(sqrtRatioBX96) {
 		sqrtRatioAX96, sqrtRatioBX96 = sqrtRatioBX96, sqrtRatioAX96
 	}
 
@@ -147,7 +147,7 @@ func getNextSqrtPriceFromAmount0RoundingUp(sqrtPX96 *Uint160, liquidity *Uint128
 	numerator1.Lsh(liquidity, 96)
 	multiplyIn256(amount, sqrtPX96, &product)
 	if add {
-		if tmp.Div(&product, amount).Cmp(sqrtPX96) == 0 {
+		if tmp.Div(&product, amount).Eq(sqrtPX96) {
 			addIn256(&numerator1, &product, &denominator)
 			if denominator.Cmp(&numerator1) >= 0 {
 				err := MulDivRoundingUpV2(&numerator1, sqrtPX96, &denominator, result)
@@ -159,7 +159,7 @@ func getNextSqrtPriceFromAmount0RoundingUp(sqrtPX96 *Uint160, liquidity *Uint128
 		DivRoundingUp(&numerator1, &tmp, result)
 		return nil
 	} else {
-		if tmp.Div(&product, amount).Cmp(sqrtPX96) != 0 {
+		if !tmp.Div(&product, amount).Eq(sqrtPX96) {
 			return ErrInvariant
 		}
 		if numerator1.Cmp(&product) <= 0 {

@@ -76,7 +76,7 @@ func ComputeSwapStep(
 		}
 	}
 
-	max := sqrtRatioTargetX96.Cmp(sqrtRatioNextX96) == 0
+	max := sqrtRatioTargetX96.Eq(sqrtRatioNextX96)
 
 	if zeroForOne {
 		if !(max && exactIn) {
@@ -106,11 +106,11 @@ func ComputeSwapStep(
 		}
 	}
 
-	if !exactIn && amountOut.Cmp(&amountRemainingU) > 0 {
+	if !exactIn && amountOut.Gt(&amountRemainingU) {
 		amountOut.Set(&amountRemainingU)
 	}
 
-	if exactIn && sqrtRatioNextX96.Cmp(sqrtRatioTargetX96) != 0 {
+	if exactIn && !sqrtRatioNextX96.Eq(sqrtRatioTargetX96) {
 		// we didn't reach the target, so take the remainder of the maximum input as fee
 		feeAmount.Sub(&amountRemainingU, amountIn)
 	} else {
