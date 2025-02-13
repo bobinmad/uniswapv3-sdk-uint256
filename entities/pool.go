@@ -113,7 +113,7 @@ func NewPoolV2(tokenA, tokenB *entities.Token, fee constants.FeeAmount, sqrtRati
 		return nil, err
 	}
 
-	if sqrtRatioX96.Cmp(&tickCurrentSqrtRatioX96) < 0 || sqrtRatioX96.Cmp(&nextTickSqrtRatioX96) > 0 {
+	if sqrtRatioX96.Lt(&tickCurrentSqrtRatioX96) || sqrtRatioX96.Gt(&nextTickSqrtRatioX96) {
 		return nil, ErrInvalidSqrtRatioX96
 	}
 	token0 := tokenA
@@ -314,14 +314,14 @@ func (p *Pool) swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 	}
 
 	if zeroForOne {
-		if sqrtPriceLimitX96.Cmp(utils.MinSqrtRatioU256) < 0 {
+		if sqrtPriceLimitX96.Lt(utils.MinSqrtRatioU256) {
 			return nil, ErrSqrtPriceLimitX96TooLow
 		}
 		if sqrtPriceLimitX96.Cmp(p.SqrtRatioX96) >= 0 {
 			return nil, ErrSqrtPriceLimitX96TooHigh
 		}
 	} else {
-		if sqrtPriceLimitX96.Cmp(utils.MaxSqrtRatioU256) > 0 {
+		if sqrtPriceLimitX96.Gt(utils.MaxSqrtRatioU256) {
 			return nil, ErrSqrtPriceLimitX96TooHigh
 		}
 		if sqrtPriceLimitX96.Cmp(p.SqrtRatioX96) <= 0 {
@@ -352,7 +352,7 @@ func (p *Pool) swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 	crossInitTickLoops := 0
 
 	// start swap while loop
-	for !state.amountSpecifiedRemaining.IsZero() && state.sqrtPriceX96.Cmp(sqrtPriceLimitX96) != 0 {
+	for !state.amountSpecifiedRemaining.IsZero() && !state.sqrtPriceX96.Eq(sqrtPriceLimitX96) {
 		var step StepComputations
 		step.sqrtPriceStartX96.Set(state.sqrtPriceX96)
 
@@ -376,13 +376,13 @@ func (p *Pool) swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 		}
 		var targetValue utils.Uint160
 		if zeroForOne {
-			if step.sqrtPriceNextX96.Cmp(sqrtPriceLimitX96) < 0 {
+			if step.sqrtPriceNextX96.Lt(sqrtPriceLimitX96) {
 				targetValue.Set(sqrtPriceLimitX96)
 			} else {
 				targetValue.Set(&step.sqrtPriceNextX96)
 			}
 		} else {
-			if step.sqrtPriceNextX96.Cmp(sqrtPriceLimitX96) > 0 {
+			if step.sqrtPriceNextX96.Gt(sqrtPriceLimitX96) {
 				targetValue.Set(sqrtPriceLimitX96)
 			} else {
 				targetValue.Set(&step.sqrtPriceNextX96)
@@ -422,7 +422,7 @@ func (p *Pool) swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 		}
 
 		// TODO
-		if state.sqrtPriceX96.Cmp(&step.sqrtPriceNextX96) == 0 {
+		if state.sqrtPriceX96.Eq(&step.sqrtPriceNextX96) {
 			// if the tick is initialized, run the tick transition
 			if step.initialized {
 				tick, err := p.TickDataProvider.GetTick(step.tickNext)
@@ -446,7 +446,7 @@ func (p *Pool) swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 				state.tick = step.tickNext
 			}
 
-		} else if state.sqrtPriceX96.Cmp(&step.sqrtPriceStartX96) != 0 {
+		} else if !state.sqrtPriceX96.Eq(&step.sqrtPriceStartX96) {
 			// recompute unless we're on a lower tick boundary (i.e. already transitioned ticks), and haven't moved
 			state.tick, err = utils.GetTickAtSqrtRatioV2(state.sqrtPriceX96)
 			if err != nil {
@@ -503,14 +503,14 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 	}
 
 	if zeroForOne {
-		if sqrtPriceLimitX96.Cmp(utils.MinSqrtRatioU256) < 0 {
+		if sqrtPriceLimitX96.Lt(utils.MinSqrtRatioU256) {
 			return nil, ErrSqrtPriceLimitX96TooLow
 		}
 		if sqrtPriceLimitX96.Cmp(p.SqrtRatioX96) >= 0 {
 			return nil, ErrSqrtPriceLimitX96TooHigh
 		}
 	} else {
-		if sqrtPriceLimitX96.Cmp(utils.MaxSqrtRatioU256) > 0 {
+		if sqrtPriceLimitX96.Gt(utils.MaxSqrtRatioU256) {
 			return nil, ErrSqrtPriceLimitX96TooHigh
 		}
 		if sqrtPriceLimitX96.Cmp(p.SqrtRatioX96) <= 0 {
@@ -542,7 +542,7 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 
 	stepsFee := []StepFeeResult{}
 	// start swap while loop
-	for !state.amountSpecifiedRemaining.IsZero() && state.sqrtPriceX96.Cmp(sqrtPriceLimitX96) != 0 {
+	for !state.amountSpecifiedRemaining.IsZero() && !state.sqrtPriceX96.Eq(sqrtPriceLimitX96) {
 		var step StepComputations
 		step.sqrtPriceStartX96.Set(state.sqrtPriceX96)
 
@@ -564,6 +564,7 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 		if err != nil {
 			return nil, err
 		}
+
 		var targetValue utils.Uint160
 		if zeroForOne {
 			if step.sqrtPriceNextX96.Lt(sqrtPriceLimitX96) {
@@ -627,6 +628,7 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 				}
 
 				liquidityNet := tick.LiquidityNet
+
 				// if we're moving leftward, we interpret liquidityNet as the opposite sign
 				// safe because liquidityNet cannot be type(int128).min
 				if zeroForOne {

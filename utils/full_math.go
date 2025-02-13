@@ -26,7 +26,7 @@ func MulDivRoundingUpV2(a, b, denominator, result *uint256.Int) error {
 	}
 
 	if !remainder.IsZero() {
-		if result.Cmp(MaxUint256) == 0 {
+		if result.Eq(MaxUint256) {
 			return ErrInvariant
 		}
 		result.AddUint64(result, 1)

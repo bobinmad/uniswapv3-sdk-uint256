@@ -48,7 +48,7 @@ func ToUInt256(value *Int256, result *Uint256) error {
 // https://github.com/Uniswap/v3-core/blob/main/contracts/libraries/SafeCast.sol
 func CheckToUint160(value *Uint256) error {
 	// we're using same type for Uint256 and Uint160, so use the original for now
-	if value.Cmp(Uint160Max) > 0 {
+	if value.Gt(Uint160Max) {
 		return ErrOverflowUint160
 	}
 	return nil
@@ -65,7 +65,7 @@ func AddDeltaInPlace(x *Uint128, y *Int128) error {
 	yuint.SetBytes32(ba[:])
 	x.Add(x, &yuint)
 
-	if x.Cmp(Uint128Max) > 0 {
+	if x.Gt(Uint128Max) {
 		// could be overflow or underflow
 		return ErrOverflowUint128
 	}

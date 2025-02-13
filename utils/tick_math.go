@@ -174,7 +174,7 @@ func GetTickAtSqrtRatio(sqrtRatioX96 *big.Int) (int, error) {
  * @param sqrtRatioX96 the sqrt ratio as a Q64.96 for which to compute the tick
  */
 func GetTickAtSqrtRatioV2(sqrtRatioX96 *Uint160) (int, error) {
-	if sqrtRatioX96.Cmp(MinSqrtRatioU256) < 0 || sqrtRatioX96.Cmp(MaxSqrtRatioU256) >= 0 {
+	if sqrtRatioX96.Lt(MinSqrtRatioU256) || sqrtRatioX96.Cmp(MaxSqrtRatioU256) >= 0 {
 		return 0, ErrInvalidSqrtRatio
 	}
 	var sqrtRatioX128 Uint256
