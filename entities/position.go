@@ -7,12 +7,14 @@ import (
 	"github.com/KyberNetwork/uniswapv3-sdk-uint256/constants"
 	"github.com/KyberNetwork/uniswapv3-sdk-uint256/utils"
 	"github.com/daoleno/uniswap-sdk-core/entities"
+	"github.com/holiman/uint256"
 )
 
 var (
 	ErrTickOrder = errors.New("tick order error")
 	ErrTickLower = errors.New("tick lower error")
 	ErrTickUpper = errors.New("tick upper error")
+	Zero         = uint256.NewInt(0)
 )
 
 // Position Represents a position on a Uniswap V3 Pool
@@ -90,6 +92,30 @@ func (p *Position) Amount0(forceRecalc bool) (*entities.CurrencyAmount, error) {
 	return p.token0Amount, nil
 }
 
+func (p *Position) CalcAmount0() *utils.Uint256 {
+	if p.Pool.TickCurrent < p.TickLower {
+		sqrtTickLower := new(utils.Uint160)
+		utils.GetSqrtRatioAtTickV2(p.TickLower, sqrtTickLower)
+		sqrtTickUpper := new(utils.Uint160)
+		utils.GetSqrtRatioAtTickV2(p.TickUpper, sqrtTickUpper)
+
+		amount0 := new(utils.Uint256)
+		utils.GetAmount0DeltaV2(sqrtTickLower, sqrtTickUpper, uint256.MustFromBig(p.Liquidity), false, amount0)
+
+		return amount0
+	} else if p.Pool.TickCurrent < p.TickUpper {
+		sqrtTickUpper := new(utils.Uint160)
+		utils.GetSqrtRatioAtTickV2(p.TickUpper, sqrtTickUpper)
+
+		amount0 := new(utils.Uint256)
+		utils.GetAmount0DeltaV2(p.Pool.SqrtRatioX96, sqrtTickUpper, uint256.MustFromBig(p.Liquidity), false, amount0)
+
+		return amount0
+	}
+
+	return Zero
+}
+
 // Amount1 Returns the amount of token1 that this position's liquidity could be burned for at the current pool price
 func (p *Position) Amount1(forceRecalc bool) (*entities.CurrencyAmount, error) {
 	if forceRecalc || p.token1Amount == nil {
@@ -114,6 +140,30 @@ func (p *Position) Amount1(forceRecalc bool) (*entities.CurrencyAmount, error) {
 		}
 	}
 	return p.token1Amount, nil
+}
+
+func (p *Position) CalcAmount1() *utils.Uint256 {
+	if p.Pool.TickCurrent < p.TickLower {
+		return Zero
+	} else if p.Pool.TickCurrent < p.TickUpper {
+		sqrtTickLower := new(utils.Uint160)
+		utils.GetSqrtRatioAtTickV2(p.TickLower, sqrtTickLower)
+
+		amount1 := new(utils.Uint256)
+		utils.GetAmount1DeltaV2(sqrtTickLower, p.Pool.SqrtRatioX96, uint256.MustFromBig(p.Liquidity), false, amount1)
+
+		return amount1
+	} else {
+		sqrtTickLower := new(utils.Uint160)
+		utils.GetSqrtRatioAtTickV2(p.TickLower, sqrtTickLower)
+		sqrtTickUpper := new(utils.Uint160)
+		utils.GetSqrtRatioAtTickV2(p.TickUpper, sqrtTickUpper)
+
+		amount1 := new(utils.Uint256)
+		utils.GetAmount1DeltaV2(sqrtTickLower, sqrtTickUpper, uint256.MustFromBig(p.Liquidity), false, amount1)
+
+		return amount1
+	}
 }
 
 /**
