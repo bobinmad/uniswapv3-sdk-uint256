@@ -193,12 +193,7 @@ func NextInitializedTickIndex(ticks []Tick, tick int, lte bool) (int, bool, erro
 		return ZeroValueTickIndex, ZeroValueTickInitialized, err
 	}
 
-	var isInitialized bool
-	if !nextInitializedTick.LiquidityGross.IsZero() {
-		isInitialized = true
-	}
-
-	return nextInitializedTick.Index, isInitialized, nil
+	return nextInitializedTick.Index, !nextInitializedTick.LiquidityGross.IsZero(), nil
 }
 
 // utils
