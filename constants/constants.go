@@ -47,6 +47,7 @@ var (
 	NegativeOne = big.NewInt(-1)
 	Zero        = big.NewInt(0)
 	One         = big.NewInt(1)
+	ZeroU256    = uint256.NewInt(0)
 
 	// used in liquidity amount math
 	Q96  = new(big.Int).Exp(big.NewInt(2), big.NewInt(96), nil)

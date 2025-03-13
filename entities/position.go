@@ -15,6 +15,7 @@ var (
 	ErrTickLower = errors.New("tick lower error")
 	ErrTickUpper = errors.New("tick upper error")
 	Zero         = uint256.NewInt(0)
+	MaxUint256U  = uint256.MustFromBig(entities.MaxUint256)
 )
 
 // Position Represents a position on a Uniswap V3 Pool
@@ -27,7 +28,7 @@ type Position struct {
 	// cached resuts for the getters
 	token0Amount *entities.CurrencyAmount
 	token1Amount *entities.CurrencyAmount
-	mintAmounts  []*big.Int
+	mintAmounts  []*uint256.Int
 }
 
 /**
@@ -191,7 +192,7 @@ func (p *Position) ratiosAfterSlippage(slippageTolerance *entities.Percent) (sqr
 * @param slippageTolerance Tolerance of unfavorable slippage from the current price
 * @returns The amounts, with slippage
  */
-func (p *Position) MintAmountsWithSlippage(slippageTolerance *entities.Percent) (amount0, amount1 *big.Int, err error) {
+func (p *Position) MintAmountsWithSlippage(slippageTolerance *entities.Percent) (amount0, amount1 *uint256.Int, err error) {
 	// get lower/upper prices
 	sqrtRatioX96Upper, sqrtRatioX96Lower := p.ratiosAfterSlippage(slippageTolerance)
 
@@ -300,27 +301,34 @@ func (p *Position) BurnAmountsWithSlippage(slippageTolerance *entities.Percent) 
  * Returns the minimum amounts that must be sent in order to mint the amount of liquidity held by the position at
  * the current price for the pool
  */
-func (p *Position) MintAmounts() (amount0, amount1 *big.Int, err error) {
+func (p *Position) MintAmounts() (amount0, amount1 *uint256.Int, err error) {
 	if p.mintAmounts == nil {
-		rLower, err := utils.GetSqrtRatioAtTick(p.TickLower)
+		rLower := new(utils.Uint160)
+		err := utils.GetSqrtRatioAtTickV2(p.TickLower, rLower)
 		if err != nil {
 			return nil, nil, err
 		}
-		rUpper, err := utils.GetSqrtRatioAtTick(p.TickUpper)
+
+		rUpper := new(utils.Uint160)
+		err = utils.GetSqrtRatioAtTickV2(p.TickUpper, rUpper)
 		if err != nil {
 			return nil, nil, err
 		}
-		var amount0, amount1 *big.Int
+
+		var (
+			amount0 = new(utils.Uint256)
+			amount1 = new(utils.Uint256)
+		)
 		if p.Pool.TickCurrent < p.TickLower {
-			amount0 = utils.GetAmount0Delta(rLower, rUpper, p.Liquidity.ToBig(), true)
-			amount1 = constants.Zero
+			utils.GetAmount0DeltaV2(rLower, rUpper, p.Liquidity, true, amount0)
+			amount1 = constants.ZeroU256
 			return amount0, amount1, nil
 		} else if p.Pool.TickCurrent < p.TickUpper {
-			amount0 = utils.GetAmount0Delta(p.Pool.SqrtRatioX96.ToBig(), rUpper, p.Liquidity.ToBig(), true)
-			amount1 = utils.GetAmount1Delta(rLower, p.Pool.SqrtRatioX96.ToBig(), p.Liquidity.ToBig(), true)
+			utils.GetAmount0DeltaV2(p.Pool.SqrtRatioX96, rUpper, p.Liquidity, true, amount0)
+			utils.GetAmount1DeltaV2(rLower, p.Pool.SqrtRatioX96, p.Liquidity, true, amount1)
 		} else {
-			amount0 = constants.Zero
-			amount1 = utils.GetAmount1Delta(rLower, rUpper, p.Liquidity.ToBig(), true)
+			amount0 = constants.ZeroU256
+			utils.GetAmount1DeltaV2(rLower, rUpper, p.Liquidity, true, amount1)
 		}
 		return amount0, amount1, nil
 	}
@@ -339,16 +347,20 @@ func (p *Position) MintAmounts() (amount0, amount1 *big.Int, err error) {
  * not what core can theoretically support
  * @returns The amount of liquidity for the position
  */
-func FromAmounts(pool *Pool, tickLower, tickUpper int, amount0, amount1 *big.Int, useFullPrecision bool) (*Position, error) {
-	sqrtRatioAX96, err := utils.GetSqrtRatioAtTick(tickLower)
+func FromAmounts(pool *Pool, tickLower, tickUpper int, amount0, amount1 *uint256.Int, useFullPrecision bool) (*Position, error) {
+	var sqrtRatioAX96 *utils.Uint160
+	err := utils.GetSqrtRatioAtTickV2(tickLower, sqrtRatioAX96)
 	if err != nil {
 		return nil, err
 	}
-	sqrtRatioBX96, err := utils.GetSqrtRatioAtTick(tickUpper)
+
+	var sqrtRatioBX96 *utils.Uint160
+	err = utils.GetSqrtRatioAtTickV2(tickUpper, sqrtRatioBX96)
 	if err != nil {
 		return nil, err
 	}
-	return NewPosition(pool, uint256.MustFromBig(utils.MaxLiquidityForAmounts(pool.SqrtRatioX96.ToBig(), sqrtRatioAX96, sqrtRatioBX96, amount0, amount1, useFullPrecision)), tickLower, tickUpper)
+
+	return NewPosition(pool, utils.MaxLiquidityForAmounts(pool.SqrtRatioX96, sqrtRatioAX96, sqrtRatioBX96, amount0, amount1, useFullPrecision), tickLower, tickUpper)
 }
 
 /**
@@ -361,8 +373,8 @@ func FromAmounts(pool *Pool, tickLower, tickUpper int, amount0, amount1 *big.Int
  * not what core can theoretically support
  * @returns The position
  */
-func FromAmount0(pool *Pool, tickLower, tickUpper int, amount0 *big.Int, useFullPrecision bool) (*Position, error) {
-	return FromAmounts(pool, tickLower, tickUpper, amount0, entities.MaxUint256, useFullPrecision)
+func FromAmount0(pool *Pool, tickLower, tickUpper int, amount0 *uint256.Int, useFullPrecision bool) (*Position, error) {
+	return FromAmounts(pool, tickLower, tickUpper, amount0, MaxUint256U, useFullPrecision)
 }
 
 /**
@@ -373,7 +385,7 @@ func FromAmount0(pool *Pool, tickLower, tickUpper int, amount0 *big.Int, useFull
  * @param amount1 The desired amount of token1
  * @returns The position
  */
-func FromAmount1(pool *Pool, tickLower, tickUpper int, amount1 *big.Int) (*Position, error) {
+func FromAmount1(pool *Pool, tickLower, tickUpper int, amount1 *uint256.Int) (*Position, error) {
 	// this function always uses full precision,
-	return FromAmounts(pool, tickLower, tickUpper, entities.MaxUint256, amount1, true)
+	return FromAmounts(pool, tickLower, tickUpper, MaxUint256U, amount1, true)
 }
