@@ -22,7 +22,7 @@ type Position struct {
 	Pool      *Pool
 	TickLower int
 	TickUpper int
-	Liquidity *big.Int
+	Liquidity *uint256.Int
 
 	// cached resuts for the getters
 	token0Amount *entities.CurrencyAmount
@@ -37,7 +37,7 @@ type Position struct {
  * @param tickLower The lower tick of the position
  * @param tickUpper The upper tick of the position
  */
-func NewPosition(pool *Pool, liquidity *big.Int, tickLower int, tickUpper int) (*Position, error) {
+func NewPosition(pool *Pool, liquidity *uint256.Int, tickLower int, tickUpper int) (*Position, error) {
 	if tickLower >= tickUpper {
 		return nil, ErrTickOrder
 	}
@@ -78,13 +78,13 @@ func (p *Position) Amount0(forceRecalc bool) (*entities.CurrencyAmount, error) {
 			if err != nil {
 				return nil, err
 			}
-			p.token0Amount = entities.FromRawAmount(p.Pool.Token0, utils.GetAmount0Delta(sqrtTickLower, sqrtTickUpper, p.Liquidity, false))
+			p.token0Amount = entities.FromRawAmount(p.Pool.Token0, utils.GetAmount0Delta(sqrtTickLower, sqrtTickUpper, p.Liquidity.ToBig(), false))
 		} else if p.Pool.TickCurrent < p.TickUpper {
 			sqrtTickUpper, err := utils.GetSqrtRatioAtTick(p.TickUpper)
 			if err != nil {
 				return nil, err
 			}
-			p.token0Amount = entities.FromRawAmount(p.Pool.Token0, utils.GetAmount0Delta(p.Pool.SqrtRatioX96.ToBig(), sqrtTickUpper, p.Liquidity, true))
+			p.token0Amount = entities.FromRawAmount(p.Pool.Token0, utils.GetAmount0Delta(p.Pool.SqrtRatioX96.ToBig(), sqrtTickUpper, p.Liquidity.ToBig(), true))
 		} else {
 			p.token0Amount = entities.FromRawAmount(p.Pool.Token0, constants.Zero)
 		}
@@ -100,7 +100,7 @@ func (p *Position) CalcAmount0() *utils.Uint256 {
 		utils.GetSqrtRatioAtTickV2(p.TickUpper, sqrtTickUpper)
 
 		amount0 := new(utils.Uint256)
-		utils.GetAmount0DeltaV2(sqrtTickLower, sqrtTickUpper, uint256.MustFromBig(p.Liquidity), false, amount0)
+		utils.GetAmount0DeltaV2(sqrtTickLower, sqrtTickUpper, p.Liquidity, false, amount0)
 
 		return amount0
 	} else if p.Pool.TickCurrent < p.TickUpper {
@@ -108,7 +108,7 @@ func (p *Position) CalcAmount0() *utils.Uint256 {
 		utils.GetSqrtRatioAtTickV2(p.TickUpper, sqrtTickUpper)
 
 		amount0 := new(utils.Uint256)
-		utils.GetAmount0DeltaV2(p.Pool.SqrtRatioX96, sqrtTickUpper, uint256.MustFromBig(p.Liquidity), false, amount0)
+		utils.GetAmount0DeltaV2(p.Pool.SqrtRatioX96, sqrtTickUpper, p.Liquidity, false, amount0)
 
 		return amount0
 	}
@@ -126,7 +126,7 @@ func (p *Position) Amount1(forceRecalc bool) (*entities.CurrencyAmount, error) {
 			if err != nil {
 				return nil, err
 			}
-			p.token1Amount = entities.FromRawAmount(p.Pool.Token1, utils.GetAmount1Delta(sqrtTickLower, p.Pool.SqrtRatioX96.ToBig(), p.Liquidity, false))
+			p.token1Amount = entities.FromRawAmount(p.Pool.Token1, utils.GetAmount1Delta(sqrtTickLower, p.Pool.SqrtRatioX96.ToBig(), p.Liquidity.ToBig(), false))
 		} else {
 			sqrtTickLower, err := utils.GetSqrtRatioAtTick(p.TickLower)
 			if err != nil {
@@ -136,7 +136,7 @@ func (p *Position) Amount1(forceRecalc bool) (*entities.CurrencyAmount, error) {
 			if err != nil {
 				return nil, err
 			}
-			p.token1Amount = entities.FromRawAmount(p.Pool.Token1, utils.GetAmount1Delta(sqrtTickLower, sqrtTickUpper, p.Liquidity, false))
+			p.token1Amount = entities.FromRawAmount(p.Pool.Token1, utils.GetAmount1Delta(sqrtTickLower, sqrtTickUpper, p.Liquidity.ToBig(), false))
 		}
 	}
 	return p.token1Amount, nil
@@ -150,7 +150,7 @@ func (p *Position) CalcAmount1() *utils.Uint256 {
 		utils.GetSqrtRatioAtTickV2(p.TickLower, sqrtTickLower)
 
 		amount1 := new(utils.Uint256)
-		utils.GetAmount1DeltaV2(sqrtTickLower, p.Pool.SqrtRatioX96, uint256.MustFromBig(p.Liquidity), false, amount1)
+		utils.GetAmount1DeltaV2(sqrtTickLower, p.Pool.SqrtRatioX96, p.Liquidity, false, amount1)
 
 		return amount1
 	} else {
@@ -160,7 +160,7 @@ func (p *Position) CalcAmount1() *utils.Uint256 {
 		utils.GetSqrtRatioAtTickV2(p.TickUpper, sqrtTickUpper)
 
 		amount1 := new(utils.Uint256)
-		utils.GetAmount1DeltaV2(sqrtTickLower, sqrtTickUpper, uint256.MustFromBig(p.Liquidity), false, amount1)
+		utils.GetAmount1DeltaV2(sqrtTickLower, sqrtTickUpper, p.Liquidity, false, amount1)
 
 		return amount1
 	}
@@ -312,15 +312,15 @@ func (p *Position) MintAmounts() (amount0, amount1 *big.Int, err error) {
 		}
 		var amount0, amount1 *big.Int
 		if p.Pool.TickCurrent < p.TickLower {
-			amount0 = utils.GetAmount0Delta(rLower, rUpper, p.Liquidity, true)
+			amount0 = utils.GetAmount0Delta(rLower, rUpper, p.Liquidity.ToBig(), true)
 			amount1 = constants.Zero
 			return amount0, amount1, nil
 		} else if p.Pool.TickCurrent < p.TickUpper {
-			amount0 = utils.GetAmount0Delta(p.Pool.SqrtRatioX96.ToBig(), rUpper, p.Liquidity, true)
-			amount1 = utils.GetAmount1Delta(rLower, p.Pool.SqrtRatioX96.ToBig(), p.Liquidity, true)
+			amount0 = utils.GetAmount0Delta(p.Pool.SqrtRatioX96.ToBig(), rUpper, p.Liquidity.ToBig(), true)
+			amount1 = utils.GetAmount1Delta(rLower, p.Pool.SqrtRatioX96.ToBig(), p.Liquidity.ToBig(), true)
 		} else {
 			amount0 = constants.Zero
-			amount1 = utils.GetAmount1Delta(rLower, rUpper, p.Liquidity, true)
+			amount1 = utils.GetAmount1Delta(rLower, rUpper, p.Liquidity.ToBig(), true)
 		}
 		return amount0, amount1, nil
 	}
@@ -348,7 +348,7 @@ func FromAmounts(pool *Pool, tickLower, tickUpper int, amount0, amount1 *big.Int
 	if err != nil {
 		return nil, err
 	}
-	return NewPosition(pool, utils.MaxLiquidityForAmounts(pool.SqrtRatioX96.ToBig(), sqrtRatioAX96, sqrtRatioBX96, amount0, amount1, useFullPrecision), tickLower, tickUpper)
+	return NewPosition(pool, uint256.MustFromBig(utils.MaxLiquidityForAmounts(pool.SqrtRatioX96.ToBig(), sqrtRatioAX96, sqrtRatioBX96, amount0, amount1, useFullPrecision)), tickLower, tickUpper)
 }
 
 /**
