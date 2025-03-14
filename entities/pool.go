@@ -492,6 +492,14 @@ var (
 	sqrtPriceLimitX96Lower = new(uint256.Int).SubUint64(utils.MaxSqrtRatioU256, 1)
 )
 
+type State struct {
+	amountSpecifiedRemaining *utils.Int256
+	amountCalculated         *utils.Int256
+	sqrtPriceX96             *utils.Uint160
+	tick                     int
+	liquidity                *utils.Uint128
+}
+
 func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLimitX96 *utils.Uint160) (*SwapResultV2, error) {
 	var err error
 	if sqrtPriceLimitX96 == nil {
@@ -522,13 +530,7 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 
 	// keep track of swap state
 
-	state := struct {
-		amountSpecifiedRemaining *utils.Int256
-		amountCalculated         *utils.Int256
-		sqrtPriceX96             *utils.Uint160
-		tick                     int
-		liquidity                *utils.Uint128
-	}{
+	state := State{
 		amountSpecifiedRemaining: new(utils.Int256).Set(amountSpecified),
 		amountCalculated:         int256.NewInt(0),
 		sqrtPriceX96:             new(utils.Uint160).Set(p.SqrtRatioX96),
