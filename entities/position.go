@@ -29,6 +29,9 @@ type Position struct {
 	token0Amount *entities.CurrencyAmount
 	token1Amount *entities.CurrencyAmount
 	mintAmounts  []*uint256.Int
+
+	sqrtTickLowerTmp, sqrtTickUpperTmp *utils.Uint160
+	amountTmp                          *utils.Uint256
 }
 
 /**
@@ -50,10 +53,13 @@ func NewPosition(pool *Pool, liquidity *uint256.Int, tickLower int, tickUpper in
 	}
 
 	return &Position{
-		Pool:      pool,
-		Liquidity: liquidity,
-		TickLower: tickLower,
-		TickUpper: tickUpper,
+		Pool:             pool,
+		Liquidity:        liquidity,
+		TickLower:        tickLower,
+		TickUpper:        tickUpper,
+		sqrtTickLowerTmp: new(utils.Uint160),
+		sqrtTickUpperTmp: new(utils.Uint160),
+		amountTmp:        new(utils.Uint256),
 	}, nil
 }
 
@@ -95,23 +101,16 @@ func (p *Position) Amount0(forceRecalc bool) (*entities.CurrencyAmount, error) {
 
 func (p *Position) CalcAmount0() *utils.Uint256 {
 	if p.Pool.TickCurrent < p.TickLower {
-		sqrtTickLower := new(utils.Uint160)
-		utils.GetSqrtRatioAtTickV2(p.TickLower, sqrtTickLower)
-		sqrtTickUpper := new(utils.Uint160)
-		utils.GetSqrtRatioAtTickV2(p.TickUpper, sqrtTickUpper)
+		utils.GetSqrtRatioAtTickV2(p.TickLower, p.sqrtTickLowerTmp)
+		utils.GetSqrtRatioAtTickV2(p.TickUpper, p.sqrtTickUpperTmp)
+		utils.GetAmount0DeltaV2(p.sqrtTickLowerTmp, p.sqrtTickUpperTmp, p.Liquidity, false, p.amountTmp)
 
-		amount0 := new(utils.Uint256)
-		utils.GetAmount0DeltaV2(sqrtTickLower, sqrtTickUpper, p.Liquidity, false, amount0)
-
-		return amount0
+		return p.amountTmp
 	} else if p.Pool.TickCurrent < p.TickUpper {
-		sqrtTickUpper := new(utils.Uint160)
-		utils.GetSqrtRatioAtTickV2(p.TickUpper, sqrtTickUpper)
+		utils.GetSqrtRatioAtTickV2(p.TickUpper, p.sqrtTickUpperTmp)
+		utils.GetAmount0DeltaV2(p.Pool.SqrtRatioX96, p.sqrtTickUpperTmp, p.Liquidity, false, p.amountTmp)
 
-		amount0 := new(utils.Uint256)
-		utils.GetAmount0DeltaV2(p.Pool.SqrtRatioX96, sqrtTickUpper, p.Liquidity, false, amount0)
-
-		return amount0
+		return p.amountTmp
 	}
 
 	return Zero
@@ -147,23 +146,16 @@ func (p *Position) CalcAmount1() *utils.Uint256 {
 	if p.Pool.TickCurrent < p.TickLower {
 		return Zero
 	} else if p.Pool.TickCurrent < p.TickUpper {
-		sqrtTickLower := new(utils.Uint160)
-		utils.GetSqrtRatioAtTickV2(p.TickLower, sqrtTickLower)
+		utils.GetSqrtRatioAtTickV2(p.TickLower, p.sqrtTickLowerTmp)
+		utils.GetAmount1DeltaV2(p.sqrtTickLowerTmp, p.Pool.SqrtRatioX96, p.Liquidity, false, p.amountTmp)
 
-		amount1 := new(utils.Uint256)
-		utils.GetAmount1DeltaV2(sqrtTickLower, p.Pool.SqrtRatioX96, p.Liquidity, false, amount1)
-
-		return amount1
+		return p.amountTmp
 	} else {
-		sqrtTickLower := new(utils.Uint160)
-		utils.GetSqrtRatioAtTickV2(p.TickLower, sqrtTickLower)
-		sqrtTickUpper := new(utils.Uint160)
-		utils.GetSqrtRatioAtTickV2(p.TickUpper, sqrtTickUpper)
+		utils.GetSqrtRatioAtTickV2(p.TickLower, p.sqrtTickLowerTmp)
+		utils.GetSqrtRatioAtTickV2(p.TickUpper, p.sqrtTickUpperTmp)
+		utils.GetAmount1DeltaV2(p.sqrtTickLowerTmp, p.sqrtTickUpperTmp, p.Liquidity, false, p.amountTmp)
 
-		amount1 := new(utils.Uint256)
-		utils.GetAmount1DeltaV2(sqrtTickLower, sqrtTickUpper, p.Liquidity, false, amount1)
-
-		return amount1
+		return p.amountTmp
 	}
 }
 
