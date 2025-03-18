@@ -8,6 +8,34 @@ import (
 	"github.com/holiman/uint256"
 )
 
+type TickCalculator struct {
+	absTick                  int
+	ratio, rem               *Uint256
+	tmp                      *Uint256
+	sqrtRatioX128            *Uint256
+	r                        *Uint256
+	f                        *Uint256
+	logSqrt10001, tmp1, tmp2 *Int256
+	sqrtRatio                *Uint160
+	log2                     *int256.Int
+}
+
+func NewTickCalculator() *TickCalculator {
+	return &TickCalculator{
+		ratio:         new(Uint256),
+		rem:           new(Uint256),
+		tmp:           new(Uint256),
+		sqrtRatioX128: new(Uint256),
+		r:             new(Uint256),
+		f:             new(Uint256),
+		logSqrt10001:  new(Int256),
+		tmp1:          new(Int256),
+		tmp2:          new(Int256),
+		sqrtRatio:     new(Uint160),
+		log2:          new(int256.Int),
+	}
+}
+
 const (
 	MinTick = -887272  // The minimum tick that can be used on any pool.
 	MaxTick = -MinTick // The maximum tick that can be used on any pool.
@@ -28,9 +56,8 @@ var (
 	ErrInvalidSqrtRatio = errors.New("invalid sqrt ratio")
 )
 
-func mulShift(val *Uint256, mulBy *Uint256) {
-	var tmp Uint256
-	val.Rsh(tmp.Mul(val, mulBy), 128)
+func (c *TickCalculator) mulShift(val *Uint256, mulBy *Uint256) {
+	val.Rsh(c.tmp.Mul(val, mulBy), 128)
 }
 
 var (
@@ -61,100 +88,101 @@ var (
 
 // deprecated
 func GetSqrtRatioAtTick(tick int) (*big.Int, error) {
-	var res Uint160
-	err := GetSqrtRatioAtTickV2(tick, &res)
-	return res.ToBig(), err
+	panic("GetSqrtRatioAtTick() is deprecated")
+	// var res Uint160
+	// err := GetSqrtRatioAtTickV2(tick, &res)
+	// return res.ToBig(), err
 }
 
 /**
  * Returns the sqrt ratio as a Q64.96 for the given tick. The sqrt ratio is computed as sqrt(1.0001)^tick
  * @param tick the tick for which to compute the sqrt ratio
  */
-func GetSqrtRatioAtTickV2(tick int, result *Uint160) error {
-	if tick < MinTick || tick > MaxTick {
-		return ErrInvalidTick
-	}
-	absTick := tick
+func (c *TickCalculator) GetSqrtRatioAtTickV2(tick int, result *Uint160) error {
+	// if tick < MinTick || tick > MaxTick {
+	// 	return ErrInvalidTick
+	// }
+
 	if tick < 0 {
-		absTick = -tick
-	}
-	var ratio Uint256
-	if absTick&0x1 != 0 {
-		ratio.Set(sqrtConst1)
+		c.absTick = -tick
 	} else {
-		ratio.Set(sqrtConst2)
+		c.absTick = tick
 	}
-	if (absTick & 0x2) != 0 {
-		mulShift(&ratio, sqrtConst3)
+
+	if c.absTick&0x1 != 0 {
+		c.ratio.Set(sqrtConst1)
+	} else {
+		c.ratio.Set(sqrtConst2)
 	}
-	if (absTick & 0x4) != 0 {
-		mulShift(&ratio, sqrtConst4)
+	if (c.absTick & 0x2) != 0 {
+		c.mulShift(c.ratio, sqrtConst3)
 	}
-	if (absTick & 0x8) != 0 {
-		mulShift(&ratio, sqrtConst5)
+	if (c.absTick & 0x4) != 0 {
+		c.mulShift(c.ratio, sqrtConst4)
 	}
-	if (absTick & 0x10) != 0 {
-		mulShift(&ratio, sqrtConst6)
+	if (c.absTick & 0x8) != 0 {
+		c.mulShift(c.ratio, sqrtConst5)
 	}
-	if (absTick & 0x20) != 0 {
-		mulShift(&ratio, sqrtConst7)
+	if (c.absTick & 0x10) != 0 {
+		c.mulShift(c.ratio, sqrtConst6)
 	}
-	if (absTick & 0x40) != 0 {
-		mulShift(&ratio, sqrtConst8)
+	if (c.absTick & 0x20) != 0 {
+		c.mulShift(c.ratio, sqrtConst7)
 	}
-	if (absTick & 0x80) != 0 {
-		mulShift(&ratio, sqrtConst9)
+	if (c.absTick & 0x40) != 0 {
+		c.mulShift(c.ratio, sqrtConst8)
 	}
-	if (absTick & 0x100) != 0 {
-		mulShift(&ratio, sqrtConst10)
+	if (c.absTick & 0x80) != 0 {
+		c.mulShift(c.ratio, sqrtConst9)
 	}
-	if (absTick & 0x200) != 0 {
-		mulShift(&ratio, sqrtConst11)
+	if (c.absTick & 0x100) != 0 {
+		c.mulShift(c.ratio, sqrtConst10)
 	}
-	if (absTick & 0x400) != 0 {
-		mulShift(&ratio, sqrtConst12)
+	if (c.absTick & 0x200) != 0 {
+		c.mulShift(c.ratio, sqrtConst11)
 	}
-	if (absTick & 0x800) != 0 {
-		mulShift(&ratio, sqrtConst13)
+	if (c.absTick & 0x400) != 0 {
+		c.mulShift(c.ratio, sqrtConst12)
 	}
-	if (absTick & 0x1000) != 0 {
-		mulShift(&ratio, sqrtConst14)
+	if (c.absTick & 0x800) != 0 {
+		c.mulShift(c.ratio, sqrtConst13)
 	}
-	if (absTick & 0x2000) != 0 {
-		mulShift(&ratio, sqrtConst15)
+	if (c.absTick & 0x1000) != 0 {
+		c.mulShift(c.ratio, sqrtConst14)
 	}
-	if (absTick & 0x4000) != 0 {
-		mulShift(&ratio, sqrtConst16)
+	if (c.absTick & 0x2000) != 0 {
+		c.mulShift(c.ratio, sqrtConst15)
 	}
-	if (absTick & 0x8000) != 0 {
-		mulShift(&ratio, sqrtConst17)
+	if (c.absTick & 0x4000) != 0 {
+		c.mulShift(c.ratio, sqrtConst16)
 	}
-	if (absTick & 0x10000) != 0 {
-		mulShift(&ratio, sqrtConst18)
+	if (c.absTick & 0x8000) != 0 {
+		c.mulShift(c.ratio, sqrtConst17)
 	}
-	if (absTick & 0x20000) != 0 {
-		mulShift(&ratio, sqrtConst19)
+	if (c.absTick & 0x10000) != 0 {
+		c.mulShift(c.ratio, sqrtConst18)
 	}
-	if (absTick & 0x40000) != 0 {
-		mulShift(&ratio, sqrtConst20)
+	if (c.absTick & 0x20000) != 0 {
+		c.mulShift(c.ratio, sqrtConst19)
 	}
-	if (absTick & 0x80000) != 0 {
-		mulShift(&ratio, sqrtConst21)
+	if (c.absTick & 0x40000) != 0 {
+		c.mulShift(c.ratio, sqrtConst20)
 	}
+	if (c.absTick & 0x80000) != 0 {
+		c.mulShift(c.ratio, sqrtConst21)
+	}
+
 	if tick > 0 {
-		result.Div(MaxUint256, &ratio)
-		ratio.Set(result)
+		c.ratio.Set(result.Div(MaxUint256, c.ratio))
 	}
 
 	// back to Q96
-	var rem Uint256
-	result.DivMod(&ratio, Q32U256, &rem)
-	if !rem.IsZero() {
+	result.DivMod(c.ratio, Q32U256, c.rem)
+	if !c.rem.IsZero() {
 		result.AddUint64(result, 1)
-		return nil
-	} else {
-		return nil
 	}
+
+	return nil
 }
 
 var (
@@ -165,7 +193,8 @@ var (
 
 // deprecated
 func GetTickAtSqrtRatio(sqrtRatioX96 *big.Int) (int, error) {
-	return GetTickAtSqrtRatioV2(uint256.MustFromBig(sqrtRatioX96))
+	panic("GetTickAtSqrtRatio() is deprecated")
+	// return GetTickAtSqrtRatioV2(uint256.MustFromBig(sqrtRatioX96))
 }
 
 /**
@@ -173,58 +202,54 @@ func GetTickAtSqrtRatio(sqrtRatioX96 *big.Int) (int, error) {
  * and #getSqrtRatioAtTick(tick + 1) > sqrtRatioX96
  * @param sqrtRatioX96 the sqrt ratio as a Q64.96 for which to compute the tick
  */
-func GetTickAtSqrtRatioV2(sqrtRatioX96 *Uint160) (int, error) {
+func (c *TickCalculator) GetTickAtSqrtRatioV2(sqrtRatioX96 *Uint160) (int, error) {
 	if sqrtRatioX96.Lt(MinSqrtRatioU256) || sqrtRatioX96.Cmp(MaxSqrtRatioU256) >= 0 {
 		return 0, ErrInvalidSqrtRatio
 	}
-	var sqrtRatioX128 Uint256
-	sqrtRatioX128.Lsh(sqrtRatioX96, 32)
-	msb, err := MostSignificantBit(&sqrtRatioX128)
+
+	c.sqrtRatioX128.Lsh(sqrtRatioX96, 32)
+	msb, err := MostSignificantBit(c.sqrtRatioX128)
 	if err != nil {
 		return 0, err
 	}
-	var r Uint256
+
 	if msb >= 128 {
-		r.Rsh(&sqrtRatioX128, msb-127)
+		c.r.Rsh(c.sqrtRatioX128, msb-127)
 	} else {
-		r.Lsh(&sqrtRatioX128, 127-msb)
+		c.r.Lsh(c.sqrtRatioX128, 127-msb)
 	}
 
-	log2 := int256.NewInt(int64(msb - 128))
-	log2.Lsh(log2, 64)
+	c.log2.Lsh(c.log2.SetInt64(int64(msb-128)), 64)
 
-	var tmp, f Uint256
 	for i := 0; i < 14; i++ {
-		tmp.Mul(&r, &r)
-		r.Rsh(&tmp, 127)
-		f.Rsh(&r, 128)
-		tmp.Lsh(&f, uint(63-i))
+		c.tmp.Mul(c.r, c.r)
+		c.r.Rsh(c.tmp, 127)
+		c.f.Rsh(c.r, 128)
+		c.tmp.Lsh(c.f, uint(63-i))
 
 		// this is for Or, so we can cast the underlying words directly without copying
-		tmpsigned := (*int256.Int)(&tmp)
+		tmpsigned := (*int256.Int)(c.tmp)
 
-		log2.Or(log2, tmpsigned)
-		r.Rsh(&r, uint(f.Uint64()))
+		c.log2.Or(c.log2, tmpsigned)
+		c.r.Rsh(c.r, uint(c.f.Uint64()))
 	}
 
-	var logSqrt10001, tmp1, tmp2 Int256
-	logSqrt10001.Mul(log2, magicSqrt10001)
+	c.logSqrt10001.Mul(c.log2, magicSqrt10001)
 
-	tickLow := tmp2.Rsh(tmp1.Sub(&logSqrt10001, magicTickLow), 128).Uint64()
-	tickHigh := tmp2.Rsh(tmp1.Add(&logSqrt10001, magicTickHigh), 128).Uint64()
+	tickLow := int(c.tmp2.Rsh(c.tmp1.Sub(c.logSqrt10001, magicTickLow), 128).Uint64())
+	tickHigh := int(c.tmp2.Rsh(c.tmp1.Add(c.logSqrt10001, magicTickHigh), 128).Uint64())
 
 	if tickLow == tickHigh {
-		return int(tickLow), nil
+		return tickLow, nil
 	}
 
-	var sqrtRatio Uint160
-	err = GetSqrtRatioAtTickV2(int(tickHigh), &sqrtRatio)
-	if err != nil {
+	if err = c.GetSqrtRatioAtTickV2(int(tickHigh), c.sqrtRatio); err != nil {
 		return 0, err
 	}
-	if sqrtRatio.Cmp(sqrtRatioX96) <= 0 {
-		return int(tickHigh), nil
-	} else {
-		return int(tickLow), nil
+
+	if c.sqrtRatio.Cmp(sqrtRatioX96) <= 0 {
+		return tickHigh, nil
 	}
+
+	return tickLow, nil
 }
