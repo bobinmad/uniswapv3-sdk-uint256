@@ -12,32 +12,44 @@ var (
 	One               = big.NewInt(1)
 )
 
-// MulDivRoundingUp Calculates ceil(a×b÷denominator) with full precision
-func MulDivRoundingUp(a, b, denominator *uint256.Int) (*uint256.Int, error) {
-	var result Uint256
-	return &result, MulDivRoundingUpV2(a, b, denominator, &result)
+type FullMath struct {
+	rem       *uint256.Int
+	result    *uint256.Int
+	remainder *Uint256
 }
 
-func MulDivRoundingUpV2(a, b, denominator, result *uint256.Int) error {
-	var remainder Uint256
-	err := MulDivV2(a, b, denominator, result, &remainder)
-	if err != nil {
+func NewFullMath() *FullMath {
+	return &FullMath{
+		rem:       new(uint256.Int),
+		result:    new(uint256.Int),
+		remainder: new(Uint256),
+	}
+}
+
+// MulDivRoundingUp Calculates ceil(a×b÷denominator) with full precision
+func (m *FullMath) MulDivRoundingUp(a, b, denominator *uint256.Int) (*uint256.Int, error) {
+	return m.result, m.MulDivRoundingUpV2(a, b, denominator, m.result)
+}
+
+func (m *FullMath) MulDivRoundingUpV2(a, b, denominator, result *uint256.Int) error {
+	if err := m.MulDivV2(a, b, denominator, result, m.remainder); err != nil {
 		return err
 	}
 
-	if !remainder.IsZero() {
+	if !m.remainder.IsZero() {
 		if result.Eq(MaxUint256) {
 			return ErrInvariant
 		}
 		result.AddUint64(result, 1)
 	}
+
 	return nil
 }
 
 // MulDivV2 z=floor(a×b÷denominator), r=a×b%denominator
 // (pass remainder=nil if not required)
 // (the main usage for `remainder` is to be used in `MulDivRoundingUpV2` to determine if we need to round up, so it won't have to call MulMod again)
-func MulDivV2(x, y, d, z, r *uint256.Int) error {
+func (m *FullMath) MulDivV2(x, y, d, z, r *uint256.Int) error {
 	if x.IsZero() || y.IsZero() || d.IsZero() {
 		z.Clear()
 		return nil
@@ -59,19 +71,21 @@ func MulDivV2(x, y, d, z, r *uint256.Int) error {
 }
 
 // MulDiv Calculates floor(a×b÷denominator) with full precision
-func MulDiv(a, b, denominator *uint256.Int) (*uint256.Int, error) {
-	result, overflow := new(uint256.Int).MulDivOverflow(a, b, denominator)
+func (m *FullMath) MulDiv(a, b, denominator *uint256.Int) (*uint256.Int, error) {
+	var overflow bool
+
+	m.result, overflow = m.result.MulDivOverflow(a, b, denominator)
 	if overflow {
 		return nil, ErrMulDivOverflow
 	}
-	return result, nil
+
+	return m.result, nil
 }
 
 // DivRoundingUp Returns ceil(x / y)
-func DivRoundingUp(a, denominator, result *uint256.Int) {
-	var rem uint256.Int
-	result.DivMod(a, denominator, &rem)
-	if !rem.IsZero() {
+func (m *FullMath) DivRoundingUp(a, denominator, result *uint256.Int) {
+	result.DivMod(a, denominator, m.rem)
+	if !m.rem.IsZero() {
 		result.AddUint64(result, 1)
 	}
 }

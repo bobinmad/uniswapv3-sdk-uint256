@@ -29,10 +29,17 @@ func addIn256(x, y, sum *uint256.Int) *uint256.Int {
 
 // deprecated
 func GetAmount0Delta(sqrtRatioAX96, sqrtRatioBX96, liquidity *big.Int, roundUp bool) *big.Int {
-	panic("GetAmount0Delta() is deprecated")
+	// panic("GetAmount0Delta() is deprecated")
+	c := NewSqrtPriceCalculator()
+
+	result := new(Uint256)
+	c.GetAmount0DeltaV2(uint256.MustFromBig(sqrtRatioAX96), uint256.MustFromBig(sqrtRatioBX96), uint256.MustFromBig(liquidity), roundUp, result)
+
+	return result.ToBig()
 }
 
 type SqrtPriceCalculator struct {
+	fullMath                    *FullMath
 	numerator1, numerator2, tmp *uint256.Int
 	quotient                    *uint256.Int
 	diff                        *uint256.Int
@@ -43,6 +50,7 @@ type SqrtPriceCalculator struct {
 
 func NewSqrtPriceCalculator() *SqrtPriceCalculator {
 	return &SqrtPriceCalculator{
+		fullMath:    NewFullMath(),
 		numerator1:  new(uint256.Int),
 		numerator2:  new(uint256.Int),
 		tmp:         new(uint256.Int),
@@ -64,17 +72,16 @@ func (c *SqrtPriceCalculator) GetAmount0DeltaV2(sqrtRatioAX96, sqrtRatioBX96 *Ui
 	c.numerator2.Sub(sqrtRatioBX96, sqrtRatioAX96)
 
 	if roundUp {
-		err := MulDivRoundingUpV2(c.numerator1, c.numerator2, sqrtRatioBX96, c.deno)
-		if err != nil {
+		if err := c.fullMath.MulDivRoundingUpV2(c.numerator1, c.numerator2, sqrtRatioBX96, c.deno); err != nil {
 			return err
 		}
-		DivRoundingUp(c.deno, sqrtRatioAX96, result)
+
+		c.fullMath.DivRoundingUp(c.deno, sqrtRatioAX96, result)
 		return nil
 	}
 
 	// : FullMath.mulDiv(numerator1, numerator2, sqrtRatioBX96) / sqrtRatioAX96;
-	err := MulDivV2(c.numerator1, c.numerator2, sqrtRatioBX96, c.tmp, nil)
-	if err != nil {
+	if err := c.fullMath.MulDivV2(c.numerator1, c.numerator2, sqrtRatioBX96, c.tmp, nil); err != nil {
 		return err
 	}
 
@@ -95,7 +102,7 @@ func (c *SqrtPriceCalculator) GetAmount1DeltaV2(sqrtRatioAX96, sqrtRatioBX96 *Ui
 
 	c.diff.Sub(sqrtRatioBX96, sqrtRatioAX96)
 	if roundUp {
-		err := MulDivRoundingUpV2(liquidity, c.diff, constants.Q96U256, result)
+		err := c.fullMath.MulDivRoundingUpV2(liquidity, c.diff, constants.Q96U256, result)
 		if err != nil {
 			return err
 		}
@@ -103,8 +110,7 @@ func (c *SqrtPriceCalculator) GetAmount1DeltaV2(sqrtRatioAX96, sqrtRatioBX96 *Ui
 	}
 
 	// : FullMath.mulDiv(liquidity, sqrtRatioBX96 - sqrtRatioAX96, FixedPoint96.Q96);
-	err := MulDivV2(liquidity, c.diff, constants.Q96U256, result, nil)
-	if err != nil {
+	if err := c.fullMath.MulDivV2(liquidity, c.diff, constants.Q96U256, result, nil); err != nil {
 		return err
 	}
 	return nil
@@ -149,14 +155,14 @@ func (c *SqrtPriceCalculator) getNextSqrtPriceFromAmount0RoundingUp(sqrtPX96 *Ui
 		if c.tmp.Div(c.product, amount).Eq(sqrtPX96) {
 			addIn256(c.numerator1, c.product, c.denominator)
 			if c.denominator.Cmp(c.numerator1) >= 0 {
-				err := MulDivRoundingUpV2(c.numerator1, sqrtPX96, c.denominator, result)
+				err := c.fullMath.MulDivRoundingUpV2(c.numerator1, sqrtPX96, c.denominator, result)
 				return err
 			}
 		}
 
 		c.tmp.Div(c.numerator1, sqrtPX96)
 		c.tmp.Add(c.tmp, amount)
-		DivRoundingUp(c.numerator1, c.tmp, result)
+		c.fullMath.DivRoundingUp(c.numerator1, c.tmp, result)
 
 		return nil
 	} else {
@@ -168,7 +174,7 @@ func (c *SqrtPriceCalculator) getNextSqrtPriceFromAmount0RoundingUp(sqrtPX96 *Ui
 		}
 
 		c.denominator.Sub(c.numerator1, c.product)
-		err := MulDivRoundingUpV2(c.numerator1, sqrtPX96, c.denominator, result)
+		err := c.fullMath.MulDivRoundingUpV2(c.numerator1, sqrtPX96, c.denominator, result)
 
 		return err
 	}
@@ -198,7 +204,7 @@ func (c *SqrtPriceCalculator) getNextSqrtPriceFromAmount1RoundingDown(sqrtPX96 *
 		return nil
 	}
 
-	if err := MulDivRoundingUpV2(amount, constants.Q96U256, liquidity, c.quotient); err != nil {
+	if err := c.fullMath.MulDivRoundingUpV2(amount, constants.Q96U256, liquidity, c.quotient); err != nil {
 		return err
 	}
 

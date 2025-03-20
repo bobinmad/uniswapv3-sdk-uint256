@@ -62,6 +62,7 @@ func NewPosition(pool *Pool, liquidity *uint256.Int, tickLower int, tickUpper in
 		TickLower:           tickLower,
 		TickUpper:           tickUpper,
 		tickCalculator:      utils.NewTickCalculator(),
+		sqrtPriceCalculator: utils.NewSqrtPriceCalculator(),
 		sqrtTickLowerTmp:    new(utils.Uint160),
 		sqrtTickUpperTmp:    new(utils.Uint160),
 		amount0Tmp:          new(utils.Uint256),
@@ -69,7 +70,6 @@ func NewPosition(pool *Pool, liquidity *uint256.Int, tickLower int, tickUpper in
 		amount2Tmp:          new(utils.Uint256),
 		amount3Tmp:          new(utils.Uint256),
 		amount4Tmp:          new(utils.Uint256),
-		sqrtPriceCalculator: utils.NewSqrtPriceCalculator(),
 	}, nil
 }
 

@@ -10,7 +10,8 @@ const MaxFeeInt = 1000000
 var MaxFeeUint256 = uint256.NewInt(MaxFeeInt)
 
 type SwapStepCalculator struct {
-	sqrtPriceCalculator SqrtPriceCalculator
+	sqrtPriceCalculator *SqrtPriceCalculator
+	fullMath            *FullMath
 
 	tmpUint256         *uint256.Int
 	amountRemainingU   *uint256.Int
@@ -23,14 +24,16 @@ type SwapStepCalculator struct {
 
 func NewSwapStepCalculator() *SwapStepCalculator {
 	return &SwapStepCalculator{
-		sqrtPriceCalculator: *NewSqrtPriceCalculator(),
-		tmpUint256:          new(uint256.Int),
-		amountRemainingU:    new(uint256.Int),
-		maxFeeMinusFeePips:  new(uint256.Int),
-		feePipsUin256Tmp:    new(uint256.Int),
-		tmpUint256_2:        new(uint256.Int),
-		tmpUint256_3:        new(uint256.Int),
-		tmpUint256_4:        new(uint256.Int),
+		sqrtPriceCalculator: NewSqrtPriceCalculator(),
+		fullMath:            NewFullMath(),
+
+		tmpUint256:         new(uint256.Int),
+		amountRemainingU:   new(uint256.Int),
+		maxFeeMinusFeePips: new(uint256.Int),
+		feePipsUin256Tmp:   new(uint256.Int),
+		tmpUint256_2:       new(uint256.Int),
+		tmpUint256_3:       new(uint256.Int),
+		tmpUint256_4:       new(uint256.Int),
 	}
 }
 
@@ -57,41 +60,36 @@ func (c *SwapStepCalculator) ComputeSwapStep(
 		c.tmpUint256.Div(c.tmpUint256.Mul(c.amountRemainingU, c.maxFeeMinusFeePips), MaxFeeUint256)
 
 		if zeroForOne {
-			err := c.sqrtPriceCalculator.GetAmount0DeltaV2(sqrtRatioTargetX96, sqrtRatioCurrentX96, liquidity, true, amountIn)
-			if err != nil {
+			if err := c.sqrtPriceCalculator.GetAmount0DeltaV2(sqrtRatioTargetX96, sqrtRatioCurrentX96, liquidity, true, amountIn); err != nil {
 				return err
 			}
 		} else {
-			err := c.sqrtPriceCalculator.GetAmount1DeltaV2(sqrtRatioCurrentX96, sqrtRatioTargetX96, liquidity, true, amountIn)
-			if err != nil {
+			if err := c.sqrtPriceCalculator.GetAmount1DeltaV2(sqrtRatioCurrentX96, sqrtRatioTargetX96, liquidity, true, amountIn); err != nil {
 				return err
 			}
 		}
+
 		if c.tmpUint256.Cmp(amountIn) >= 0 {
 			sqrtRatioNextX96.Set(sqrtRatioTargetX96)
 		} else {
-			err := c.sqrtPriceCalculator.GetNextSqrtPriceFromInput(sqrtRatioCurrentX96, liquidity, c.tmpUint256, zeroForOne, sqrtRatioNextX96)
-			if err != nil {
+			if err := c.sqrtPriceCalculator.GetNextSqrtPriceFromInput(sqrtRatioCurrentX96, liquidity, c.tmpUint256, zeroForOne, sqrtRatioNextX96); err != nil {
 				return err
 			}
 		}
 	} else {
 		if zeroForOne {
-			err := c.sqrtPriceCalculator.GetAmount1DeltaV2(sqrtRatioTargetX96, sqrtRatioCurrentX96, liquidity, false, amountOut)
-			if err != nil {
+			if err := c.sqrtPriceCalculator.GetAmount1DeltaV2(sqrtRatioTargetX96, sqrtRatioCurrentX96, liquidity, false, amountOut); err != nil {
 				return err
 			}
 		} else {
-			err := c.sqrtPriceCalculator.GetAmount0DeltaV2(sqrtRatioCurrentX96, sqrtRatioTargetX96, liquidity, false, amountOut)
-			if err != nil {
+			if err := c.sqrtPriceCalculator.GetAmount0DeltaV2(sqrtRatioCurrentX96, sqrtRatioTargetX96, liquidity, false, amountOut); err != nil {
 				return err
 			}
 		}
 		if c.amountRemainingU.Cmp(amountOut) >= 0 {
 			sqrtRatioNextX96.Set(sqrtRatioTargetX96)
 		} else {
-			err := c.sqrtPriceCalculator.GetNextSqrtPriceFromOutput(sqrtRatioCurrentX96, liquidity, c.amountRemainingU, zeroForOne, sqrtRatioNextX96)
-			if err != nil {
+			if err := c.sqrtPriceCalculator.GetNextSqrtPriceFromOutput(sqrtRatioCurrentX96, liquidity, c.amountRemainingU, zeroForOne, sqrtRatioNextX96); err != nil {
 				return err
 			}
 		}
@@ -101,27 +99,23 @@ func (c *SwapStepCalculator) ComputeSwapStep(
 
 	if zeroForOne {
 		if !(max && exactIn) {
-			err := c.sqrtPriceCalculator.GetAmount0DeltaV2(sqrtRatioNextX96, sqrtRatioCurrentX96, liquidity, true, amountIn)
-			if err != nil {
+			if err := c.sqrtPriceCalculator.GetAmount0DeltaV2(sqrtRatioNextX96, sqrtRatioCurrentX96, liquidity, true, amountIn); err != nil {
 				return err
 			}
 		}
 		if !(max && !exactIn) {
-			err := c.sqrtPriceCalculator.GetAmount1DeltaV2(sqrtRatioNextX96, sqrtRatioCurrentX96, liquidity, false, amountOut)
-			if err != nil {
+			if err := c.sqrtPriceCalculator.GetAmount1DeltaV2(sqrtRatioNextX96, sqrtRatioCurrentX96, liquidity, false, amountOut); err != nil {
 				return err
 			}
 		}
 	} else {
 		if !(max && exactIn) {
-			err := c.sqrtPriceCalculator.GetAmount1DeltaV2(sqrtRatioCurrentX96, sqrtRatioNextX96, liquidity, true, amountIn)
-			if err != nil {
+			if err := c.sqrtPriceCalculator.GetAmount1DeltaV2(sqrtRatioCurrentX96, sqrtRatioNextX96, liquidity, true, amountIn); err != nil {
 				return err
 			}
 		}
 		if !(max && !exactIn) {
-			err := c.sqrtPriceCalculator.GetAmount0DeltaV2(sqrtRatioCurrentX96, sqrtRatioNextX96, liquidity, false, amountOut)
-			if err != nil {
+			if err := c.sqrtPriceCalculator.GetAmount0DeltaV2(sqrtRatioCurrentX96, sqrtRatioNextX96, liquidity, false, amountOut); err != nil {
 				return err
 			}
 		}
@@ -135,8 +129,7 @@ func (c *SwapStepCalculator) ComputeSwapStep(
 		// we didn't reach the target, so take the remainder of the maximum input as fee
 		feeAmount.Sub(c.amountRemainingU, amountIn)
 	} else {
-		err := MulDivRoundingUpV2(amountIn, c.feePipsUin256Tmp.SetUint64(uint64(feePips)), c.maxFeeMinusFeePips, feeAmount)
-		if err != nil {
+		if err := c.fullMath.MulDivRoundingUpV2(amountIn, c.feePipsUin256Tmp.SetUint64(uint64(feePips)), c.maxFeeMinusFeePips, feeAmount); err != nil {
 			return err
 		}
 	}

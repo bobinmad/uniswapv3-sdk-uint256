@@ -88,10 +88,12 @@ var (
 
 // deprecated
 func GetSqrtRatioAtTick(tick int) (*big.Int, error) {
-	panic("GetSqrtRatioAtTick() is deprecated")
-	// var res Uint160
-	// err := GetSqrtRatioAtTickV2(tick, &res)
-	// return res.ToBig(), err
+	c := NewTickCalculator()
+
+	// panic("GetSqrtRatioAtTick() is deprecated")
+	var res Uint160
+	c.GetSqrtRatioAtTickV2(tick, &res)
+	return res.ToBig(), nil
 }
 
 /**
