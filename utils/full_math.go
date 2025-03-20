@@ -32,6 +32,8 @@ func (m *FullMath) MulDivRoundingUp(a, b, denominator *uint256.Int) (*uint256.In
 }
 
 func (m *FullMath) MulDivRoundingUpV2(a, b, denominator, result *uint256.Int) error {
+	m.remainder.Clear()
+
 	if err := m.MulDivV2(a, b, denominator, result, m.remainder); err != nil {
 		return err
 	}
@@ -40,6 +42,7 @@ func (m *FullMath) MulDivRoundingUpV2(a, b, denominator, result *uint256.Int) er
 		if result.Eq(MaxUint256) {
 			return ErrInvariant
 		}
+
 		result.AddUint64(result, 1)
 	}
 
@@ -74,8 +77,7 @@ func (m *FullMath) MulDivV2(x, y, d, z, r *uint256.Int) error {
 func (m *FullMath) MulDiv(a, b, denominator *uint256.Int) (*uint256.Int, error) {
 	var overflow bool
 
-	m.result, overflow = m.result.MulDivOverflow(a, b, denominator)
-	if overflow {
+	if m.result, overflow = m.result.MulDivOverflow(a, b, denominator); overflow {
 		return nil, ErrMulDivOverflow
 	}
 
