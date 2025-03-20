@@ -29,13 +29,7 @@ func addIn256(x, y, sum *uint256.Int) *uint256.Int {
 
 // deprecated
 func GetAmount0Delta(sqrtRatioAX96, sqrtRatioBX96, liquidity *big.Int, roundUp bool) *big.Int {
-	// panic("GetAmount0Delta() is deprecated")
-	c := NewSqrtPriceCalculator()
-
-	result := new(Uint256)
-	c.GetAmount0DeltaV2(uint256.MustFromBig(sqrtRatioAX96), uint256.MustFromBig(sqrtRatioBX96), uint256.MustFromBig(liquidity), roundUp, result)
-
-	return result.ToBig()
+	panic("GetAmount0Delta() is deprecated")
 }
 
 type SqrtPriceCalculator struct {
