@@ -2,7 +2,6 @@ package utils
 
 import (
 	"fmt"
-	"math/big"
 	"testing"
 
 	"github.com/KyberNetwork/int256"
@@ -12,12 +11,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var swapStepCalculator = NewSwapStepCalculator()
+
 func TestComputeSwapStep(t *testing.T) {
 
-	p1 := EncodeSqrtRatioX96(big.NewInt(1), big.NewInt(1))
-	p2 := EncodeSqrtRatioX96(big.NewInt(101), big.NewInt(100))
-	p3 := EncodeSqrtRatioX96(big.NewInt(1000), big.NewInt(100))
-	p4 := EncodeSqrtRatioX96(big.NewInt(10000), big.NewInt(100))
+	p1 := EncodeSqrtRatioX96(uint256.NewInt(1), uint256.NewInt(1))
+	p2 := EncodeSqrtRatioX96(uint256.NewInt(101), uint256.NewInt(100))
+	p3 := EncodeSqrtRatioX96(uint256.NewInt(1000), uint256.NewInt(100))
+	p4 := EncodeSqrtRatioX96(uint256.NewInt(10000), uint256.NewInt(100))
 
 	tests := []struct {
 		price       string
@@ -61,7 +62,7 @@ func TestComputeSwapStep(t *testing.T) {
 	var amountIn, amountOut, feeAmount Uint256
 	for i, tt := range tests {
 		t.Run(fmt.Sprintf("test %d", i), func(t *testing.T) {
-			err := ComputeSwapStep(
+			err := swapStepCalculator.ComputeSwapStep(
 				uint256.MustFromDecimal(tt.price),
 				uint256.MustFromDecimal(tt.priceTarget),
 				uint256.MustFromDecimal(tt.liquidity),

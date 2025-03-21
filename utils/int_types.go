@@ -38,11 +38,10 @@ func ToInt256(value *Uint256, result *Int256) error {
 	return nil
 }
 
-func ToUInt256(value *Int256, result *Uint256) error {
+func ToUInt256(value *Int256, result *Uint256) {
 	var ba [32]byte
 	value.WriteToArray32(&ba)
 	result.SetBytes32(ba[:])
-	return nil
 }
 
 // https://github.com/Uniswap/v3-core/blob/main/contracts/libraries/SafeCast.sol

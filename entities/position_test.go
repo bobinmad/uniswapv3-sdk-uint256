@@ -8,13 +8,14 @@ import (
 	"github.com/KyberNetwork/uniswapv3-sdk-uint256/utils"
 	"github.com/daoleno/uniswap-sdk-core/entities"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/holiman/uint256"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 )
 
 var (
-	B100e6  = big.NewInt(100e6)
-	B100e12 = big.NewInt(100e12)
+	B100e6  = uint256.NewInt(100e6)
+	B100e12 = uint256.NewInt(100e12)
 	B100e18 = decimal.NewFromBigInt(big.NewInt(100), 18).BigInt()
 )
 
@@ -40,37 +41,37 @@ func TestPosition(t *testing.T) {
 	DAIUSDCPool, _, tickSpacing := initPool()
 
 	// can be constructed around 0 tick
-	p, err := NewPosition(DAIUSDCPool, big.NewInt(1), -10, 10)
+	p, err := NewPosition(DAIUSDCPool, uint256.NewInt(1), -10, 10)
 	assert.NoError(t, err)
 	assert.Equal(t, big.NewInt(1), p.Liquidity)
 
 	// can use min and max ticks
-	p, err = NewPosition(DAIUSDCPool, big.NewInt(1), NearestUsableTick(utils.MinTick, tickSpacing), 10)
+	p, err = NewPosition(DAIUSDCPool, uint256.NewInt(1), NearestUsableTick(utils.MinTick, tickSpacing), 10)
 	assert.NoError(t, err)
 	assert.Equal(t, big.NewInt(1), p.Liquidity)
 
 	// tick lower must be less than tick upper
-	_, err = NewPosition(DAIUSDCPool, big.NewInt(1), 10, -10)
+	_, err = NewPosition(DAIUSDCPool, uint256.NewInt(1), 10, -10)
 	assert.ErrorIs(t, err, ErrTickOrder)
 
 	// tick lower cannot equal tick upper
-	_, err = NewPosition(DAIUSDCPool, big.NewInt(1), -10, -10)
+	_, err = NewPosition(DAIUSDCPool, uint256.NewInt(1), -10, -10)
 	assert.ErrorIs(t, err, ErrTickOrder)
 
 	// tick lower must be multiple of tick spacing
-	_, err = NewPosition(DAIUSDCPool, big.NewInt(1), -5, 10)
+	_, err = NewPosition(DAIUSDCPool, uint256.NewInt(1), -5, 10)
 	assert.ErrorIs(t, err, ErrTickLower)
 
 	// tick lower must be greater than MIN_TICK
-	_, err = NewPosition(DAIUSDCPool, big.NewInt(1), NearestUsableTick(utils.MinTick, tickSpacing)-tickSpacing, 10)
+	_, err = NewPosition(DAIUSDCPool, uint256.NewInt(1), NearestUsableTick(utils.MinTick, tickSpacing)-tickSpacing, 10)
 	assert.ErrorIs(t, err, ErrTickLower)
 
 	// tick upper must be multiple of tick spacing
-	_, err = NewPosition(DAIUSDCPool, big.NewInt(1), -10, 15)
+	_, err = NewPosition(DAIUSDCPool, uint256.NewInt(1), -10, 15)
 	assert.ErrorIs(t, err, ErrTickUpper)
 
 	// tick upper must be less than MAX_TICK
-	_, err = NewPosition(DAIUSDCPool, big.NewInt(1), -10, NearestUsableTick(utils.MaxTick, tickSpacing)+tickSpacing)
+	_, err = NewPosition(DAIUSDCPool, uint256.NewInt(1), -10, NearestUsableTick(utils.MaxTick, tickSpacing)+tickSpacing)
 	assert.ErrorIs(t, err, ErrTickUpper)
 }
 

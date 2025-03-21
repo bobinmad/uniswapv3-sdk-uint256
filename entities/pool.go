@@ -428,7 +428,7 @@ func (p *Pool) swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 		}
 
 		p.tickCalculator.GetSqrtRatioAtTickV2(step.tickNext, &step.sqrtPriceNextX96)
-		
+
 		var targetValue utils.Uint160
 		if zeroForOne {
 			if step.sqrtPriceNextX96.Lt(sqrtPriceLimitX96) {
@@ -569,7 +569,7 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 		if sqrtPriceLimitX96.Lt(utils.MinSqrtRatioU256) {
 			return ErrSqrtPriceLimitX96TooLow
 		}
-		if sqrtPriceLimitX96.Cmp(p.SqrtRatioX96) >= 0 {
+		if !sqrtPriceLimitX96.Lt(p.SqrtRatioX96) {
 			return ErrSqrtPriceLimitX96TooHigh
 		}
 	} else {
@@ -590,6 +590,7 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 	p.lastState.tick = p.TickCurrent
 	p.lastState.liquidity.Set(p.Liquidity)
 	swapResult.StepsFee = []StepFeeResult{}
+	swapResult.CrossInitTickLoops = 0
 
 	// crossInitTickLoops is the number of loops that cross an initialized tick.
 	// We only count when tick passes an initialized tick, since gas only significant in this case.
@@ -629,21 +630,18 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 			}
 		}
 
-		err = p.swapStepCalculator.ComputeSwapStep(p.lastState.sqrtPriceX96, p.targetValue, p.lastState.liquidity, p.lastState.amountSpecifiedRemaining, p.Fee, p.nxtSqrtPriceX96, &p.step.amountIn, &p.step.amountOut, &p.step.feeAmount)
-		if err != nil {
+		if err = p.swapStepCalculator.ComputeSwapStep(p.lastState.sqrtPriceX96, p.targetValue, p.lastState.liquidity, p.lastState.amountSpecifiedRemaining, p.Fee, p.nxtSqrtPriceX96, &p.step.amountIn, &p.step.amountOut, &p.step.feeAmount); err != nil {
 			return err
 		}
 		p.lastState.sqrtPriceX96.Set(p.nxtSqrtPriceX96)
 
 		p.amountInPlusFee.Add(&p.step.amountIn, &p.step.feeAmount)
 
-		err = utils.ToInt256(p.amountInPlusFee, p.amountInPlusFeeSigned)
-		if err != nil {
+		if err = utils.ToInt256(p.amountInPlusFee, p.amountInPlusFeeSigned); err != nil {
 			return err
 		}
 
-		err = utils.ToInt256(&p.step.amountOut, p.amountOutSigned)
-		if err != nil {
+		if err = utils.ToInt256(&p.step.amountOut, p.amountOutSigned); err != nil {
 			return err
 		}
 

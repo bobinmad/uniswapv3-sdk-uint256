@@ -35,6 +35,17 @@ import (
 	"github.com/holiman/uint256"
 )
 
+type Uint256Utils struct {
+	dnStorage *uint256.Int
+	unStorage [9]uint64
+}
+
+func NewUint256Utils() *Uint256Utils {
+	return &Uint256Utils{
+		dnStorage: new(uint256.Int),
+	}
+}
+
 // umul computes full 256 x 256 -> 512 multiplication.
 func umul(x, y *uint256.Int) [8]uint64 {
 	var (
@@ -88,7 +99,7 @@ func umulStep(z, x, y, carry uint64) (hi, lo uint64) {
 // The quotient is stored in provided quot - len(u)-len(d)+1 words.
 // It loosely follows the Knuth's division algorithm (sometimes referenced as "schoolbook" division) using 64-bit words.
 // See Knuth, Volume 2, section 4.3.1, Algorithm D.
-func udivrem(quot, u []uint64, d *uint256.Int) (rem uint256.Int) {
+func (ut *Uint256Utils) udivrem(quot, u []uint64, d *uint256.Int, rem *uint256.Int) {
 	var dLen int
 	for i := len(d) - 1; i >= 0; i-- {
 		if d[i] != 0 {
@@ -99,8 +110,8 @@ func udivrem(quot, u []uint64, d *uint256.Int) (rem uint256.Int) {
 
 	shift := uint(bits.LeadingZeros64(d[dLen-1]))
 
-	var dnStorage uint256.Int
-	dn := dnStorage[:dLen]
+	ut.dnStorage.Clear()
+	dn := ut.dnStorage[:dLen]
 	for i := dLen - 1; i > 0; i-- {
 		dn[i] = (d[i] << shift) | (d[i-1] >> (64 - shift))
 	}
@@ -116,11 +127,12 @@ func udivrem(quot, u []uint64, d *uint256.Int) (rem uint256.Int) {
 
 	if uLen < dLen {
 		copy(rem[:], u)
-		return rem
+		return
 	}
 
-	var unStorage [9]uint64
-	un := unStorage[:uLen+1]
+	// var unStorage [9]uint64
+	un := ut.unStorage[:uLen+1]
+
 	un[uLen] = u[uLen-1] >> (64 - shift)
 	for i := uLen - 1; i > 0; i-- {
 		un[i] = (u[i] << shift) | (u[i-1] >> (64 - shift))
@@ -132,7 +144,7 @@ func udivrem(quot, u []uint64, d *uint256.Int) (rem uint256.Int) {
 	if dLen == 1 {
 		r := udivremBy1(quot, un, dn[0])
 		rem.SetUint64(r >> shift)
-		return rem
+		return
 	}
 
 	udivremKnuth(quot, un, dn)
@@ -141,8 +153,6 @@ func udivrem(quot, u []uint64, d *uint256.Int) (rem uint256.Int) {
 		rem[i] = (un[i] >> shift) | (un[i+1] << (64 - shift))
 	}
 	rem[dLen-1] = un[dLen-1] >> shift
-
-	return rem
 }
 
 // udivremBy1 divides u by single normalized word d and produces both quotient and remainder.

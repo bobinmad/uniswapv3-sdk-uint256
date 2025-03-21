@@ -18,13 +18,11 @@ var (
 )
 
 func multiplyIn256(x, y, product *uint256.Int) *uint256.Int {
-	product.Mul(x, y)
-	return product // no need to And with MaxUint256 here
+	return product.Mul(x, y) // no need to And with MaxUint256 here
 }
 
 func addIn256(x, y, sum *uint256.Int) *uint256.Int {
-	sum.Add(x, y)
-	return sum // no need to And with MaxUint256 here
+	return sum.Add(x, y) // no need to And with MaxUint256 here
 }
 
 // deprecated
@@ -89,6 +87,8 @@ func GetAmount1Delta(sqrtRatioAX96, sqrtRatioBX96, liquidity *big.Int, roundUp b
 }
 
 func (c *SqrtPriceCalculator) GetAmount1DeltaV2(sqrtRatioAX96, sqrtRatioBX96 *Uint160, liquidity *Uint128, roundUp bool, result *Uint256) error {
+	var err error
+
 	// https://github.com/Uniswap/v3-core/blob/d8b1c635c275d2a9450bd6a78f3fa2484fef73eb/contracts/libraries/SqrtPriceMath.sol#L188
 	if sqrtRatioAX96.Gt(sqrtRatioBX96) {
 		sqrtRatioAX96, sqrtRatioBX96 = sqrtRatioBX96, sqrtRatioAX96
@@ -96,15 +96,15 @@ func (c *SqrtPriceCalculator) GetAmount1DeltaV2(sqrtRatioAX96, sqrtRatioBX96 *Ui
 
 	c.diff.Sub(sqrtRatioBX96, sqrtRatioAX96)
 	if roundUp {
-		err := c.fullMath.MulDivRoundingUpV2(liquidity, c.diff, constants.Q96U256, result)
-		if err != nil {
+		if err = c.fullMath.MulDivRoundingUpV2(liquidity, c.diff, constants.Q96U256, result); err != nil {
 			return err
 		}
+
 		return nil
 	}
 
 	// : FullMath.mulDiv(liquidity, sqrtRatioBX96 - sqrtRatioAX96, FixedPoint96.Q96);
-	if err := c.fullMath.MulDivV2(liquidity, c.diff, constants.Q96U256, result, nil); err != nil {
+	if err = c.fullMath.MulDivV2(liquidity, c.diff, constants.Q96U256, result, nil); err != nil {
 		return err
 	}
 	return nil
@@ -148,49 +148,42 @@ func (c *SqrtPriceCalculator) getNextSqrtPriceFromAmount0RoundingUp(sqrtPX96 *Ui
 	if add {
 		if c.tmp.Div(c.product, amount).Eq(sqrtPX96) {
 			addIn256(c.numerator1, c.product, c.denominator)
-			if c.denominator.Cmp(c.numerator1) >= 0 {
-				err := c.fullMath.MulDivRoundingUpV2(c.numerator1, sqrtPX96, c.denominator, result)
-				return err
+			// >=
+			if !c.denominator.Lt(c.numerator1) {
+				return c.fullMath.MulDivRoundingUpV2(c.numerator1, sqrtPX96, c.denominator, result)
 			}
 		}
 
-		c.tmp.Div(c.numerator1, sqrtPX96)
-		c.tmp.Add(c.tmp, amount)
-		c.fullMath.DivRoundingUp(c.numerator1, c.tmp, result)
+		c.fullMath.DivRoundingUp(c.numerator1, c.tmp.Add(c.tmp.Div(c.numerator1, sqrtPX96), amount), result)
 
 		return nil
 	} else {
 		if !c.tmp.Div(c.product, amount).Eq(sqrtPX96) {
 			return ErrInvariant
 		}
-		if c.numerator1.Cmp(c.product) <= 0 {
+		if c.numerator1.Lt(c.product) {
 			return ErrInvariant
 		}
 
-		c.denominator.Sub(c.numerator1, c.product)
-		err := c.fullMath.MulDivRoundingUpV2(c.numerator1, sqrtPX96, c.denominator, result)
-
-		return err
+		return c.fullMath.MulDivRoundingUpV2(c.numerator1, sqrtPX96, c.denominator.Sub(c.numerator1, c.product), result)
 	}
 }
 
 func (c *SqrtPriceCalculator) getNextSqrtPriceFromAmount1RoundingDown(sqrtPX96 *Uint160, liquidity *Uint128, amount *uint256.Int, add bool, result *Uint160) error {
+	var err error
+
 	if add {
-		if amount.Cmp(MaxUint160) <= 0 {
-			c.tmp.Lsh(amount, 96)
-			c.quotient.Div(c.tmp, liquidity)
+		if amount.Lt(MaxUint160) {
+			c.quotient.Div(c.tmp.Lsh(amount, 96), liquidity)
 		} else {
-			c.tmp.Mul(amount, constants.Q96U256)
-			c.quotient.Div(c.tmp, liquidity)
+			c.quotient.Div(c.tmp.Mul(amount, constants.Q96U256), liquidity)
 		}
 
-		_, overflow := c.quotient.AddOverflow(c.quotient, sqrtPX96)
-		if overflow {
+		if _, overflow := c.quotient.AddOverflow(c.quotient, sqrtPX96); overflow {
 			return ErrAddOverflow
 		}
 
-		err := CheckToUint160(c.quotient)
-		if err != nil {
+		if err = CheckToUint160(c.quotient); err != nil {
 			return err
 		}
 
@@ -198,11 +191,11 @@ func (c *SqrtPriceCalculator) getNextSqrtPriceFromAmount1RoundingDown(sqrtPX96 *
 		return nil
 	}
 
-	if err := c.fullMath.MulDivRoundingUpV2(amount, constants.Q96U256, liquidity, c.quotient); err != nil {
+	if err = c.fullMath.MulDivRoundingUpV2(amount, constants.Q96U256, liquidity, c.quotient); err != nil {
 		return err
 	}
 
-	if sqrtPX96.Cmp(c.quotient) <= 0 {
+	if sqrtPX96.Lt(c.quotient) {
 		return ErrInvariant
 	}
 

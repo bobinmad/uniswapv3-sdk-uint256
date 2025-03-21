@@ -13,13 +13,16 @@ var (
 )
 
 type FullMath struct {
+	u256utils *Uint256Utils
 	rem       *uint256.Int
 	result    *uint256.Int
 	remainder *Uint256
+	quot      [8]uint64
 }
 
 func NewFullMath() *FullMath {
 	return &FullMath{
+		u256utils: NewUint256Utils(),
 		rem:       new(uint256.Int),
 		result:    new(uint256.Int),
 		remainder: new(Uint256),
@@ -59,15 +62,16 @@ func (m *FullMath) MulDivV2(x, y, d, z, r *uint256.Int) error {
 	}
 	p := umul(x, y)
 
-	var quot [8]uint64
-	rem := udivrem(quot[:], p[:], d)
+	// var quot [8]uint64
+	m.quot[7], m.quot[6], m.quot[5], m.quot[4], m.quot[3], m.quot[2], m.quot[1], m.quot[0] = 0, 0, 0, 0, 0, 0, 0, 0
+	m.u256utils.udivrem(m.quot[:], p[:], d, m.rem)
 	if r != nil {
-		r.Set(&rem)
+		r.Set(m.rem)
 	}
 
-	copy(z[:], quot[:4])
+	copy(z[:], m.quot[:4])
 
-	if (quot[4] | quot[5] | quot[6] | quot[7]) != 0 {
+	if (m.quot[4] | m.quot[5] | m.quot[6] | m.quot[7]) != 0 {
 		return ErrMulDivOverflow
 	}
 	return nil

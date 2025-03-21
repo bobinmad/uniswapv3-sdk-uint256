@@ -10,6 +10,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var fullMath = NewFullMath()
+
 func TestMulDiv(t *testing.T) {
 	// https://github.com/Uniswap/v3-core/blob/main/test/FullMath.spec.ts
 
@@ -32,7 +34,7 @@ func TestMulDiv(t *testing.T) {
 	}
 	for i, tt := range tests {
 		t.Run(fmt.Sprintf("test %d", i), func(t *testing.T) {
-			r, err := MulDiv(
+			r, err := fullMath.MulDiv(
 				uint256.MustFromHex(tt.a), uint256.MustFromHex(tt.b),
 				uint256.MustFromHex(tt.deno))
 			require.Nil(t, err)
@@ -40,8 +42,7 @@ func TestMulDiv(t *testing.T) {
 
 			// v2
 			var rv2 Uint256
-			err = MulDivV2(uint256.MustFromHex(tt.a), uint256.MustFromHex(tt.b),
-				uint256.MustFromHex(tt.deno), &rv2, nil)
+			err = fullMath.MulDivV2(uint256.MustFromHex(tt.a), uint256.MustFromHex(tt.b), uint256.MustFromHex(tt.deno), &rv2, nil)
 			require.Nil(t, err)
 			assert.Equal(t, tt.expResult, rv2.Dec())
 		})
@@ -59,14 +60,14 @@ func TestMulDiv(t *testing.T) {
 	}
 	for i, tt := range failTests {
 		t.Run(fmt.Sprintf("fail test %d", i), func(t *testing.T) {
-			_, err := MulDiv(
+			_, err := fullMath.MulDiv(
 				uint256.MustFromHex(tt.a), uint256.MustFromHex(tt.b),
 				uint256.MustFromHex(tt.deno))
 			require.NotNil(t, err)
 
 			// v2
 			var rv2 Uint256
-			err = MulDivV2(uint256.MustFromHex(tt.a), uint256.MustFromHex(tt.b),
+			err = fullMath.MulDivV2(uint256.MustFromHex(tt.a), uint256.MustFromHex(tt.b),
 				uint256.MustFromHex(tt.deno), &rv2, nil)
 			require.NotNil(t, err)
 		})
@@ -100,10 +101,10 @@ func TestMulDivV2(t *testing.T) {
 		deno := RandUint256()
 
 		t.Run(fmt.Sprintf("test %s %s %s", a.Hex(), b.Hex(), deno.Hex()), func(t *testing.T) {
-			r, err := MulDiv(a, b, deno)
+			r, err := fullMath.MulDiv(a, b, deno)
 
 			var rv2 Uint256
-			errv2 := MulDivV2(a, b, deno, &rv2, nil)
+			errv2 := fullMath.MulDivV2(a, b, deno, &rv2, nil)
 
 			if err != nil {
 				require.NotNil(t, errv2)
@@ -146,13 +147,13 @@ func BenchmarkMulDivV2(tb *testing.B) {
 		deno := RandUint256()
 
 		tb.Run(fmt.Sprintf("test %s %s %s", a.Hex(), b.Hex(), deno.Hex()), func(tb *testing.B) {
-			r, err := MulDiv(a, b, deno)
+			r, err := fullMath.MulDiv(a, b, deno)
 
 			var rv2 Uint256
 			var errv2 error
 			tb.ResetTimer()
 			for i := 0; i < tb.N; i++ {
-				errv2 = MulDivV2(a, b, deno, &rv2, nil)
+				errv2 = fullMath.MulDivV2(a, b, deno, &rv2, nil)
 			}
 			tb.StopTimer()
 
@@ -188,7 +189,7 @@ func TestMulDivRoundingUp(t *testing.T) {
 	}
 	for i, tt := range tests {
 		t.Run(fmt.Sprintf("test %d", i), func(t *testing.T) {
-			r, err := MulDivRoundingUp(
+			r, err := fullMath.MulDivRoundingUp(
 				uint256.MustFromHex(tt.a), uint256.MustFromHex(tt.b),
 				uint256.MustFromHex(tt.deno))
 			require.Nil(t, err)
@@ -196,7 +197,7 @@ func TestMulDivRoundingUp(t *testing.T) {
 
 			// v2
 			var rv2 Uint256
-			err = MulDivRoundingUpV2(
+			err = fullMath.MulDivRoundingUpV2(
 				uint256.MustFromHex(tt.a), uint256.MustFromHex(tt.b),
 				uint256.MustFromHex(tt.deno), &rv2)
 			require.Nil(t, err)
@@ -221,14 +222,14 @@ func TestMulDivRoundingUp(t *testing.T) {
 	}
 	for i, tt := range failTests {
 		t.Run(fmt.Sprintf("fail test %d", i), func(t *testing.T) {
-			x, err := MulDivRoundingUp(
+			x, err := fullMath.MulDivRoundingUp(
 				uint256.MustFromHex(tt.a), uint256.MustFromHex(tt.b),
 				uint256.MustFromHex(tt.deno))
 			require.NotNil(t, err, x)
 
 			// v2
 			var rv2 Uint256
-			err = MulDivRoundingUpV2(
+			err = fullMath.MulDivRoundingUpV2(
 				uint256.MustFromHex(tt.a), uint256.MustFromHex(tt.b),
 				uint256.MustFromHex(tt.deno), &rv2)
 			require.NotNil(t, err)
@@ -243,10 +244,10 @@ func TestMulDivRoundingUpV2(t *testing.T) {
 		deno := RandUint256()
 
 		t.Run(fmt.Sprintf("test %s %s %s", a.Hex(), b.Hex(), deno.Hex()), func(t *testing.T) {
-			r, err := MulDivRoundingUp(a, b, deno)
+			r, err := fullMath.MulDivRoundingUp(a, b, deno)
 
 			var rv2 Uint256
-			errv2 := MulDivRoundingUpV2(a, b, deno, &rv2)
+			errv2 := fullMath.MulDivRoundingUpV2(a, b, deno, &rv2)
 
 			if err != nil {
 				require.NotNil(t, errv2)

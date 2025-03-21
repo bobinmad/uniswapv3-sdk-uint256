@@ -9,7 +9,7 @@ import (
 )
 
 type TickCalculator struct {
-	// absTick                  int
+	bitCalculator            *BitCalculator
 	ratio, rem               *Uint256
 	tmp                      *Uint256
 	sqrtRatioX128            *Uint256
@@ -22,6 +22,7 @@ type TickCalculator struct {
 
 func NewTickCalculator() *TickCalculator {
 	return &TickCalculator{
+		bitCalculator: NewBitCalculator(),
 		ratio:         new(Uint256),
 		rem:           new(Uint256),
 		tmp:           new(Uint256),
@@ -196,12 +197,12 @@ func GetTickAtSqrtRatio(sqrtRatioX96 *big.Int) (int, error) {
  * @param sqrtRatioX96 the sqrt ratio as a Q64.96 for which to compute the tick
  */
 func (c *TickCalculator) GetTickAtSqrtRatioV2(sqrtRatioX96 *Uint160) (int, error) {
-	if sqrtRatioX96.Lt(MinSqrtRatioU256) || sqrtRatioX96.Cmp(MaxSqrtRatioU256) >= 0 {
+	if sqrtRatioX96.Lt(MinSqrtRatioU256) || !sqrtRatioX96.Lt(MaxSqrtRatioU256) {
 		return 0, ErrInvalidSqrtRatio
 	}
 
 	c.sqrtRatioX128.Lsh(sqrtRatioX96, 32)
-	msb, err := MostSignificantBit(c.sqrtRatioX128)
+	msb, err := c.bitCalculator.MostSignificantBit(c.sqrtRatioX128)
 	if err != nil {
 		return 0, err
 	}
@@ -241,7 +242,7 @@ func (c *TickCalculator) GetTickAtSqrtRatioV2(sqrtRatioX96 *Uint160) (int, error
 	// }
 	c.GetSqrtRatioAtTickV2(tickHigh, c.sqrtRatio)
 
-	if c.sqrtRatio.Cmp(sqrtRatioX96) <= 0 {
+	if c.sqrtRatio.Lt(sqrtRatioX96) {
 		return tickHigh, nil
 	}
 

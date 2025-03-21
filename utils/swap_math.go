@@ -45,94 +45,78 @@ func (c *SwapStepCalculator) ComputeSwapStep(
 	feePips constants.FeeAmount,
 	sqrtRatioNextX96 *Uint160, amountIn, amountOut, feeAmount *Uint256,
 ) error {
-	zeroForOne := sqrtRatioCurrentX96.Cmp(sqrtRatioTargetX96) >= 0
-	exactIn := amountRemaining.Sign() >= 0
+	var err error
 
-	if exactIn {
-		ToUInt256(amountRemaining, c.amountRemainingU)
-	} else {
-		ToUInt256(amountRemaining, c.amountRemainingU)
-		c.amountRemainingU.Neg(c.amountRemainingU)
-	}
+	zeroForOne := !sqrtRatioCurrentX96.Lt(sqrtRatioTargetX96)
+	exactIn := amountRemaining.Sign() >= 0
 
 	c.maxFeeMinusFeePips.SetUint64(MaxFeeInt - uint64(feePips))
 	if exactIn {
+		ToUInt256(amountRemaining, c.amountRemainingU)
 		c.tmpUint256.Div(c.tmpUint256.Mul(c.amountRemainingU, c.maxFeeMinusFeePips), MaxFeeUint256)
 
 		if zeroForOne {
-			if err := c.sqrtPriceCalculator.GetAmount0DeltaV2(sqrtRatioTargetX96, sqrtRatioCurrentX96, liquidity, true, amountIn); err != nil {
-				return err
-			}
+			err = c.sqrtPriceCalculator.GetAmount0DeltaV2(sqrtRatioTargetX96, sqrtRatioCurrentX96, liquidity, true, amountIn)
 		} else {
-			if err := c.sqrtPriceCalculator.GetAmount1DeltaV2(sqrtRatioCurrentX96, sqrtRatioTargetX96, liquidity, true, amountIn); err != nil {
-				return err
-			}
+			err = c.sqrtPriceCalculator.GetAmount1DeltaV2(sqrtRatioCurrentX96, sqrtRatioTargetX96, liquidity, true, amountIn)
 		}
 
-		if c.tmpUint256.Cmp(amountIn) >= 0 {
+		// >=
+		if !c.tmpUint256.Lt(amountIn) {
 			sqrtRatioNextX96.Set(sqrtRatioTargetX96)
 		} else {
-			if err := c.sqrtPriceCalculator.GetNextSqrtPriceFromInput(sqrtRatioCurrentX96, liquidity, c.tmpUint256, zeroForOne, sqrtRatioNextX96); err != nil {
-				return err
-			}
+			err = c.sqrtPriceCalculator.GetNextSqrtPriceFromInput(sqrtRatioCurrentX96, liquidity, c.tmpUint256, zeroForOne, sqrtRatioNextX96)
 		}
 	} else {
+		ToUInt256(amountRemaining, c.amountRemainingU)
+		c.amountRemainingU.Neg(c.amountRemainingU)
+
 		if zeroForOne {
-			if err := c.sqrtPriceCalculator.GetAmount1DeltaV2(sqrtRatioTargetX96, sqrtRatioCurrentX96, liquidity, false, amountOut); err != nil {
-				return err
-			}
+			err = c.sqrtPriceCalculator.GetAmount1DeltaV2(sqrtRatioTargetX96, sqrtRatioCurrentX96, liquidity, false, amountOut)
 		} else {
-			if err := c.sqrtPriceCalculator.GetAmount0DeltaV2(sqrtRatioCurrentX96, sqrtRatioTargetX96, liquidity, false, amountOut); err != nil {
-				return err
-			}
+			c.sqrtPriceCalculator.GetAmount0DeltaV2(sqrtRatioCurrentX96, sqrtRatioTargetX96, liquidity, false, amountOut)
 		}
-		if c.amountRemainingU.Cmp(amountOut) >= 0 {
+
+		if !c.amountRemainingU.Lt(amountOut) {
 			sqrtRatioNextX96.Set(sqrtRatioTargetX96)
 		} else {
-			if err := c.sqrtPriceCalculator.GetNextSqrtPriceFromOutput(sqrtRatioCurrentX96, liquidity, c.amountRemainingU, zeroForOne, sqrtRatioNextX96); err != nil {
-				return err
-			}
+			c.sqrtPriceCalculator.GetNextSqrtPriceFromOutput(sqrtRatioCurrentX96, liquidity, c.amountRemainingU, zeroForOne, sqrtRatioNextX96)
 		}
 	}
+	// if err != nil {
+	// 	return err
+	// }
 
 	max := sqrtRatioTargetX96.Eq(sqrtRatioNextX96)
 
 	if zeroForOne {
 		if !(max && exactIn) {
-			if err := c.sqrtPriceCalculator.GetAmount0DeltaV2(sqrtRatioNextX96, sqrtRatioCurrentX96, liquidity, true, amountIn); err != nil {
-				return err
-			}
+			err = c.sqrtPriceCalculator.GetAmount0DeltaV2(sqrtRatioNextX96, sqrtRatioCurrentX96, liquidity, true, amountIn)
 		}
 		if !(max && !exactIn) {
-			if err := c.sqrtPriceCalculator.GetAmount1DeltaV2(sqrtRatioNextX96, sqrtRatioCurrentX96, liquidity, false, amountOut); err != nil {
-				return err
-			}
+			err = c.sqrtPriceCalculator.GetAmount1DeltaV2(sqrtRatioNextX96, sqrtRatioCurrentX96, liquidity, false, amountOut)
 		}
 	} else {
 		if !(max && exactIn) {
-			if err := c.sqrtPriceCalculator.GetAmount1DeltaV2(sqrtRatioCurrentX96, sqrtRatioNextX96, liquidity, true, amountIn); err != nil {
-				return err
-			}
+			err = c.sqrtPriceCalculator.GetAmount1DeltaV2(sqrtRatioCurrentX96, sqrtRatioNextX96, liquidity, true, amountIn)
+
 		}
 		if !(max && !exactIn) {
-			if err := c.sqrtPriceCalculator.GetAmount0DeltaV2(sqrtRatioCurrentX96, sqrtRatioNextX96, liquidity, false, amountOut); err != nil {
-				return err
-			}
+			err = c.sqrtPriceCalculator.GetAmount0DeltaV2(sqrtRatioCurrentX96, sqrtRatioNextX96, liquidity, false, amountOut)
 		}
 	}
+	// if err != nil {
+	// 	return err
+	// }
 
 	if !exactIn && amountOut.Gt(c.amountRemainingU) {
 		amountOut.Set(c.amountRemainingU)
-	}
-
-	if exactIn && !sqrtRatioNextX96.Eq(sqrtRatioTargetX96) {
+	} else if exactIn && !sqrtRatioNextX96.Eq(sqrtRatioTargetX96) {
 		// we didn't reach the target, so take the remainder of the maximum input as fee
 		feeAmount.Sub(c.amountRemainingU, amountIn)
 	} else {
-		if err := c.fullMath.MulDivRoundingUpV2(amountIn, c.feePipsUin256Tmp.SetUint64(uint64(feePips)), c.maxFeeMinusFeePips, feeAmount); err != nil {
-			return err
-		}
+		err = c.fullMath.MulDivRoundingUpV2(amountIn, c.feePipsUin256Tmp.SetUint64(uint64(feePips)), c.maxFeeMinusFeePips, feeAmount)
 	}
 
-	return nil
+	return err
 }
