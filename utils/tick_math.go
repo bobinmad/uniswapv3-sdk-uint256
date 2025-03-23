@@ -10,6 +10,7 @@ import (
 
 type TickCalculator struct {
 	bitCalculator            *BitCalculator
+	absTick                  int
 	ratio, rem               *Uint256
 	tmp                      *Uint256
 	sqrtRatioX128            *Uint256
@@ -96,75 +97,77 @@ func GetSqrtRatioAtTick(tick int) (*big.Int, error) {
  * Returns the sqrt ratio as a Q64.96 for the given tick. The sqrt ratio is computed as sqrt(1.0001)^tick
  * @param tick the tick for which to compute the sqrt ratio
  */
-func (c *TickCalculator) GetSqrtRatioAtTickV2(tick int, result *Uint160) {
+func (c *TickCalculator) GetSqrtRatioAtTickV2(tick int, result *Uint160) error {
 	// if tick < MinTick || tick > MaxTick {
 	// 	return ErrInvalidTick
 	// }
 
 	if tick < 0 {
-		tick = -tick
+		c.absTick = -tick
+	} else {
+		c.absTick = tick
 	}
 
-	if tick&0x1 != 0 {
+	if c.absTick&0x1 != 0 {
 		c.ratio.Set(sqrtConst1)
 	} else {
 		c.ratio.Set(sqrtConst2)
 	}
-	if (tick & 0x2) != 0 {
+	if (c.absTick & 0x2) != 0 {
 		c.mulShift(c.ratio, sqrtConst3)
 	}
-	if (tick & 0x4) != 0 {
+	if (c.absTick & 0x4) != 0 {
 		c.mulShift(c.ratio, sqrtConst4)
 	}
-	if (tick & 0x8) != 0 {
+	if (c.absTick & 0x8) != 0 {
 		c.mulShift(c.ratio, sqrtConst5)
 	}
-	if (tick & 0x10) != 0 {
+	if (c.absTick & 0x10) != 0 {
 		c.mulShift(c.ratio, sqrtConst6)
 	}
-	if (tick & 0x20) != 0 {
+	if (c.absTick & 0x20) != 0 {
 		c.mulShift(c.ratio, sqrtConst7)
 	}
-	if (tick & 0x40) != 0 {
+	if (c.absTick & 0x40) != 0 {
 		c.mulShift(c.ratio, sqrtConst8)
 	}
-	if (tick & 0x80) != 0 {
+	if (c.absTick & 0x80) != 0 {
 		c.mulShift(c.ratio, sqrtConst9)
 	}
-	if (tick & 0x100) != 0 {
+	if (c.absTick & 0x100) != 0 {
 		c.mulShift(c.ratio, sqrtConst10)
 	}
-	if (tick & 0x200) != 0 {
+	if (c.absTick & 0x200) != 0 {
 		c.mulShift(c.ratio, sqrtConst11)
 	}
-	if (tick & 0x400) != 0 {
+	if (c.absTick & 0x400) != 0 {
 		c.mulShift(c.ratio, sqrtConst12)
 	}
-	if (tick & 0x800) != 0 {
+	if (c.absTick & 0x800) != 0 {
 		c.mulShift(c.ratio, sqrtConst13)
 	}
-	if (tick & 0x1000) != 0 {
+	if (c.absTick & 0x1000) != 0 {
 		c.mulShift(c.ratio, sqrtConst14)
 	}
-	if (tick & 0x2000) != 0 {
+	if (c.absTick & 0x2000) != 0 {
 		c.mulShift(c.ratio, sqrtConst15)
 	}
-	if (tick & 0x4000) != 0 {
+	if (c.absTick & 0x4000) != 0 {
 		c.mulShift(c.ratio, sqrtConst16)
 	}
-	if (tick & 0x8000) != 0 {
+	if (c.absTick & 0x8000) != 0 {
 		c.mulShift(c.ratio, sqrtConst17)
 	}
-	if (tick & 0x10000) != 0 {
+	if (c.absTick & 0x10000) != 0 {
 		c.mulShift(c.ratio, sqrtConst18)
 	}
-	if (tick & 0x20000) != 0 {
+	if (c.absTick & 0x20000) != 0 {
 		c.mulShift(c.ratio, sqrtConst19)
 	}
-	if (tick & 0x40000) != 0 {
+	if (c.absTick & 0x40000) != 0 {
 		c.mulShift(c.ratio, sqrtConst20)
 	}
-	if (tick & 0x80000) != 0 {
+	if (c.absTick & 0x80000) != 0 {
 		c.mulShift(c.ratio, sqrtConst21)
 	}
 
@@ -177,6 +180,8 @@ func (c *TickCalculator) GetSqrtRatioAtTickV2(tick int, result *Uint160) {
 	if !c.rem.IsZero() {
 		result.AddUint64(result, 1)
 	}
+
+	return nil
 }
 
 var (
@@ -237,10 +242,9 @@ func (c *TickCalculator) GetTickAtSqrtRatioV2(sqrtRatioX96 *Uint160) (int, error
 		return tickLow, nil
 	}
 
-	// if err = c.GetSqrtRatioAtTickV2(int(tickHigh), c.sqrtRatio); err != nil {
-	// 	return 0, err
-	// }
-	c.GetSqrtRatioAtTickV2(tickHigh, c.sqrtRatio)
+	if err = c.GetSqrtRatioAtTickV2(int(tickHigh), c.sqrtRatio); err != nil {
+		return 0, err
+	}
 
 	if c.sqrtRatio.Lt(sqrtRatioX96) {
 		return tickHigh, nil

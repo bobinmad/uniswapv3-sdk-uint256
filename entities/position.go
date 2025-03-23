@@ -336,10 +336,16 @@ func (p *Position) BurnAmountsWithSlippage(slippageTolerance *entities.Percent) 
 func (p *Position) MintAmounts() (amount0, amount1 *uint256.Int, err error) {
 	if p.mintAmounts == nil {
 		rLower := new(utils.Uint160)
-		p.tickCalculator.GetSqrtRatioAtTickV2(p.TickLower, rLower)
+		err := p.tickCalculator.GetSqrtRatioAtTickV2(p.TickLower, rLower)
+		if err != nil {
+			return nil, nil, err
+		}
 
 		rUpper := new(utils.Uint160)
-		p.tickCalculator.GetSqrtRatioAtTickV2(p.TickUpper, rUpper)
+		err = p.tickCalculator.GetSqrtRatioAtTickV2(p.TickUpper, rUpper)
+		if err != nil {
+			return nil, nil, err
+		}
 
 		var (
 			amount0 = new(utils.Uint256)
@@ -377,10 +383,16 @@ func FromAmounts(pool *Pool, tickLower, tickUpper int, amount0, amount1 *uint256
 	tickCalculator := utils.NewTickCalculator()
 
 	var sqrtRatioAX96 *utils.Uint160
-	tickCalculator.GetSqrtRatioAtTickV2(tickLower, sqrtRatioAX96)
+	err := tickCalculator.GetSqrtRatioAtTickV2(tickLower, sqrtRatioAX96)
+	if err != nil {
+		return nil, err
+	}
 
 	var sqrtRatioBX96 *utils.Uint160
-	tickCalculator.GetSqrtRatioAtTickV2(tickUpper, sqrtRatioBX96)
+	err = tickCalculator.GetSqrtRatioAtTickV2(tickUpper, sqrtRatioBX96)
+	if err != nil {
+		return nil, err
+	}
 
 	return NewPosition(pool, utils.MaxLiquidityForAmounts(pool.SqrtRatioX96, sqrtRatioAX96, sqrtRatioBX96, amount0, amount1, useFullPrecision), tickLower, tickUpper)
 }

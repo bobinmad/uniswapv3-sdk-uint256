@@ -126,8 +126,14 @@ func NewPoolV2(tokenA, tokenB *entities.Token, fee constants.FeeAmount, sqrtRati
 	tickCalculator := utils.NewTickCalculator()
 
 	var tickCurrentSqrtRatioX96, nextTickSqrtRatioX96 utils.Uint160
-	tickCalculator.GetSqrtRatioAtTickV2(tickCurrent, &tickCurrentSqrtRatioX96)
-	tickCalculator.GetSqrtRatioAtTickV2(tickCurrent+1, &nextTickSqrtRatioX96)
+	err := tickCalculator.GetSqrtRatioAtTickV2(tickCurrent, &tickCurrentSqrtRatioX96)
+	if err != nil {
+		return nil, err
+	}
+	err = tickCalculator.GetSqrtRatioAtTickV2(tickCurrent+1, &nextTickSqrtRatioX96)
+	if err != nil {
+		return nil, err
+	}
 
 	if sqrtRatioX96.Lt(&tickCurrentSqrtRatioX96) || sqrtRatioX96.Gt(&nextTickSqrtRatioX96) {
 		return nil, ErrInvalidSqrtRatioX96
@@ -427,8 +433,10 @@ func (p *Pool) swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 			step.tickNext = utils.MaxTick
 		}
 
-		p.tickCalculator.GetSqrtRatioAtTickV2(step.tickNext, &step.sqrtPriceNextX96)
-
+		err = p.tickCalculator.GetSqrtRatioAtTickV2(step.tickNext, &step.sqrtPriceNextX96)
+		if err != nil {
+			return nil, err
+		}
 		var targetValue utils.Uint160
 		if zeroForOne {
 			if step.sqrtPriceNextX96.Lt(sqrtPriceLimitX96) {
@@ -555,7 +563,7 @@ type State struct {
 	liquidity                *utils.Uint128
 }
 
-func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLimitX96 *utils.Uint160, swapResult *SwapResultV2) error {
+func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLimitX96 *utils.Uint160) (*SwapResultV2, error) {
 	var err error
 	if sqrtPriceLimitX96 == nil {
 		if zeroForOne {
@@ -567,17 +575,17 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 
 	if zeroForOne {
 		if sqrtPriceLimitX96.Lt(utils.MinSqrtRatioU256) {
-			return ErrSqrtPriceLimitX96TooLow
+			return nil, ErrSqrtPriceLimitX96TooLow
 		}
 		if !sqrtPriceLimitX96.Lt(p.SqrtRatioX96) {
-			return ErrSqrtPriceLimitX96TooHigh
+			return nil, ErrSqrtPriceLimitX96TooHigh
 		}
 	} else {
 		if sqrtPriceLimitX96.Gt(utils.MaxSqrtRatioU256) {
-			return ErrSqrtPriceLimitX96TooHigh
+			return nil, ErrSqrtPriceLimitX96TooHigh
 		}
 		if sqrtPriceLimitX96.Cmp(p.SqrtRatioX96) <= 0 {
-			return ErrSqrtPriceLimitX96TooLow
+			return nil, ErrSqrtPriceLimitX96TooLow
 		}
 	}
 
@@ -589,8 +597,10 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 	p.lastState.sqrtPriceX96.Set(p.SqrtRatioX96)
 	p.lastState.tick = p.TickCurrent
 	p.lastState.liquidity.Set(p.Liquidity)
-	swapResult.StepsFee = []StepFeeResult{}
-	swapResult.CrossInitTickLoops = 0
+
+	swapResult := SwapResultV2{
+		StepsFee: []StepFeeResult{},
+	}
 
 	// crossInitTickLoops is the number of loops that cross an initialized tick.
 	// We only count when tick passes an initialized tick, since gas only significant in this case.
@@ -605,7 +615,7 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 		// tickBitmap.nextInitializedTickWithinOneWord
 		p.step.tickNext, p.step.initialized, err = p.TickDataProvider.NextInitializedTickIndex(p.lastState.tick, zeroForOne)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		if p.step.tickNext < utils.MinTick {
@@ -614,7 +624,10 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 			p.step.tickNext = utils.MaxTick
 		}
 
-		p.tickCalculator.GetSqrtRatioAtTickV2(p.step.tickNext, &p.step.sqrtPriceNextX96)
+		err = p.tickCalculator.GetSqrtRatioAtTickV2(p.step.tickNext, &p.step.sqrtPriceNextX96)
+		if err != nil {
+			return nil, err
+		}
 
 		if zeroForOne {
 			if p.step.sqrtPriceNextX96.Lt(sqrtPriceLimitX96) {
@@ -630,19 +643,22 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 			}
 		}
 
-		if err = p.swapStepCalculator.ComputeSwapStep(p.lastState.sqrtPriceX96, p.targetValue, p.lastState.liquidity, p.lastState.amountSpecifiedRemaining, p.Fee, p.nxtSqrtPriceX96, &p.step.amountIn, &p.step.amountOut, &p.step.feeAmount); err != nil {
-			return err
+		err = p.swapStepCalculator.ComputeSwapStep(p.lastState.sqrtPriceX96, p.targetValue, p.lastState.liquidity, p.lastState.amountSpecifiedRemaining, p.Fee, p.nxtSqrtPriceX96, &p.step.amountIn, &p.step.amountOut, &p.step.feeAmount)
+		if err != nil {
+			return nil, err
 		}
 		p.lastState.sqrtPriceX96.Set(p.nxtSqrtPriceX96)
 
 		p.amountInPlusFee.Add(&p.step.amountIn, &p.step.feeAmount)
 
-		if err = utils.ToInt256(p.amountInPlusFee, p.amountInPlusFeeSigned); err != nil {
-			return err
+		err = utils.ToInt256(p.amountInPlusFee, p.amountInPlusFeeSigned)
+		if err != nil {
+			return nil, err
 		}
 
-		if err = utils.ToInt256(&p.step.amountOut, p.amountOutSigned); err != nil {
-			return err
+		err = utils.ToInt256(&p.step.amountOut, p.amountOutSigned)
+		if err != nil {
+			return nil, err
 		}
 
 		swapResult.StepsFee = append(swapResult.StepsFee, StepFeeResult{
@@ -667,7 +683,7 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 			if p.step.initialized {
 				tick, err := p.TickDataProvider.GetTick(p.step.tickNext)
 				if err != nil {
-					return err
+					return nil, err
 				}
 
 				p.liquidityNet.Set(tick.LiquidityNet)
@@ -691,7 +707,7 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 		} else if !p.lastState.sqrtPriceX96.Eq(&p.step.sqrtPriceStartX96) {
 			// recompute unless we're on a lower tick boundary (i.e. already transitioned ticks), and haven't moved
 			if p.lastState.tick, err = p.tickCalculator.GetTickAtSqrtRatioV2(p.lastState.sqrtPriceX96); err != nil {
-				return err
+				return nil, err
 			}
 		}
 	}
@@ -701,6 +717,15 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 	swapResult.Liquidity = p.lastState.liquidity
 	swapResult.CurrentTick = p.lastState.tick
 	swapResult.RemainingAmountIn = p.lastState.amountSpecifiedRemaining
+	return &swapResult, nil
 
-	return nil
+	// return &SwapResultV2{
+	// 	// AmountCalculated:  p.lastState.amountCalculated,
+	// 	SqrtRatioX96:      p.lastState.sqrtPriceX96,
+	// 	Liquidity:         p.lastState.liquidity,
+	// 	CurrentTick:       p.lastState.tick,
+	// 	RemainingAmountIn: p.lastState.amountSpecifiedRemaining,
+	// 	// CrossInitTickLoops: crossInitTickLoops,
+	// 	// StepsFee:           p.stepsFee,
+	// }, nil
 }
