@@ -12,6 +12,7 @@ var MaxFeeUint256 = uint256.NewInt(MaxFeeInt)
 type SwapStepCalculator struct {
 	sqrtPriceCalculator *SqrtPriceCalculator
 	fullMath            *FullMath
+	intTypes            *IntTypes
 
 	tmpUint256         *uint256.Int
 	amountRemainingU   *uint256.Int
@@ -26,6 +27,7 @@ func NewSwapStepCalculator() *SwapStepCalculator {
 	return &SwapStepCalculator{
 		sqrtPriceCalculator: NewSqrtPriceCalculator(),
 		fullMath:            NewFullMath(),
+		intTypes:            NewIntTypes(),
 
 		tmpUint256:         new(uint256.Int),
 		amountRemainingU:   new(uint256.Int),
@@ -52,7 +54,7 @@ func (c *SwapStepCalculator) ComputeSwapStep(
 
 	c.maxFeeMinusFeePips.SetUint64(MaxFeeInt - uint64(feePips))
 	if exactIn {
-		ToUInt256(amountRemaining, c.amountRemainingU)
+		c.intTypes.ToUInt256(amountRemaining, c.amountRemainingU)
 		c.tmpUint256.Div(c.tmpUint256.Mul(c.amountRemainingU, c.maxFeeMinusFeePips), MaxFeeUint256)
 
 		if zeroForOne {
@@ -68,7 +70,7 @@ func (c *SwapStepCalculator) ComputeSwapStep(
 			err = c.sqrtPriceCalculator.GetNextSqrtPriceFromInput(sqrtRatioCurrentX96, liquidity, c.tmpUint256, zeroForOne, sqrtRatioNextX96)
 		}
 	} else {
-		ToUInt256(amountRemaining, c.amountRemainingU)
+		c.intTypes.ToUInt256(amountRemaining, c.amountRemainingU)
 		c.amountRemainingU.Neg(c.amountRemainingU)
 
 		if zeroForOne {

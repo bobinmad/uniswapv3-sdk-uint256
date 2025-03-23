@@ -41,6 +41,7 @@ type Pool struct {
 	TickCurrent      int
 	TickDataProvider TickDataProvider
 	tickCalculator   *utils.TickCalculator
+	intTypes         *utils.IntTypes
 
 	token0Price *entities.Price
 	token1Price *entities.Price
@@ -178,6 +179,7 @@ func NewPoolV3(
 		liquidityNet:       new(utils.Int128),
 		swapStepCalculator: utils.NewSwapStepCalculator(),
 		tickCalculator:     utils.NewTickCalculator(),
+		intTypes:           utils.NewIntTypes(),
 
 		amountInPlusFee:       new(utils.Uint256),
 		amountInPlusFeeSigned: new(utils.Int256),
@@ -457,13 +459,13 @@ func (p *Pool) swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 		amountInPlusFee.Add(&step.amountIn, &step.feeAmount)
 
 		var amountInPlusFeeSigned utils.Int256
-		err = utils.ToInt256(&amountInPlusFee, &amountInPlusFeeSigned)
+		err = p.intTypes.ToInt256(&amountInPlusFee, &amountInPlusFeeSigned)
 		if err != nil {
 			return nil, err
 		}
 
 		var amountOutSigned utils.Int256
-		err = utils.ToInt256(&step.amountOut, &amountOutSigned)
+		err = p.intTypes.ToInt256(&step.amountOut, &amountOutSigned)
 		if err != nil {
 			return nil, err
 		}
@@ -491,7 +493,7 @@ func (p *Pool) swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 				if zeroForOne {
 					liquidityNet = new(utils.Int128).Neg(liquidityNet)
 				}
-				utils.AddDeltaInPlace(state.liquidity, liquidityNet)
+				p.intTypes.AddDeltaInPlace(state.liquidity, liquidityNet)
 
 				crossInitTickLoops++
 			}
@@ -590,6 +592,7 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 	p.lastState.tick = p.TickCurrent
 	p.lastState.liquidity.Set(p.Liquidity)
 	swapResult.StepsFee = []StepFeeResult{}
+	swapResult.CrossInitTickLoops = 0
 
 	// crossInitTickLoops is the number of loops that cross an initialized tick.
 	// We only count when tick passes an initialized tick, since gas only significant in this case.
@@ -637,12 +640,12 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 
 		p.amountInPlusFee.Add(&p.step.amountIn, &p.step.feeAmount)
 
-		err = utils.ToInt256(p.amountInPlusFee, p.amountInPlusFeeSigned)
+		err = p.intTypes.ToInt256(p.amountInPlusFee, p.amountInPlusFeeSigned)
 		if err != nil {
 			return err
 		}
 
-		err = utils.ToInt256(&p.step.amountOut, p.amountOutSigned)
+		err = p.intTypes.ToInt256(&p.step.amountOut, p.amountOutSigned)
 		if err != nil {
 			return err
 		}
@@ -679,7 +682,7 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 				if zeroForOne {
 					p.liquidityNet.Neg(p.liquidityNet)
 				}
-				utils.AddDeltaInPlace(p.lastState.liquidity, p.liquidityNet)
+				p.intTypes.AddDeltaInPlace(p.lastState.liquidity, p.liquidityNet)
 
 				swapResult.CrossInitTickLoops++
 			}
