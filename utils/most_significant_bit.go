@@ -42,7 +42,7 @@ func (c *BitCalculator) MostSignificantBit(x *uint256.Int) (uint, error) {
 	c.tmpX.Set(x)
 	var msb uint
 	for _, p := range powersOf2 {
-		if c.tmpX.Cmp(p.value) >= 0 {
+		if !c.tmpX.Lt(p.value) {
 			c.tmpX.Rsh(c.tmpX, p.power)
 			msb += p.power
 		}
