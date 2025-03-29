@@ -5,6 +5,24 @@ import (
 	"github.com/holiman/uint256"
 )
 
+type MaxLiquidityForAmountsCalculator struct {
+	res  *uint256.Int
+	res0 *uint256.Int
+	res1 *uint256.Int
+	tmp  *uint256.Int
+	tmp2 *uint256.Int
+}
+
+func NewMaxLiquidityForAmountsCalculator() *MaxLiquidityForAmountsCalculator {
+	return &MaxLiquidityForAmountsCalculator{
+		res:  new(uint256.Int),
+		res0: new(uint256.Int),
+		res1: new(uint256.Int),
+		tmp:  new(uint256.Int),
+		tmp2: new(uint256.Int),
+	}
+}
+
 /**
  * Returns an imprecise maximum amount of liquidity received for a given amount of token 0.
  * This function is available to accommodate LiquidityAmounts#getLiquidityForAmount0 in the v3 periphery,
@@ -16,12 +34,13 @@ import (
  * @param amount0 The token0 amount
  * @returns liquidity for amount0, imprecise
  */
-func maxLiquidityForAmount0Imprecise(sqrtRatioAX96, sqrtRatioBX96, amount0 *uint256.Int) *uint256.Int {
+func (c *MaxLiquidityForAmountsCalculator) maxLiquidityForAmount0Imprecise(sqrtRatioAX96, sqrtRatioBX96, amount0 *uint256.Int, result *uint256.Int) {
 	if sqrtRatioAX96.Gt(sqrtRatioBX96) {
 		sqrtRatioAX96, sqrtRatioBX96 = sqrtRatioBX96, sqrtRatioAX96
 	}
-	intermediate := new(uint256.Int).Div(new(uint256.Int).Mul(sqrtRatioAX96, sqrtRatioBX96), constants.Q96U256)
-	return new(uint256.Int).Div(new(uint256.Int).Mul(amount0, intermediate), new(uint256.Int).Sub(sqrtRatioBX96, sqrtRatioAX96))
+
+	intermediate := c.tmp.Div(c.tmp2.Mul(sqrtRatioAX96, sqrtRatioBX96), constants.Q96U256)
+	result.Div(c.tmp.Mul(amount0, intermediate), c.tmp2.Sub(sqrtRatioBX96, sqrtRatioAX96))
 }
 
 /**
@@ -32,13 +51,14 @@ func maxLiquidityForAmount0Imprecise(sqrtRatioAX96, sqrtRatioBX96, amount0 *uint
  * @param amount0 The token0 amount
  * @returns liquidity for amount0, precise
  */
-func maxLiquidityForAmount0Precise(sqrtRatioAX96, sqrtRatioBX96, amount0 *uint256.Int) *uint256.Int {
+func (c *MaxLiquidityForAmountsCalculator) maxLiquidityForAmount0Precise(sqrtRatioAX96, sqrtRatioBX96, amount0 *uint256.Int, result *uint256.Int) {
 	if sqrtRatioAX96.Gt(sqrtRatioBX96) {
 		sqrtRatioAX96, sqrtRatioBX96 = sqrtRatioBX96, sqrtRatioAX96
 	}
+
 	numerator := new(uint256.Int).Mul(new(uint256.Int).Mul(amount0, sqrtRatioAX96), sqrtRatioBX96)
 	denominator := new(uint256.Int).Mul(constants.Q96U256, new(uint256.Int).Sub(sqrtRatioBX96, sqrtRatioAX96))
-	return new(uint256.Int).Div(numerator, denominator)
+	result.Div(numerator, denominator)
 }
 
 /**
@@ -48,11 +68,12 @@ func maxLiquidityForAmount0Precise(sqrtRatioAX96, sqrtRatioBX96, amount0 *uint25
  * @param amount1 The token1 amount
  * @returns liquidity for amount1
  */
-func maxLiquidityForAmount1(sqrtRatioAX96, sqrtRatioBX96, amount1 *uint256.Int) *uint256.Int {
-	if sqrtRatioAX96.Cmp(sqrtRatioBX96) > 0 {
+func (c *MaxLiquidityForAmountsCalculator) maxLiquidityForAmount1(sqrtRatioAX96, sqrtRatioBX96, amount1 *uint256.Int, result *uint256.Int) {
+	if sqrtRatioAX96.Gt(sqrtRatioBX96) {
 		sqrtRatioAX96, sqrtRatioBX96 = sqrtRatioBX96, sqrtRatioAX96
 	}
-	return new(uint256.Int).Div(new(uint256.Int).Mul(amount1, constants.Q96U256), new(uint256.Int).Sub(sqrtRatioBX96, sqrtRatioAX96))
+
+	result.Div(c.tmp.Mul(amount1, constants.Q96U256), c.tmp2.Sub(sqrtRatioBX96, sqrtRatioAX96))
 }
 
 /**
@@ -66,28 +87,34 @@ func maxLiquidityForAmount1(sqrtRatioAX96, sqrtRatioBX96, amount1 *uint256.Int) 
  * @param useFullPrecision if false, liquidity will be maximized according to what the router can calculate,
  * not what core can theoretically support
  */
-func MaxLiquidityForAmounts(sqrtRatioCurrentX96, sqrtRatioAX96, sqrtRatioBX96, amount0, amount1 *uint256.Int, useFullPrecision bool) *uint256.Int {
+func (c *MaxLiquidityForAmountsCalculator) MaxLiquidityForAmounts(sqrtRatioCurrentX96, sqrtRatioAX96, sqrtRatioBX96, amount0, amount1 *uint256.Int, useFullPrecision bool) *uint256.Int {
 	if sqrtRatioAX96.Gt(sqrtRatioBX96) {
 		sqrtRatioAX96, sqrtRatioBX96 = sqrtRatioBX96, sqrtRatioAX96
 	}
 
-	var maxLiquidityForAmount0 func(*uint256.Int, *uint256.Int, *uint256.Int) *uint256.Int
+	var maxLiquidityForAmount0 func(*uint256.Int, *uint256.Int, *uint256.Int, *uint256.Int)
 	if useFullPrecision {
-		maxLiquidityForAmount0 = maxLiquidityForAmount0Precise
+		maxLiquidityForAmount0 = c.maxLiquidityForAmount0Precise
 	} else {
-		maxLiquidityForAmount0 = maxLiquidityForAmount0Imprecise
+		maxLiquidityForAmount0 = c.maxLiquidityForAmount0Imprecise
 	}
 
-	if sqrtRatioCurrentX96.Cmp(sqrtRatioAX96) <= 0 {
-		return maxLiquidityForAmount0(sqrtRatioAX96, sqrtRatioBX96, amount0)
+	if !sqrtRatioCurrentX96.Gt(sqrtRatioAX96) {
+		maxLiquidityForAmount0(sqrtRatioAX96, sqrtRatioBX96, amount0, c.res)
+		return c.res
 	} else if sqrtRatioCurrentX96.Lt(sqrtRatioBX96) {
-		liquidity0 := maxLiquidityForAmount0(sqrtRatioCurrentX96, sqrtRatioBX96, amount0)
-		liquidity1 := maxLiquidityForAmount1(sqrtRatioAX96, sqrtRatioCurrentX96, amount1)
-		if liquidity0.Lt(liquidity1) {
-			return liquidity0
+		// res0 := new(uint256.Int)
+		res1 := new(uint256.Int)
+		maxLiquidityForAmount0(sqrtRatioCurrentX96, sqrtRatioBX96, amount0, c.res0)
+		c.maxLiquidityForAmount1(sqrtRatioAX96, sqrtRatioCurrentX96, amount1, res1)
+
+		if c.res0.Lt(res1) {
+			return c.res0
 		}
-		return liquidity1
-	} else {
-		return maxLiquidityForAmount1(sqrtRatioAX96, sqrtRatioBX96, amount1)
+
+		return res1
 	}
+
+	c.maxLiquidityForAmount1(sqrtRatioAX96, sqrtRatioBX96, amount1, c.res)
+	return c.res
 }

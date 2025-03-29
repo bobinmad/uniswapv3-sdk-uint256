@@ -25,7 +25,8 @@ type Position struct {
 	TickUpper int
 	Liquidity *uint256.Int
 
-	tickCalculator *utils.TickCalculator
+	tickCalculator      *utils.TickCalculator
+	liquidityCalculator *utils.MaxLiquidityForAmountsCalculator
 
 	// cached resuts for the getters
 	token0Amount *entities.CurrencyAmount
@@ -63,6 +64,7 @@ func NewPosition(pool *Pool, liquidity *uint256.Int, tickLower int, tickUpper in
 		TickUpper:           tickUpper,
 		tickCalculator:      utils.NewTickCalculator(),
 		sqrtPriceCalculator: utils.NewSqrtPriceCalculator(),
+		liquidityCalculator: utils.NewMaxLiquidityForAmountsCalculator(),
 		sqrtTickLowerTmp:    new(utils.Uint160),
 		sqrtTickUpperTmp:    new(utils.Uint160),
 		amount0Tmp:          new(utils.Uint256),
@@ -375,6 +377,7 @@ func (p *Position) MintAmounts() (amount0, amount1 *uint256.Int, err error) {
  */
 func FromAmounts(pool *Pool, tickLower, tickUpper int, amount0, amount1 *uint256.Int, useFullPrecision bool) (*Position, error) {
 	tickCalculator := utils.NewTickCalculator()
+	liquidityCalculator := utils.NewMaxLiquidityForAmountsCalculator()
 
 	var sqrtRatioAX96 *utils.Uint160
 	tickCalculator.GetSqrtRatioAtTickV2(tickLower, sqrtRatioAX96)
@@ -382,7 +385,7 @@ func FromAmounts(pool *Pool, tickLower, tickUpper int, amount0, amount1 *uint256
 	var sqrtRatioBX96 *utils.Uint160
 	tickCalculator.GetSqrtRatioAtTickV2(tickUpper, sqrtRatioBX96)
 
-	return NewPosition(pool, utils.MaxLiquidityForAmounts(pool.SqrtRatioX96, sqrtRatioAX96, sqrtRatioBX96, amount0, amount1, useFullPrecision), tickLower, tickUpper)
+	return NewPosition(pool, liquidityCalculator.MaxLiquidityForAmounts(pool.SqrtRatioX96, sqrtRatioAX96, sqrtRatioBX96, amount0, amount1, useFullPrecision), tickLower, tickUpper)
 }
 
 /**
