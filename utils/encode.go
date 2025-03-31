@@ -13,6 +13,7 @@ import (
  * @returns The sqrt ratio
  */
 func EncodeSqrtRatioX96(amount1, amount0 *uint256.Int) *uint256.Int {
+	// здесь почему-то нормально считает только на big.Int
 	numerator := new(big.Int).Lsh(amount1.ToBig(), 192)
 	denominator := amount0.ToBig()
 	ratioX192 := new(big.Int).Div(numerator, denominator)
