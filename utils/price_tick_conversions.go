@@ -6,6 +6,7 @@ import (
 	"github.com/daoleno/uniswap-sdk-core/entities"
 
 	"github.com/KyberNetwork/uniswapv3-sdk-uint256/constants"
+	"github.com/holiman/uint256"
 )
 
 /**
@@ -42,13 +43,13 @@ func PriceToClosestTick(price *entities.Price, baseToken, quoteToken *entities.T
 	if err != nil {
 		return 0, err
 	}
-	var sqrtRatioX96 *big.Int
+	var sqrtRatioX96 *uint256.Int
 	if sorted {
-		sqrtRatioX96 = EncodeSqrtRatioX96(price.Numerator, price.Denominator)
+		sqrtRatioX96 = EncodeSqrtRatioX96(uint256.MustFromBig(price.Numerator), uint256.MustFromBig(price.Denominator))
 	} else {
-		sqrtRatioX96 = EncodeSqrtRatioX96(price.Denominator, price.Numerator)
+		sqrtRatioX96 = EncodeSqrtRatioX96(uint256.MustFromBig(price.Denominator), uint256.MustFromBig(price.Numerator))
 	}
-	tick, err := GetTickAtSqrtRatio(sqrtRatioX96)
+	tick, err := NewTickCalculator().GetTickAtSqrtRatioV2(sqrtRatioX96)
 	if err != nil {
 		return 0, err
 	}

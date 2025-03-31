@@ -6,8 +6,11 @@ import (
 	"testing"
 
 	"github.com/daoleno/uniswap-sdk-core/entities"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/holiman/uint256"
 )
+
+var MaxUint256U256 = uint256.MustFromBig(entities.MaxUint256)
 
 func TestMaxLiquidityForAmounts(t *testing.T) {
 	type args struct {
@@ -20,7 +23,9 @@ func TestMaxLiquidityForAmounts(t *testing.T) {
 	}
 
 	tmp, _ := new(big.Int).SetString("1214437677402050006470401421068302637228917309992228326090730924516431320489727", 10)
+	spew.Dump(tmp)
 	lgamounts0 := uint256.MustFromBig(tmp)
+	spew.Dump(lgamounts0)
 
 	tmp, _ = new(big.Int).SetString("1214437677402050006470401421098959354205873606971497132040612572422243086574654", 10)
 	lgamounts1 := uint256.MustFromBig(tmp)
@@ -52,7 +57,7 @@ func TestMaxLiquidityForAmounts(t *testing.T) {
 				EncodeSqrtRatioX96(uint256.NewInt(100), uint256.NewInt(110)),
 				EncodeSqrtRatioX96(uint256.NewInt(110), uint256.NewInt(100)),
 				uint256.NewInt(100),
-				entities.MaxUint256U,
+				MaxUint256U256,
 				false,
 			},
 			want: uint256.NewInt(2148),
@@ -63,7 +68,7 @@ func TestMaxLiquidityForAmounts(t *testing.T) {
 				EncodeSqrtRatioX96(uint256.NewInt(1), uint256.NewInt(1)),
 				EncodeSqrtRatioX96(uint256.NewInt(100), uint256.NewInt(110)),
 				EncodeSqrtRatioX96(uint256.NewInt(110), uint256.NewInt(100)),
-				entities.MaxUint256U,
+				MaxUint256U256,
 				uint256.NewInt(200),
 				false,
 			},
@@ -88,7 +93,7 @@ func TestMaxLiquidityForAmounts(t *testing.T) {
 				EncodeSqrtRatioX96(uint256.NewInt(100), uint256.NewInt(110)),
 				EncodeSqrtRatioX96(uint256.NewInt(110), uint256.NewInt(100)),
 				uint256.NewInt(100),
-				entities.MaxUint256U,
+				MaxUint256U256,
 				false,
 			},
 			want: uint256.NewInt(1048),
@@ -99,7 +104,7 @@ func TestMaxLiquidityForAmounts(t *testing.T) {
 				EncodeSqrtRatioX96(uint256.NewInt(99), uint256.NewInt(110)),
 				EncodeSqrtRatioX96(uint256.NewInt(100), uint256.NewInt(110)),
 				EncodeSqrtRatioX96(uint256.NewInt(110), uint256.NewInt(100)),
-				entities.MaxUint256U,
+				MaxUint256U256,
 				uint256.NewInt(200),
 				false,
 			},
@@ -124,7 +129,7 @@ func TestMaxLiquidityForAmounts(t *testing.T) {
 				EncodeSqrtRatioX96(uint256.NewInt(100), uint256.NewInt(110)),
 				EncodeSqrtRatioX96(uint256.NewInt(110), uint256.NewInt(100)),
 				uint256.NewInt(100),
-				entities.MaxUint256U,
+				MaxUint256U256,
 				false,
 			},
 			want: lgamounts1,
@@ -135,7 +140,7 @@ func TestMaxLiquidityForAmounts(t *testing.T) {
 				EncodeSqrtRatioX96(uint256.NewInt(111), uint256.NewInt(100)),
 				EncodeSqrtRatioX96(uint256.NewInt(100), uint256.NewInt(110)),
 				EncodeSqrtRatioX96(uint256.NewInt(110), uint256.NewInt(100)),
-				entities.MaxUint256U,
+				MaxUint256U256,
 				uint256.NewInt(200),
 				false,
 			},
@@ -160,7 +165,7 @@ func TestMaxLiquidityForAmounts(t *testing.T) {
 				EncodeSqrtRatioX96(uint256.NewInt(100), uint256.NewInt(110)),
 				EncodeSqrtRatioX96(uint256.NewInt(110), uint256.NewInt(100)),
 				uint256.NewInt(100),
-				entities.MaxUint256U,
+				MaxUint256U256,
 				true,
 			},
 			want: uint256.NewInt(2148),
@@ -171,7 +176,7 @@ func TestMaxLiquidityForAmounts(t *testing.T) {
 				EncodeSqrtRatioX96(uint256.NewInt(1), uint256.NewInt(1)),
 				EncodeSqrtRatioX96(uint256.NewInt(100), uint256.NewInt(110)),
 				EncodeSqrtRatioX96(uint256.NewInt(110), uint256.NewInt(100)),
-				entities.MaxUint256U,
+				MaxUint256U256,
 				uint256.NewInt(200),
 				true,
 			},
@@ -196,7 +201,7 @@ func TestMaxLiquidityForAmounts(t *testing.T) {
 				EncodeSqrtRatioX96(uint256.NewInt(100), uint256.NewInt(110)),
 				EncodeSqrtRatioX96(uint256.NewInt(110), uint256.NewInt(100)),
 				uint256.NewInt(100),
-				entities.MaxUint256U,
+				MaxUint256U256,
 				true,
 			},
 			want: uint256.NewInt(1048),
@@ -207,7 +212,7 @@ func TestMaxLiquidityForAmounts(t *testing.T) {
 				EncodeSqrtRatioX96(uint256.NewInt(99), uint256.NewInt(110)),
 				EncodeSqrtRatioX96(uint256.NewInt(100), uint256.NewInt(110)),
 				EncodeSqrtRatioX96(uint256.NewInt(110), uint256.NewInt(100)),
-				entities.MaxUint256U,
+				MaxUint256U256,
 				uint256.NewInt(200),
 				true,
 			},
@@ -232,7 +237,7 @@ func TestMaxLiquidityForAmounts(t *testing.T) {
 				EncodeSqrtRatioX96(uint256.NewInt(100), uint256.NewInt(110)),
 				EncodeSqrtRatioX96(uint256.NewInt(110), uint256.NewInt(100)),
 				uint256.NewInt(100),
-				entities.MaxUint256U,
+				MaxUint256U256,
 				true,
 			},
 			want: lgamounts1,
@@ -243,16 +248,19 @@ func TestMaxLiquidityForAmounts(t *testing.T) {
 				EncodeSqrtRatioX96(uint256.NewInt(111), uint256.NewInt(100)),
 				EncodeSqrtRatioX96(uint256.NewInt(100), uint256.NewInt(110)),
 				EncodeSqrtRatioX96(uint256.NewInt(110), uint256.NewInt(100)),
-				entities.MaxUint256U,
+				MaxUint256U256,
 				uint256.NewInt(200),
 				true,
 			},
 			want: uint256.NewInt(2097),
 		},
 	}
+
+	calculator := NewMaxLiquidityForAmountsCalculator()
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := MaxLiquidityForAmounts(tt.args.sqrtRatioCurrentX96, tt.args.sqrtRatioAX96, tt.args.sqrtRatioBX96, tt.args.amount0, tt.args.amount1, tt.args.useFullPrecision); !reflect.DeepEqual(got, tt.want) {
+			if got := calculator.MaxLiquidityForAmounts(tt.args.sqrtRatioCurrentX96, tt.args.sqrtRatioAX96, tt.args.sqrtRatioBX96, tt.args.amount0, tt.args.amount1, tt.args.useFullPrecision); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("maxLiquidityForAmounts() = %v, want %v", got, tt.want)
 			}
 		})

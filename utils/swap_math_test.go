@@ -33,14 +33,14 @@ func TestComputeSwapStep(t *testing.T) {
 
 		expNextPrice string
 	}{
-		{p1.String(), p2.String(), "2000000000000000000", "1000000000000000000", 600,
+		{p1.Dec(), p2.Dec(), "2000000000000000000", "1000000000000000000", 600,
 			"9975124224178055", "9925619580021728", "5988667735148", "="},
-		{p1.String(), p2.String(), "2000000000000000000", "-1000000000000000000", 600,
+		{p1.Dec(), p2.Dec(), "2000000000000000000", "-1000000000000000000", 600,
 			"9975124224178055", "9925619580021728", "5988667735148", "="},
 
-		{p1.String(), p3.String(), "2000000000000000000", "1000000000000000000", 600,
+		{p1.Dec(), p3.Dec(), "2000000000000000000", "1000000000000000000", 600,
 			"999400000000000000", "666399946655997866", "600000000000000", "<"},
-		{p1.String(), p4.String(), "2000000000000000000", "-1000000000000000000", 600,
+		{p1.Dec(), p4.Dec(), "2000000000000000000", "-1000000000000000000", 600,
 			"2000000000000000000", "1000000000000000000", "1200720432259356", "<"},
 
 		{"417332158212080721273783715441582", "1452870262520218020823638996", "159344665391607089467575320103", "-1", 1,
@@ -58,6 +58,7 @@ func TestComputeSwapStep(t *testing.T) {
 		{"20282409603651670423947251286016", "18254168643286503381552526157414", "1024", "-263000", 3000,
 			"1", "26214", "1", "="},
 	}
+
 	var sqrtRatioNextX96 Uint160
 	var amountIn, amountOut, feeAmount Uint256
 	for i, tt := range tests {
@@ -70,7 +71,9 @@ func TestComputeSwapStep(t *testing.T) {
 				tt.fee,
 				&sqrtRatioNextX96, &amountIn, &amountOut, &feeAmount,
 			)
+
 			require.Nil(t, err)
+
 			if tt.expNextPrice == "=" {
 				assert.Equal(t, tt.priceTarget, sqrtRatioNextX96.Dec())
 			} else if tt.expNextPrice == "<" {
@@ -78,6 +81,7 @@ func TestComputeSwapStep(t *testing.T) {
 			} else {
 				assert.Equal(t, tt.expNextPrice, sqrtRatioNextX96.Dec())
 			}
+
 			assert.Equal(t, tt.expAmountIn, amountIn.Dec())
 			assert.Equal(t, tt.expAmountOut, amountOut.Dec())
 			assert.Equal(t, tt.expFee, feeAmount.Dec())

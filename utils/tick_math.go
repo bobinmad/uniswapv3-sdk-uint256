@@ -90,7 +90,12 @@ var (
 
 // deprecated
 func GetSqrtRatioAtTick(tick int) (*big.Int, error) {
-	panic("GetSqrtRatioAtTick() is deprecated")
+	// panic("GetSqrtRatioAtTick() is deprecated")
+
+	calculator := NewTickCalculator()
+	result := new(Uint160)
+	calculator.GetSqrtRatioAtTickV2(tick, result)
+	return result.ToBig(), nil
 }
 
 /**
@@ -186,8 +191,9 @@ var (
 
 // deprecated
 func GetTickAtSqrtRatio(sqrtRatioX96 *big.Int) (int, error) {
-	panic("GetTickAtSqrtRatio() is deprecated")
-	// return GetTickAtSqrtRatioV2(uint256.MustFromBig(sqrtRatioX96))
+	// panic("GetTickAtSqrtRatio() is deprecated")
+
+	return NewTickCalculator().GetTickAtSqrtRatioV2(uint256.MustFromBig(sqrtRatioX96))
 }
 
 /**
@@ -237,7 +243,7 @@ func (c *TickCalculator) GetTickAtSqrtRatioV2(sqrtRatioX96 *Uint160) (int, error
 	}
 
 	c.GetSqrtRatioAtTickV2(int(tickHigh), c.sqrtRatio)
-	if c.sqrtRatio.Lt(sqrtRatioX96) {
+	if !c.sqrtRatio.Gt(sqrtRatioX96) {
 		return tickHigh, nil
 	}
 

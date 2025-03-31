@@ -206,17 +206,20 @@ func (p *Position) CalcAmounts() (*utils.Uint256, *utils.Uint256) {
  * @param slippageTolerance The amount by which the price can 'slip' before the transaction will revert
  * @returns The sqrt ratios after slippage
  */
-func (p *Position) ratiosAfterSlippage(slippageTolerance *entities.Percent) (sqrtRatioX96Lower *big.Int, sqrtRatioX96Upper *big.Int) {
+func (p *Position) ratiosAfterSlippage(slippageTolerance *entities.Percent) (sqrtRatioX96Lower *uint256.Int, sqrtRatioX96Upper *uint256.Int) {
 	priceLower := p.Pool.Token0Price().Fraction.Multiply(entities.NewPercent(big.NewInt(1), big.NewInt(1)).Subtract(slippageTolerance).Fraction)
 	priceUpper := p.Pool.Token0Price().Fraction.Multiply(entities.NewPercent(big.NewInt(1), big.NewInt(1)).Add(slippageTolerance).Fraction)
-	sqrtRatioX96Lower = utils.EncodeSqrtRatioX96(priceLower.Numerator, priceLower.Denominator)
-	if sqrtRatioX96Lower.Cmp(utils.MinSqrtRatio) <= 0 {
-		sqrtRatioX96Lower = new(big.Int).Add(utils.MinSqrtRatio, big.NewInt(1))
+
+	sqrtRatioX96Lower = utils.EncodeSqrtRatioX96(uint256.MustFromBig(priceLower.Numerator), uint256.MustFromBig(priceLower.Denominator))
+	if sqrtRatioX96Lower.Cmp(utils.MinSqrtRatioU256) <= 0 {
+		sqrtRatioX96Lower = new(uint256.Int).Add(utils.MinSqrtRatioU256, uint256.NewInt(1))
 	}
-	sqrtRatioX96Upper = utils.EncodeSqrtRatioX96(priceUpper.Numerator, priceUpper.Denominator)
-	if sqrtRatioX96Upper.Cmp(utils.MaxSqrtRatio) >= 0 {
-		sqrtRatioX96Upper = new(big.Int).Sub(utils.MaxSqrtRatio, big.NewInt(1))
+
+	sqrtRatioX96Upper = utils.EncodeSqrtRatioX96(uint256.MustFromBig(priceUpper.Numerator), uint256.MustFromBig(priceUpper.Denominator))
+	if sqrtRatioX96Upper.Cmp(utils.MinSqrtRatioU256) >= 0 {
+		sqrtRatioX96Upper = new(uint256.Int).Sub(utils.MinSqrtRatioU256, uint256.NewInt(1))
 	}
+
 	return sqrtRatioX96Lower, sqrtRatioX96Upper
 }
 
@@ -231,19 +234,19 @@ func (p *Position) MintAmountsWithSlippage(slippageTolerance *entities.Percent) 
 	sqrtRatioX96Upper, sqrtRatioX96Lower := p.ratiosAfterSlippage(slippageTolerance)
 
 	// construct counterfactual pools
-	tickLower, err := utils.GetTickAtSqrtRatio(sqrtRatioX96Lower)
+	tickLower, err := utils.GetTickAtSqrtRatio(sqrtRatioX96Lower.ToBig())
 	if err != nil {
 		return nil, nil, err
 	}
-	poolLower, err := NewPool(p.Pool.Token0, p.Pool.Token1, p.Pool.Fee, sqrtRatioX96Lower, big.NewInt(0) /* liquidity doesn't matter */, tickLower, nil)
+	poolLower, err := NewPool(p.Pool.Token0, p.Pool.Token1, p.Pool.Fee, sqrtRatioX96Lower.ToBig(), big.NewInt(0) /* liquidity doesn't matter */, tickLower, nil)
 	if err != nil {
 		return nil, nil, err
 	}
-	tickUpper, err := utils.GetTickAtSqrtRatio(sqrtRatioX96Upper)
+	tickUpper, err := utils.GetTickAtSqrtRatio(sqrtRatioX96Upper.ToBig())
 	if err != nil {
 		return nil, nil, err
 	}
-	poolUpper, err := NewPool(p.Pool.Token0, p.Pool.Token1, p.Pool.Fee, sqrtRatioX96Upper, big.NewInt(0) /* liquidity doesn't matter */, tickUpper, nil)
+	poolUpper, err := NewPool(p.Pool.Token0, p.Pool.Token1, p.Pool.Fee, sqrtRatioX96Upper.ToBig(), big.NewInt(0) /* liquidity doesn't matter */, tickUpper, nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -287,24 +290,24 @@ func (p *Position) MintAmountsWithSlippage(slippageTolerance *entities.Percent) 
  * @param slippageTolerance tolerance of unfavorable slippage from the current price
  * @returns The amounts, with slippage
  */
-func (p *Position) BurnAmountsWithSlippage(slippageTolerance *entities.Percent) (amount0, amount1 *big.Int, err error) {
+func (p *Position) BurnAmountsWithSlippage(slippageTolerance *entities.Percent) (amount0, amount1 *uint256.Int, err error) {
 	// get lower/upper prices
 	sqrtRatioX96Lower, sqrtRatioX96Upper := p.ratiosAfterSlippage(slippageTolerance)
 
 	// construct counterfactual pools
-	tickLower, err := utils.GetTickAtSqrtRatio(sqrtRatioX96Lower)
+	tickLower, err := utils.GetTickAtSqrtRatio(sqrtRatioX96Lower.ToBig())
 	if err != nil {
 		return nil, nil, err
 	}
-	poolLower, err := NewPool(p.Pool.Token0, p.Pool.Token1, p.Pool.Fee, sqrtRatioX96Lower, big.NewInt(0) /* liquidity doesn't matter */, tickLower, nil)
+	poolLower, err := NewPool(p.Pool.Token0, p.Pool.Token1, p.Pool.Fee, sqrtRatioX96Lower.ToBig(), big.NewInt(0) /* liquidity doesn't matter */, tickLower, nil)
 	if err != nil {
 		return nil, nil, err
 	}
-	tickUpper, err := utils.GetTickAtSqrtRatio(sqrtRatioX96Upper)
+	tickUpper, err := utils.GetTickAtSqrtRatio(sqrtRatioX96Upper.ToBig())
 	if err != nil {
 		return nil, nil, err
 	}
-	poolUpper, err := NewPool(p.Pool.Token0, p.Pool.Token1, p.Pool.Fee, sqrtRatioX96Upper, big.NewInt(0) /* liquidity doesn't matter */, tickUpper, nil)
+	poolUpper, err := NewPool(p.Pool.Token0, p.Pool.Token1, p.Pool.Fee, sqrtRatioX96Upper.ToBig(), big.NewInt(0) /* liquidity doesn't matter */, tickUpper, nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -328,7 +331,7 @@ func (p *Position) BurnAmountsWithSlippage(slippageTolerance *entities.Percent) 
 	if err != nil {
 		return nil, nil, err
 	}
-	return a0.Quotient(), a1.Quotient(), nil
+	return uint256.MustFromBig(a0.Quotient()), uint256.MustFromBig(a1.Quotient()), nil
 }
 
 /**

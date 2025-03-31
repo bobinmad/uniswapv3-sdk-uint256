@@ -23,14 +23,15 @@ func TestGetNextSqrtPriceFromInput(t *testing.T) {
 		expResult  string
 	}{
 		{"0x1", "0x1", "0x8000000000000000000000000000000000000000000000000000000000000000", true, "1"},
-		{"0x" + p1.Text(16), "0x16345785d8a0000", "0x0", true, p1.Text(10)},
-		{"0x" + p1.Text(16), "0x16345785d8a0000", "0x0", false, p1.Text(10)},
+		{p1.Hex(), "0x16345785d8a0000", "0x0", true, p1.Dec()},
+		{p1.Hex(), "0x16345785d8a0000", "0x0", false, p1.Dec()},
 		{"0xffffffffffffffffffffffffffffffffffffffff", "0xffffffffffffffffffffffffffffffff", "0xfffffffffffffffffffffffffffffffffffffffeffffffffffffffffffffffff", true, "1"},
-		{"0x" + p1.Text(16), "0xde0b6b3a7640000", "0x16345785d8a0000", false, "87150978765690771352898345369"},
-		{"0x" + p1.Text(16), "0xde0b6b3a7640000", "0x16345785d8a0000", true, "72025602285694852357767227579"},
-		{"0x" + p1.Text(16), "0x8ac7230489e80000", "0x10000000000000000000000000", true, "624999999995069620"},
-		{"0x" + p1.Text(16), "0x1", "0x8000000000000000000000000000000000000000000000000000000000000000", true, "1"},
+		{p1.Hex(), "0xde0b6b3a7640000", "0x16345785d8a0000", false, "87150978765690771352898345369"},
+		{p1.Hex(), "0xde0b6b3a7640000", "0x16345785d8a0000", true, "72025602285694852357767227579"},
+		{p1.Hex(), "0x8ac7230489e80000", "0x10000000000000000000000000", true, "624999999995069620"},
+		{p1.Hex(), "0x1", "0x8000000000000000000000000000000000000000000000000000000000000000", true, "1"},
 	}
+
 	var r Uint160
 	for i, tt := range tests {
 		t.Run(fmt.Sprintf("test %d", i), func(t *testing.T) {
@@ -73,10 +74,10 @@ func TestGetNextSqrtPriceFromOutput(t *testing.T) {
 		expResult  string
 	}{
 		{"0x100000000000000000000000000", "0x400", "0x3ffff", true, "77371252455336267181195264"},
-		{"0x" + p1.Text(16), "0x16345785d8a0000", "0x0", true, p1.Text(10)},
-		{"0x" + p1.Text(16), "0x16345785d8a0000", "0x0", false, p1.Text(10)},
-		{"0x" + p1.Text(16), "0xde0b6b3a7640000", "0x16345785d8a0000", false, "88031291682515930659493278152"},
-		{"0x" + p1.Text(16), "0xde0b6b3a7640000", "0x16345785d8a0000", true, "71305346262837903834189555302"},
+		{p1.Hex(), "0x16345785d8a0000", "0x0", true, p1.Dec()},
+		{p1.Hex(), "0x16345785d8a0000", "0x0", false, p1.Dec()},
+		{p1.Hex(), "0xde0b6b3a7640000", "0x16345785d8a0000", false, "88031291682515930659493278152"},
+		{p1.Hex(), "0xde0b6b3a7640000", "0x16345785d8a0000", true, "71305346262837903834189555302"},
 	}
 	var r Uint160
 	for i, tt := range tests {
@@ -102,8 +103,8 @@ func TestGetNextSqrtPriceFromOutput(t *testing.T) {
 		{"0x100000000000000000000000000", "0x400", "0x40001", true}, // output amount is greater than virtual reserves of token1
 		{"0x100000000000000000000000000", "0x400", "0x40000", true}, // output amount is exactly the virtual reserves of token1
 
-		{"0x" + p1.Text(16), "0x1", MaxUint256.Hex(), true},  // amountOut is impossible in zero for one direction
-		{"0x" + p1.Text(16), "0x1", MaxUint256.Hex(), false}, // amountOut is impossible in one for zero direction
+		{p1.Hex(), "0x1", MaxUint256.Hex(), true},  // amountOut is impossible in zero for one direction
+		{p1.Hex(), "0x1", MaxUint256.Hex(), false}, // amountOut is impossible in one for zero direction
 	}
 	for i, tt := range failTests {
 		t.Run(fmt.Sprintf("fail test %d", i), func(t *testing.T) {
@@ -131,12 +132,12 @@ func TestGetAmount0Delta(t *testing.T) {
 		zeroForOne bool
 		expResult  string
 	}{
-		{"0x" + p1.Text(16), "0x" + p2.Text(16), "0x0", true, "0"},
-		{"0x" + p1.Text(16), "0x" + p1.Text(16), "0x1", true, "0"},
-		{"0x" + p1.Text(16), "0x" + p3.Text(16), "0xde0b6b3a7640000", true, "90909090909090910"},
-		{"0x" + p1.Text(16), "0x" + p3.Text(16), "0xde0b6b3a7640000", false, "90909090909090909"},
-		{"0x" + p4.Text(16), "0x" + p5.Text(16), "0xde0b6b3a7640000", true, "24869"},
-		{"0x" + p4.Text(16), "0x" + p5.Text(16), "0xde0b6b3a7640000", false, "24868"},
+		{p1.Hex(), p2.Hex(), "0x0", true, "0"},
+		{p1.Hex(), p1.Hex(), "0x1", true, "0"},
+		{p1.Hex(), p3.Hex(), "0xde0b6b3a7640000", true, "90909090909090910"},
+		{p1.Hex(), p3.Hex(), "0xde0b6b3a7640000", false, "90909090909090909"},
+		{p4.Hex(), p5.Hex(), "0xde0b6b3a7640000", true, "24869"},
+		{p4.Hex(), p5.Hex(), "0xde0b6b3a7640000", false, "24868"},
 	}
 	var r Uint256
 	for i, tt := range tests {
@@ -164,12 +165,12 @@ func TestGetAmount1Delta(t *testing.T) {
 		zeroForOne bool
 		expResult  string
 	}{
-		{"0x" + p1.Text(16), "0x" + p2.Text(16), "0x0", true, "0"},
-		{"0x" + p1.Text(16), "0x" + p1.Text(16), "0x1", true, "0"},
-		{"0x" + p1.Text(16), "0x" + p3.Text(16), "0xde0b6b3a7640000", true, "100000000000000000"},
-		{"0x" + p1.Text(16), "0x" + p3.Text(16), "0xde0b6b3a7640000", false, "99999999999999999"},
-		{"0x" + p4.Text(16), "0x" + p1.Text(16), "0xde0b6b3a7640000", true, "90909090909090910"},
-		{"0x" + p4.Text(16), "0x" + p1.Text(16), "0xde0b6b3a7640000", false, "90909090909090909"},
+		{p1.Hex(), p2.Hex(), "0x0", true, "0"},
+		{p1.Hex(), p1.Hex(), "0x1", true, "0"},
+		{p1.Hex(), p3.Hex(), "0xde0b6b3a7640000", true, "100000000000000000"},
+		{p1.Hex(), p3.Hex(), "0xde0b6b3a7640000", false, "99999999999999999"},
+		{p4.Hex(), p1.Hex(), "0xde0b6b3a7640000", true, "90909090909090910"},
+		{p4.Hex(), p1.Hex(), "0xde0b6b3a7640000", false, "90909090909090909"},
 	}
 	var r Uint256
 	for i, tt := range tests {

@@ -79,7 +79,7 @@ var (
 )
 
 func v2StylePool(token0, token1 *entities.Token, reserve0, reserve1 *entities.CurrencyAmount, feeAmount constants.FeeAmount) *Pool {
-	sqrtRatioX96 := utils.EncodeSqrtRatioX96(reserve1.Quotient(), reserve0.Quotient())
+	sqrtRatioX96 := utils.EncodeSqrtRatioX96(uint256.MustFromBig(reserve1.Quotient()), uint256.MustFromBig(reserve0.Quotient()))
 	liquidity := new(big.Int).Sqrt(new(big.Int).Mul(reserve0.Quotient(), reserve1.Quotient()))
 	liquidityGross := uint256.MustFromBig(liquidity)
 	liquidityNet := int256.MustFromBig(liquidity)
@@ -95,7 +95,7 @@ func v2StylePool(token0, token1 *entities.Token, reserve0, reserve1 *entities.Cu
 			LiquidityGross: liquidityGross,
 		},
 	}
-	s, err := utils.GetTickAtSqrtRatio(sqrtRatioX96)
+	s, err := utils.GetTickAtSqrtRatio(sqrtRatioX96.ToBig())
 	if err != nil {
 		panic(err)
 	}
@@ -103,7 +103,7 @@ func v2StylePool(token0, token1 *entities.Token, reserve0, reserve1 *entities.Cu
 	if err != nil {
 		panic(err)
 	}
-	pool, err := NewPool(token0, token1, feeAmount, sqrtRatioX96, liquidity, s, p)
+	pool, err := NewPool(token0, token1, feeAmount, sqrtRatioX96.ToBig(), liquidity, s, p)
 	if err != nil {
 		panic(err)
 	}
