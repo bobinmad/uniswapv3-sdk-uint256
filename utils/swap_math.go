@@ -111,9 +111,20 @@ func (c *SwapStepCalculator) ComputeSwapStep(
 	// 	return err
 	// }
 
+	// if !exactIn && amountOut.Gt(c.amountRemainingU) {
+	// 	amountOut.Set(c.amountRemainingU)
+	// } else if exactIn && !sqrtRatioNextX96.Eq(sqrtRatioTargetX96) {
+	// 	// we didn't reach the target, so take the remainder of the maximum input as fee
+	// 	feeAmount.Sub(c.amountRemainingU, amountIn)
+	// } else {
+	// 	err = c.fullMath.MulDivRoundingUpV2(amountIn, c.feePipsUin256Tmp.SetUint64(uint64(feePips)), c.maxFeeMinusFeePips, feeAmount)
+	// }
+
 	if !exactIn && amountOut.Gt(c.amountRemainingU) {
 		amountOut.Set(c.amountRemainingU)
-	} else if exactIn && !sqrtRatioNextX96.Eq(sqrtRatioTargetX96) {
+	}
+
+	if exactIn && !sqrtRatioNextX96.Eq(sqrtRatioTargetX96) {
 		// we didn't reach the target, so take the remainder of the maximum input as fee
 		feeAmount.Sub(c.amountRemainingU, amountIn)
 	} else {
