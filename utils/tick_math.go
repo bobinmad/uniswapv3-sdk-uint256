@@ -192,7 +192,6 @@ var (
 // deprecated
 func GetTickAtSqrtRatio(sqrtRatioX96 *big.Int) (int, error) {
 	// panic("GetTickAtSqrtRatio() is deprecated")
-
 	return NewTickCalculator().GetTickAtSqrtRatioV2(uint256.MustFromBig(sqrtRatioX96))
 }
 

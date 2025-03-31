@@ -86,23 +86,24 @@ func TestAmount0(t *testing.T) {
 	// is correct for price above
 	p, err := NewPosition(DAIUSDCPool, B100e12, NearestUsableTick(poolTickCurrent, tickSpacing)+tickSpacing, NearestUsableTick(poolTickCurrent, tickSpacing)+tickSpacing*2)
 	assert.NoError(t, err)
-	amount0, err := p.Amount0(false)
-	assert.NoError(t, err)
-	assert.Equal(t, "49949961958869841", amount0.Quotient().String())
+	amount0 := p.CalcAmount0()
+	// assert.NoError(t, err)
+	assert.Equal(t, "49949961958869841", amount0.Dec())
 
 	// is correct for price below
 	p, err = NewPosition(DAIUSDCPool, B100e18Uint256, NearestUsableTick(poolTickCurrent, tickSpacing)-tickSpacing*2, NearestUsableTick(poolTickCurrent, tickSpacing)-tickSpacing)
 	assert.NoError(t, err)
-	amount0, err = p.Amount0(false)
-	assert.NoError(t, err)
-	assert.Equal(t, "0", amount0.Quotient().String())
+	amount0 = p.CalcAmount0()
+	// assert.NoError(t, err)
+	assert.Equal(t, "0", amount0.Dec())
 
 	// is correct for in-range position
 	p, err = NewPosition(DAIUSDCPool, B100e18Uint256, NearestUsableTick(poolTickCurrent, tickSpacing)-tickSpacing*2, NearestUsableTick(poolTickCurrent, tickSpacing)+tickSpacing*2)
 	assert.NoError(t, err)
-	amount0, err = p.Amount0(false)
-	assert.NoError(t, err)
-	assert.Equal(t, "120054069145287995769397", amount0.Quotient().String())
+	amount0 = p.CalcAmount0()
+	// assert.NoError(t, err)
+	// assert.Equal(t, "120054069145287995769397", amount0.Dec())
+	assert.Equal(t, "120054069145287995769396", amount0.Dec())
 	// ! 120054069145287995769396 in v3-sdk(typescript)
 }
 
@@ -112,23 +113,23 @@ func TestAmount1(t *testing.T) {
 	// is correct for price above
 	p, err := NewPosition(DAIUSDCPool, B100e18Uint256, NearestUsableTick(poolTickCurrent, tickSpacing)+tickSpacing, NearestUsableTick(poolTickCurrent, tickSpacing)+tickSpacing*2)
 	assert.NoError(t, err)
-	amount1, err := p.Amount1(false)
-	assert.NoError(t, err)
-	assert.Equal(t, "0", amount1.Quotient().String())
+	amount1 := p.CalcAmount1()
+	// assert.NoError(t, err)
+	assert.Equal(t, "0", amount1.Dec())
 
 	// is correct for price below
 	p, err = NewPosition(DAIUSDCPool, B100e18Uint256, NearestUsableTick(poolTickCurrent, tickSpacing)-tickSpacing*2, NearestUsableTick(poolTickCurrent, tickSpacing)-tickSpacing)
 	assert.NoError(t, err)
-	amount1, err = p.Amount1(false)
-	assert.NoError(t, err)
-	assert.Equal(t, "49970077052", amount1.Quotient().String())
+	amount1 = p.CalcAmount1()
+	// assert.NoError(t, err)
+	assert.Equal(t, "49970077052", amount1.Dec())
 
 	// is correct for in-range position
 	p, err = NewPosition(DAIUSDCPool, B100e18Uint256, NearestUsableTick(poolTickCurrent, tickSpacing)-tickSpacing*2, NearestUsableTick(poolTickCurrent, tickSpacing)+tickSpacing*2)
 	assert.NoError(t, err)
-	amount1, err = p.Amount1(false)
-	assert.NoError(t, err)
-	assert.Equal(t, "79831926242", amount1.Quotient().String())
+	amount1 = p.CalcAmount1()
+	//assert.NoError(t, err)
+	assert.Equal(t, "79831926242", amount1.Dec())
 }
 
 func TestMintAmountsWithSlippage(t *testing.T) {
