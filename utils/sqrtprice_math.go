@@ -140,6 +140,7 @@ func (c *SqrtPriceCalculator) GetNextSqrtPriceFromOutput(sqrtPX96 *Uint160, liqu
 	if zeroForOne {
 		return c.getNextSqrtPriceFromAmount1RoundingDown(sqrtPX96, liquidity, amountOut, false, result)
 	}
+
 	return c.getNextSqrtPriceFromAmount0RoundingUp(sqrtPX96, liquidity, amountOut, false, result)
 }
 
@@ -202,7 +203,7 @@ func (c *SqrtPriceCalculator) getNextSqrtPriceFromAmount1RoundingDown(sqrtPX96 *
 		return err
 	}
 
-	if sqrtPX96.Lt(c.quotient) {
+	if !sqrtPX96.Gt(c.quotient) {
 		return ErrInvariant
 	}
 
