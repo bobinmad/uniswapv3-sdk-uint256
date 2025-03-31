@@ -98,10 +98,7 @@ func TestGetNextSqrtPriceFromOutput(t *testing.T) {
 	}{
 		{"0x0", "0x1", "0x16345785d8a0000", false},
 		{"0x1", "0x0", "0x16345785d8a0000", true},
-
-		// TODO: fix broken test
-		{"0x100000000000000000000000000", "0x400", "0x4", false}, // output amount is exactly the virtual reserves of token0
-
+		{"0x100000000000000000000000000", "0x400", "0x4", false},    // output amount is exactly the virtual reserves of token0
 		{"0x100000000000000000000000000", "0x400", "0x5", false},    // output amount is greater than virtual reserves of token0
 		{"0x100000000000000000000000000", "0x400", "0x40001", true}, // output amount is greater than virtual reserves of token1
 		{"0x100000000000000000000000000", "0x400", "0x40000", true}, // output amount is exactly the virtual reserves of token1

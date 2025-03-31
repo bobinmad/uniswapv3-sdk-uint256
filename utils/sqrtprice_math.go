@@ -176,7 +176,8 @@ func (c *SqrtPriceCalculator) getNextSqrtPriceFromAmount0RoundingUp(sqrtPX96 *Ui
 		if !c.tmp.Div(c.product, amount).Eq(sqrtPX96) {
 			return ErrInvariant
 		}
-		if c.numerator1.Lt(c.product) {
+		// if c.numerator1.Cmp(c.product) <= 0 {
+		if !c.numerator1.Gt(c.product) {
 			return ErrInvariant
 		}
 
@@ -188,7 +189,8 @@ func (c *SqrtPriceCalculator) getNextSqrtPriceFromAmount1RoundingDown(sqrtPX96 *
 	var err error
 
 	if add {
-		if amount.Lt(MaxUint160) {
+		// if amount.Cmp(MaxUint160) <= 0 {
+		if !amount.Gt(MaxUint160) {
 			c.quotient.Div(c.tmp.Lsh(amount, 96), liquidity)
 		} else {
 			c.quotient.Div(c.tmp.Mul(amount, constants.Q96U256), liquidity)
@@ -210,6 +212,7 @@ func (c *SqrtPriceCalculator) getNextSqrtPriceFromAmount1RoundingDown(sqrtPX96 *
 		return err
 	}
 
+	// if sqrtPX96.Cmp(c.quotient) <= 0 {
 	if !sqrtPX96.Gt(c.quotient) {
 		return ErrInvariant
 	}
