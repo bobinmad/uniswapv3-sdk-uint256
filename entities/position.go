@@ -211,12 +211,12 @@ func (p *Position) ratiosAfterSlippage(slippageTolerance *entities.Percent) (sqr
 	priceUpper := p.Pool.Token0Price().Fraction.Multiply(entities.NewPercent(big.NewInt(1), big.NewInt(1)).Add(slippageTolerance).Fraction)
 
 	sqrtRatioX96Lower = utils.EncodeSqrtRatioX96(uint256.MustFromBig(priceLower.Numerator), uint256.MustFromBig(priceLower.Denominator))
-	if sqrtRatioX96Lower.Cmp(utils.MinSqrtRatioU256) <= 0 {
+	if !sqrtRatioX96Lower.Gt(utils.MinSqrtRatioU256) {
 		sqrtRatioX96Lower = new(uint256.Int).Add(utils.MinSqrtRatioU256, uint256.NewInt(1))
 	}
 
 	sqrtRatioX96Upper = utils.EncodeSqrtRatioX96(uint256.MustFromBig(priceUpper.Numerator), uint256.MustFromBig(priceUpper.Denominator))
-	if sqrtRatioX96Upper.Cmp(utils.MinSqrtRatioU256) >= 0 {
+	if !sqrtRatioX96Upper.Lt(utils.MinSqrtRatioU256) {
 		sqrtRatioX96Upper = new(uint256.Int).Sub(utils.MinSqrtRatioU256, uint256.NewInt(1))
 	}
 
@@ -238,18 +238,25 @@ func (p *Position) MintAmountsWithSlippage(slippageTolerance *entities.Percent) 
 	if err != nil {
 		return nil, nil, err
 	}
-	poolLower, err := NewPool(p.Pool.Token0, p.Pool.Token1, p.Pool.Fee, sqrtRatioX96Lower.ToBig(), big.NewInt(0) /* liquidity doesn't matter */, tickLower, nil)
-	if err != nil {
-		return nil, nil, err
-	}
+
+	// poolLower, err := NewPool(p.Pool.Token0, p.Pool.Token1, p.Pool.Fee, sqrtRatioX96Lower.ToBig(), big.NewInt(0) /* liquidity doesn't matter */, tickLower, nil)
+	// if err != nil {
+	// 	return nil, nil, err
+	// }
+	poolLower := NewPoolV3(uint16(p.Pool.Fee), int32(tickLower), sqrtRatioX96Lower, p.Pool.Token0, p.Pool.Token1, nil)
+	poolLower.Liquidity = uint256.NewInt(0)
+
 	tickUpper, err := utils.GetTickAtSqrtRatio(sqrtRatioX96Upper.ToBig())
 	if err != nil {
 		return nil, nil, err
 	}
-	poolUpper, err := NewPool(p.Pool.Token0, p.Pool.Token1, p.Pool.Fee, sqrtRatioX96Upper.ToBig(), big.NewInt(0) /* liquidity doesn't matter */, tickUpper, nil)
-	if err != nil {
-		return nil, nil, err
-	}
+
+	// poolUpper, err := NewPool(p.Pool.Token0, p.Pool.Token1, p.Pool.Fee, sqrtRatioX96Upper.ToBig(), big.NewInt(0) /* liquidity doesn't matter */, tickUpper, nil)
+	// if err != nil {
+	// 	return nil, nil, err
+	// }
+	poolUpper := NewPoolV3(uint16(p.Pool.Fee), int32(tickUpper), sqrtRatioX96Upper, p.Pool.Token0, p.Pool.Token1, nil)
+	poolUpper.Liquidity = uint256.NewInt(0)
 
 	// because the router is imprecise, we need to calculate the position that will be created (assuming no slippage)
 	// the mint amounts are what will be passed as calldata
@@ -299,18 +306,23 @@ func (p *Position) BurnAmountsWithSlippage(slippageTolerance *entities.Percent) 
 	if err != nil {
 		return nil, nil, err
 	}
-	poolLower, err := NewPool(p.Pool.Token0, p.Pool.Token1, p.Pool.Fee, sqrtRatioX96Lower.ToBig(), big.NewInt(0) /* liquidity doesn't matter */, tickLower, nil)
-	if err != nil {
-		return nil, nil, err
-	}
+	// poolLower, err := NewPool(p.Pool.Token0, p.Pool.Token1, p.Pool.Fee, sqrtRatioX96Lower.ToBig(), big.NewInt(0) /* liquidity doesn't matter */, tickLower, nil)
+	// if err != nil {
+	// 	return nil, nil, err
+	// }
+	poolLower := NewPoolV3(uint16(p.Pool.Fee), int32(tickLower), sqrtRatioX96Lower, p.Pool.Token0, p.Pool.Token1, nil)
+	poolLower.Liquidity = uint256.NewInt(0)
+
 	tickUpper, err := utils.GetTickAtSqrtRatio(sqrtRatioX96Upper.ToBig())
 	if err != nil {
 		return nil, nil, err
 	}
-	poolUpper, err := NewPool(p.Pool.Token0, p.Pool.Token1, p.Pool.Fee, sqrtRatioX96Upper.ToBig(), big.NewInt(0) /* liquidity doesn't matter */, tickUpper, nil)
-	if err != nil {
-		return nil, nil, err
-	}
+	// poolUpper, err := NewPool(p.Pool.Token0, p.Pool.Token1, p.Pool.Fee, sqrtRatioX96Upper.ToBig(), big.NewInt(0) /* liquidity doesn't matter */, tickUpper, nil)
+	// if err != nil {
+	// 	return nil, nil, err
+	// }
+	poolUpper := NewPoolV3(uint16(p.Pool.Fee), int32(tickUpper), sqrtRatioX96Upper, p.Pool.Token0, p.Pool.Token1, nil)
+	poolUpper.Liquidity = uint256.NewInt(0)
 
 	// we want the smaller amounts...
 	// ...which occurs at the upper price for amount0...

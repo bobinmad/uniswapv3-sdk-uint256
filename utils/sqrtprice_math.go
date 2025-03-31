@@ -90,7 +90,14 @@ func (c *SqrtPriceCalculator) GetAmount0DeltaV2(sqrtRatioAX96, sqrtRatioBX96 *Ui
 
 // deprecated
 func GetAmount1Delta(sqrtRatioAX96, sqrtRatioBX96, liquidity *big.Int, roundUp bool) *big.Int {
-	panic("GetAmount1Delta() is deprecated")
+	// panic("GetAmount1Delta() is deprecated")
+
+	c := NewSqrtPriceCalculator()
+
+	result := new(Uint256)
+	c.GetAmount0DeltaV2(uint256.MustFromBig(sqrtRatioAX96), uint256.MustFromBig(sqrtRatioBX96), uint256.MustFromBig(liquidity), roundUp, result)
+
+	return result.ToBig()
 }
 
 func (c *SqrtPriceCalculator) GetAmount1DeltaV2(sqrtRatioAX96, sqrtRatioBX96 *Uint160, liquidity *Uint128, roundUp bool, result *Uint256) error {

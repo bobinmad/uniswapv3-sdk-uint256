@@ -136,10 +136,14 @@ func newTestPool() *Pool {
 		panic(err)
 	}
 
-	pool, err := NewPool(USDC, DAI, constants.FeeLow, utils.EncodeSqrtRatioX96(constants.OneU256, constants.OneU256).ToBig(), OneEther, 0, p)
-	if err != nil {
-		panic(err)
-	}
+	// pool, err := NewPool(USDC, DAI, constants.FeeLow, utils.EncodeSqrtRatioX96(constants.OneU256, constants.OneU256).ToBig(), OneEther, 0, p)
+	// if err != nil {
+	// 	panic(err)
+	// }
+
+	pool := NewPoolV3(uint16(constants.FeeLow), 0, utils.EncodeSqrtRatioX96(constants.OneU256, constants.OneU256), USDC, DAI, p)
+	pool.Liquidity = uint256.MustFromBig(OneEther)
+
 	return pool
 }
 func TestGetOutputAmount(t *testing.T) {

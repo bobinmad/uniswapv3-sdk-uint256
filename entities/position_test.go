@@ -30,12 +30,16 @@ func initPool() (*Pool, int, int) {
 	}
 
 	tickSpacing := constants.TickSpacings[constants.FeeLow]
-	p, err := NewPool(DAI, USDC, constants.FeeLow, poolSqrtRatioStart.ToBig(), big.NewInt(0), poolTickCurrent, nil)
-	if err != nil {
-		panic(err)
-	}
 
-	return p, poolTickCurrent, tickSpacing
+	// p, err := NewPool(DAI, USDC, constants.FeeLow, poolSqrtRatioStart.ToBig(), big.NewInt(0), poolTickCurrent, nil)
+	// if err != nil {
+	// 	panic(err)
+	// }
+
+	pool := NewPoolV3(uint16(constants.FeeLow), int32(poolTickCurrent), poolSqrtRatioStart, DAI, USDC, nil)
+	pool.Liquidity = uint256.NewInt(0)
+
+	return pool, poolTickCurrent, tickSpacing
 }
 
 func TestPosition(t *testing.T) {
@@ -44,12 +48,12 @@ func TestPosition(t *testing.T) {
 	// can be constructed around 0 tick
 	p, err := NewPosition(DAIUSDCPool, uint256.NewInt(1), -10, 10)
 	assert.NoError(t, err)
-	assert.Equal(t, big.NewInt(1), p.Liquidity)
+	assert.Equal(t, uint256.NewInt(1), p.Liquidity)
 
 	// can use min and max ticks
 	p, err = NewPosition(DAIUSDCPool, uint256.NewInt(1), NearestUsableTick(utils.MinTick, tickSpacing), 10)
 	assert.NoError(t, err)
-	assert.Equal(t, big.NewInt(1), p.Liquidity)
+	assert.Equal(t, uint256.NewInt(1), p.Liquidity)
 
 	// tick lower must be less than tick upper
 	_, err = NewPosition(DAIUSDCPool, uint256.NewInt(1), 10, -10)
@@ -199,7 +203,9 @@ func TestMintAmountsWithSlippage(t *testing.T) {
 	slippageTolerance = entities.NewPercent(big.NewInt(5), big.NewInt(100))
 
 	// is correct for pool at min price
-	minPricePool, err := NewPool(DAI, USDC, constants.FeeLow, utils.MinSqrtRatio, big.NewInt(0), utils.MinTick, nil)
+	minPricePool := NewPoolV3(uint16(constants.FeeLow), int32(utils.MinTick), utils.MinSqrtRatioU256, DAI, USDC, nil)
+	minPricePool.Liquidity = uint256.MustFromBig(big.NewInt(1))
+
 	assert.NoError(t, err)
 	p, err = NewPosition(minPricePool, B100e18Uint256,
 		NearestUsableTick(poolTickCurrent, tickSpacing)+tickSpacing,
@@ -211,7 +217,10 @@ func TestMintAmountsWithSlippage(t *testing.T) {
 	assert.Equal(t, "0", amount1.String())
 
 	// is correct for pool at max price
-	maxPricePool, err := NewPool(DAI, USDC, constants.FeeLow, new(big.Int).Sub(utils.MaxSqrtRatio, big.NewInt(1)), big.NewInt(0), utils.MaxTick-1, nil)
+	// maxPricePool, err := NewPool(DAI, USDC, constants.FeeLow, new(big.Int).Sub(utils.MaxSqrtRatio, big.NewInt(1)), big.NewInt(0), utils.MaxTick-1, nil)
+	maxPricePool := NewPoolV3(uint16(constants.FeeLow), int32(utils.MaxTick-1), new(uint256.Int).Sub(utils.MaxSqrtRatioU256, uint256.NewInt(1)), DAI, USDC, nil)
+	maxPricePool.Liquidity = uint256.MustFromBig(big.NewInt(1))
+
 	assert.NoError(t, err)
 	p, err = NewPosition(maxPricePool, B100e18Uint256,
 		NearestUsableTick(poolTickCurrent, tickSpacing)+tickSpacing,
@@ -298,7 +307,9 @@ func TestBurnAmountsWithSlippage(t *testing.T) {
 	slippageTolerance = entities.NewPercent(big.NewInt(5), big.NewInt(100))
 
 	// is correct for pool at min price
-	minPricePool, err := NewPool(DAI, USDC, constants.FeeLow, utils.MinSqrtRatio, big.NewInt(0), utils.MinTick, nil)
+	// minPricePool, err := NewPool(DAI, USDC, constants.FeeLow, utils.MinSqrtRatio, big.NewInt(0), utils.MinTick, nil)
+	minPricePool := NewPoolV3(uint16(constants.FeeLow), int32(utils.MinTick), utils.MinSqrtRatioU256, DAI, USDC, nil)
+
 	assert.NoError(t, err)
 	p, err = NewPosition(minPricePool, B100e18Uint256,
 		NearestUsableTick(poolTickCurrent, tickSpacing)+tickSpacing,
@@ -311,7 +322,10 @@ func TestBurnAmountsWithSlippage(t *testing.T) {
 	assert.Equal(t, "0", amount1.String())
 
 	// is correct for pool at max price
-	maxPricePool, err := NewPool(DAI, USDC, constants.FeeLow, new(big.Int).Sub(utils.MaxSqrtRatio, big.NewInt(1)), big.NewInt(0), utils.MaxTick-1, nil)
+	// maxPricePool, err := NewPool(DAI, USDC, constants.FeeLow, new(big.Int).Sub(utils.MaxSqrtRatio, big.NewInt(1)), big.NewInt(0), utils.MaxTick-1, nil)
+	maxPricePool := NewPoolV3(uint16(constants.FeeLow), int32(utils.MaxTick-1), new(uint256.Int).Sub(utils.MaxSqrtRatioU256, uint256.NewInt(1)), DAI, USDC, nil)
+	maxPricePool.Liquidity = uint256.MustFromBig(big.NewInt(1))
+
 	assert.NoError(t, err)
 	p, err = NewPosition(maxPricePool, B100e18Uint256,
 		NearestUsableTick(poolTickCurrent, tickSpacing)+tickSpacing,

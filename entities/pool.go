@@ -286,7 +286,7 @@ func (p *Pool) GetOutputAmount(inputAmount *entities.CurrencyAmount,
 		return nil, err
 	}
 	return &GetAmountResult{
-		ReturnedAmount: entities.FromRawAmount(outputToken, new(utils.Int256).Neg(swapResult.AmountCalculated).ToBig()),
+		ReturnedAmount:     entities.FromRawAmount(outputToken, new(utils.Int256).Neg(swapResult.AmountCalculated).ToBig()),
 		RemainingAmountIn:  entities.FromRawAmount(inputAmount.Currency, swapResult.RemainingAmountIn.ToBig()),
 		NewPoolState:       pool,
 		CrossInitTickLoops: swapResult.CrossInitTickLoops,
@@ -578,7 +578,7 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 		if sqrtPriceLimitX96.Gt(utils.MaxSqrtRatioU256) {
 			return ErrSqrtPriceLimitX96TooHigh
 		}
-		if sqrtPriceLimitX96.Cmp(p.SqrtRatioX96) <= 0 {
+		if !sqrtPriceLimitX96.Gt(p.SqrtRatioX96) {
 			return ErrSqrtPriceLimitX96TooLow
 		}
 	}
