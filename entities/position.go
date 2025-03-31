@@ -211,14 +211,25 @@ func (p *Position) ratiosAfterSlippage(slippageTolerance *entities.Percent) (sqr
 	priceUpper := p.Pool.Token0Price().Fraction.Multiply(entities.NewPercent(big.NewInt(1), big.NewInt(1)).Add(slippageTolerance).Fraction)
 
 	sqrtRatioX96Lower = utils.EncodeSqrtRatioX96(uint256.MustFromBig(priceLower.Numerator), uint256.MustFromBig(priceLower.Denominator))
+	// if sqrtRatioX96Lower.Cmp(utils.MinSqrtRatioU256) <= 0 {
 	if !sqrtRatioX96Lower.Gt(utils.MinSqrtRatioU256) {
-		sqrtRatioX96Lower = new(uint256.Int).Add(utils.MinSqrtRatioU256, uint256.NewInt(1))
+		sqrtRatioX96Lower = new(uint256.Int).Add(utils.MinSqrtRatioU256, utils.U256One)
 	}
 
 	sqrtRatioX96Upper = utils.EncodeSqrtRatioX96(uint256.MustFromBig(priceUpper.Numerator), uint256.MustFromBig(priceUpper.Denominator))
-	if !sqrtRatioX96Upper.Lt(utils.MinSqrtRatioU256) {
-		sqrtRatioX96Upper = new(uint256.Int).Sub(utils.MinSqrtRatioU256, uint256.NewInt(1))
+	// if sqrtRatioX96Upper.Cmp(utils.MaxSqrtRatioU256) >= 0 {
+	if !sqrtRatioX96Upper.Lt(utils.MaxSqrtRatioU256) {
+		sqrtRatioX96Upper = new(uint256.Int).Sub(utils.MinSqrtRatioU256, utils.U256One)
 	}
+
+	// sqrtRatioX96Lower = utils.EncodeSqrtRatioX96(priceLower.Numerator, priceLower.Denominator)
+	// if sqrtRatioX96Lower.Cmp(utils.MinSqrtRatio) <= 0 {
+	// 	sqrtRatioX96Lower = new(big.Int).Add(utils.MinSqrtRatio, big.NewInt(1))
+	// }
+	// sqrtRatioX96Upper = utils.EncodeSqrtRatioX96(priceUpper.Numerator, priceUpper.Denominator)
+	// if sqrtRatioX96Upper.Cmp(utils.MaxSqrtRatio) >= 0 {
+	// 	sqrtRatioX96Upper = new(big.Int).Sub(utils.MaxSqrtRatio, big.NewInt(1))
+	// }
 
 	return sqrtRatioX96Lower, sqrtRatioX96Upper
 }
@@ -231,7 +242,7 @@ func (p *Position) ratiosAfterSlippage(slippageTolerance *entities.Percent) (sqr
  */
 func (p *Position) MintAmountsWithSlippage(slippageTolerance *entities.Percent) (amount0, amount1 *uint256.Int, err error) {
 	// get lower/upper prices
-	sqrtRatioX96Upper, sqrtRatioX96Lower := p.ratiosAfterSlippage(slippageTolerance)
+	sqrtRatioX96Lower, sqrtRatioX96Upper := p.ratiosAfterSlippage(slippageTolerance)
 
 	// construct counterfactual pools
 	tickLower, err := utils.GetTickAtSqrtRatio(sqrtRatioX96Lower.ToBig())

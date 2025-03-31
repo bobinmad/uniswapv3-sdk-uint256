@@ -51,6 +51,8 @@ var (
 	Q32U256          = uint256.NewInt(1 << 32)
 	MinSqrtRatioU256 = uint256.NewInt(4295128739)                                                   // The sqrt ratio corresponding to the minimum tick that could be used on any pool.
 	MaxSqrtRatioU256 = uint256.MustFromDecimal("1461446703485210103287273052203988822378723970342") // The sqrt ratio corresponding to the maximum tick that could be used on any pool.
+
+	U256One = uint256.NewInt(1)
 )
 
 var (

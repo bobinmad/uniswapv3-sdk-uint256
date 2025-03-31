@@ -144,8 +144,8 @@ func TestMintAmountsWithSlippage(t *testing.T) {
 	assert.NoError(t, err)
 	amount0, amount1, err := p.MintAmountsWithSlippage(slippageTolerance)
 	assert.NoError(t, err)
-	assert.Equal(t, "49949961958869841738198", amount0.String())
-	assert.Equal(t, "0", amount1.String())
+	assert.Equal(t, "49949961958869841738198", amount0.Dec())
+	assert.Equal(t, "0", amount1.Dec())
 
 	// is correct for positions above
 	p, err = NewPosition(DAIUSDCPool, B100e18Uint256,
@@ -154,8 +154,8 @@ func TestMintAmountsWithSlippage(t *testing.T) {
 	assert.NoError(t, err)
 	amount0, amount1, err = p.MintAmountsWithSlippage(slippageTolerance)
 	assert.NoError(t, err)
-	assert.Equal(t, "0", amount0.String())
-	assert.Equal(t, "49970077053", amount1.String())
+	assert.Equal(t, "0", amount0.Dec())
+	assert.Equal(t, "49970077053", amount1.Dec())
 
 	// is correct for positions within
 	p, err = NewPosition(DAIUSDCPool, B100e18Uint256,
@@ -164,8 +164,8 @@ func TestMintAmountsWithSlippage(t *testing.T) {
 	assert.NoError(t, err)
 	amount0, amount1, err = p.MintAmountsWithSlippage(slippageTolerance)
 	assert.NoError(t, err)
-	assert.Equal(t, "120054069145287995740584", amount0.String())
-	assert.Equal(t, "79831926243", amount1.String())
+	assert.Equal(t, "120054069145287995740584", amount0.Dec())
+	assert.Equal(t, "79831926243", amount1.Dec())
 
 	// 0.05% slippage
 	slippageTolerance = entities.NewPercent(big.NewInt(5), big.NewInt(10000))
@@ -177,8 +177,8 @@ func TestMintAmountsWithSlippage(t *testing.T) {
 	assert.NoError(t, err)
 	amount0, amount1, err = p.MintAmountsWithSlippage(slippageTolerance)
 	assert.NoError(t, err)
-	assert.Equal(t, "49949961958869841738198", amount0.String())
-	assert.Equal(t, "0", amount1.String())
+	assert.Equal(t, "49949961958869841738198", amount0.Dec())
+	assert.Equal(t, "0", amount1.Dec())
 
 	// is correct for positions above
 	p, err = NewPosition(DAIUSDCPool, B100e18Uint256,
@@ -187,8 +187,8 @@ func TestMintAmountsWithSlippage(t *testing.T) {
 	assert.NoError(t, err)
 	amount0, amount1, err = p.MintAmountsWithSlippage(slippageTolerance)
 	assert.NoError(t, err)
-	assert.Equal(t, "0", amount0.String())
-	assert.Equal(t, "49970077053", amount1.String())
+	assert.Equal(t, "0", amount0.Dec())
+	assert.Equal(t, "49970077053", amount1.Dec())
 
 	// is correct for positions within
 	p, err = NewPosition(DAIUSDCPool, B100e18Uint256,
@@ -197,8 +197,8 @@ func TestMintAmountsWithSlippage(t *testing.T) {
 	assert.NoError(t, err)
 	amount0, amount1, err = p.MintAmountsWithSlippage(slippageTolerance)
 	assert.NoError(t, err)
-	assert.Equal(t, "95063440240746211432007", amount0.String())
-	assert.Equal(t, "54828800461", amount1.String())
+	assert.Equal(t, "95063440240746211432007", amount0.Dec())
+	assert.Equal(t, "54828800461", amount1.Dec())
 
 	// 5% slippage tolerance
 	slippageTolerance = entities.NewPercent(big.NewInt(5), big.NewInt(100))
@@ -214,8 +214,8 @@ func TestMintAmountsWithSlippage(t *testing.T) {
 	assert.NoError(t, err)
 	amount0, amount1, err = p.BurnAmountsWithSlippage(slippageTolerance)
 	assert.NoError(t, err)
-	assert.Equal(t, "49949961958869841754181", amount0.String())
-	assert.Equal(t, "0", amount1.String())
+	assert.Equal(t, "49949961958869841754181", amount0.Dec())
+	assert.Equal(t, "0", amount1.Dec())
 
 	// is correct for pool at max price
 	// maxPricePool, err := NewPool(DAI, USDC, constants.FeeLow, new(big.Int).Sub(utils.MaxSqrtRatio, big.NewInt(1)), big.NewInt(0), utils.MaxTick-1, nil)
@@ -229,8 +229,8 @@ func TestMintAmountsWithSlippage(t *testing.T) {
 	assert.NoError(t, err)
 	amount0, amount1, err = p.BurnAmountsWithSlippage(slippageTolerance)
 	assert.NoError(t, err)
-	assert.Equal(t, "0", amount0.String())
-	assert.Equal(t, "50045084659", amount1.String())
+	assert.Equal(t, "0", amount0.Dec())
+	assert.Equal(t, "50045084659", amount1.Dec())
 }
 
 func TestBurnAmountsWithSlippage(t *testing.T) {
@@ -246,8 +246,8 @@ func TestBurnAmountsWithSlippage(t *testing.T) {
 	assert.NoError(t, err)
 	amount0, amount1, err := p.BurnAmountsWithSlippage(slippageTolerance)
 	assert.NoError(t, err)
-	assert.Equal(t, "49949961958869841754181", amount0.String())
-	assert.Equal(t, "0", amount1.String())
+	assert.Equal(t, "49949961958869841754181", amount0.Dec())
+	assert.Equal(t, "0", amount1.Dec())
 
 	// is correct for positions above
 	p, err = NewPosition(DAIUSDCPool, B100e18Uint256,
@@ -256,8 +256,8 @@ func TestBurnAmountsWithSlippage(t *testing.T) {
 	assert.NoError(t, err)
 	amount0, amount1, err = p.BurnAmountsWithSlippage(slippageTolerance)
 	assert.NoError(t, err)
-	assert.Equal(t, "0", amount0.String())
-	assert.Equal(t, "49970077052", amount1.String())
+	assert.Equal(t, "0", amount0.Dec())
+	assert.Equal(t, "49970077052", amount1.Dec())
 
 	// is correct for positions within
 	p, err = NewPosition(DAIUSDCPool, B100e18Uint256,
@@ -267,8 +267,8 @@ func TestBurnAmountsWithSlippage(t *testing.T) {
 	amount0, amount1, err = p.BurnAmountsWithSlippage(slippageTolerance)
 	assert.NoError(t, err)
 	//! 120054069145287995769396 in v3-sdk
-	assert.Equal(t, "120054069145287995769397", amount0.String())
-	assert.Equal(t, "79831926242", amount1.String())
+	assert.Equal(t, "120054069145287995769397", amount0.Dec())
+	assert.Equal(t, "79831926242", amount1.Dec())
 
 	// 0.05% slippage
 	slippageTolerance = entities.NewPercent(big.NewInt(5), big.NewInt(10000))
@@ -280,8 +280,8 @@ func TestBurnAmountsWithSlippage(t *testing.T) {
 	assert.NoError(t, err)
 	amount0, amount1, err = p.BurnAmountsWithSlippage(slippageTolerance)
 	assert.NoError(t, err)
-	assert.Equal(t, "49949961958869841754181", amount0.String())
-	assert.Equal(t, "0", amount1.String())
+	assert.Equal(t, "49949961958869841754181", amount0.Dec())
+	assert.Equal(t, "0", amount1.Dec())
 
 	// is correct for positions above
 	p, err = NewPosition(DAIUSDCPool, B100e18Uint256,
@@ -290,8 +290,8 @@ func TestBurnAmountsWithSlippage(t *testing.T) {
 	assert.NoError(t, err)
 	amount0, amount1, err = p.BurnAmountsWithSlippage(slippageTolerance)
 	assert.NoError(t, err)
-	assert.Equal(t, "0", amount0.String())
-	assert.Equal(t, "49970077052", amount1.String())
+	assert.Equal(t, "0", amount0.Dec())
+	assert.Equal(t, "49970077052", amount1.Dec())
 
 	// is correct for positions within
 	p, err = NewPosition(DAIUSDCPool, B100e18Uint256,
@@ -301,8 +301,8 @@ func TestBurnAmountsWithSlippage(t *testing.T) {
 	amount0, amount1, err = p.BurnAmountsWithSlippage(slippageTolerance)
 	assert.NoError(t, err)
 	// ! 95063440240746211454822 in v3-sdk
-	assert.Equal(t, "95063440240746211454823", amount0.String())
-	assert.Equal(t, "54828800460", amount1.String())
+	assert.Equal(t, "95063440240746211454823", amount0.Dec())
+	assert.Equal(t, "54828800460", amount1.Dec())
 
 	// 5% slippage tolerance
 	slippageTolerance = entities.NewPercent(big.NewInt(5), big.NewInt(100))
@@ -319,8 +319,8 @@ func TestBurnAmountsWithSlippage(t *testing.T) {
 	amount0, amount1, err = p.BurnAmountsWithSlippage(slippageTolerance)
 	assert.NoError(t, err)
 	// ! 49949961958869841738198 in v3-sdk
-	assert.Equal(t, "49949961958869841754181", amount0.String())
-	assert.Equal(t, "0", amount1.String())
+	assert.Equal(t, "49949961958869841754181", amount0.Dec())
+	assert.Equal(t, "0", amount1.Dec())
 
 	// is correct for pool at max price
 	// maxPricePool, err := NewPool(DAI, USDC, constants.FeeLow, new(big.Int).Sub(utils.MaxSqrtRatio, big.NewInt(1)), big.NewInt(0), utils.MaxTick-1, nil)
@@ -334,9 +334,9 @@ func TestBurnAmountsWithSlippage(t *testing.T) {
 	assert.NoError(t, err)
 	amount0, amount1, err = p.BurnAmountsWithSlippage(slippageTolerance)
 	assert.NoError(t, err)
-	assert.Equal(t, "0", amount0.String())
+	assert.Equal(t, "0", amount0.Dec())
 	// ! 50045084660 in v3-sdk
-	assert.Equal(t, "50045084659", amount1.String())
+	assert.Equal(t, "50045084659", amount1.Dec())
 }
 
 func TestMintAmounts(t *testing.T) {
@@ -349,8 +349,8 @@ func TestMintAmounts(t *testing.T) {
 	assert.NoError(t, err)
 	amount0, amount1, err := p.MintAmounts()
 	assert.NoError(t, err)
-	assert.Equal(t, "49949961958869841754182", amount0.String())
-	assert.Equal(t, "0", amount1.String())
+	assert.Equal(t, "49949961958869841754182", amount0.Dec())
+	assert.Equal(t, "0", amount1.Dec())
 
 	// is correct for price below
 	p, err = NewPosition(DAIUSDCPool, B100e18Uint256,
@@ -359,8 +359,8 @@ func TestMintAmounts(t *testing.T) {
 	assert.NoError(t, err)
 	amount0, amount1, err = p.MintAmounts()
 	assert.NoError(t, err)
-	assert.Equal(t, "0", amount0.String())
-	assert.Equal(t, "49970077053", amount1.String())
+	assert.Equal(t, "0", amount0.Dec())
+	assert.Equal(t, "49970077053", amount1.Dec())
 
 	// is correct for in-range position
 	p, err = NewPosition(DAIUSDCPool, B100e18Uint256,
@@ -370,6 +370,6 @@ func TestMintAmounts(t *testing.T) {
 	amount0, amount1, err = p.MintAmounts()
 	assert.NoError(t, err)
 	// note these are rounded up
-	assert.Equal(t, "120054069145287995769397", amount0.String())
-	assert.Equal(t, "79831926243", amount1.String())
+	assert.Equal(t, "120054069145287995769397", amount0.Dec())
+	assert.Equal(t, "79831926243", amount1.Dec())
 }
