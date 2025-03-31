@@ -29,10 +29,8 @@ func addIn256(x, y, sum *uint256.Int) *uint256.Int {
 func GetAmount0Delta(sqrtRatioAX96, sqrtRatioBX96, liquidity *big.Int, roundUp bool) *big.Int {
 	// panic("GetAmount0Delta() is deprecated")
 
-	c := NewSqrtPriceCalculator()
-
 	result := new(Uint256)
-	c.GetAmount0DeltaV2(uint256.MustFromBig(sqrtRatioAX96), uint256.MustFromBig(sqrtRatioBX96), uint256.MustFromBig(liquidity), roundUp, result)
+	NewSqrtPriceCalculator().GetAmount0DeltaV2(uint256.MustFromBig(sqrtRatioAX96), uint256.MustFromBig(sqrtRatioBX96), uint256.MustFromBig(liquidity), roundUp, result)
 
 	return result.ToBig()
 }
@@ -92,11 +90,8 @@ func (c *SqrtPriceCalculator) GetAmount0DeltaV2(sqrtRatioAX96, sqrtRatioBX96 *Ui
 func GetAmount1Delta(sqrtRatioAX96, sqrtRatioBX96, liquidity *big.Int, roundUp bool) *big.Int {
 	// panic("GetAmount1Delta() is deprecated")
 
-	c := NewSqrtPriceCalculator()
-
 	result := new(Uint256)
-	c.GetAmount0DeltaV2(uint256.MustFromBig(sqrtRatioAX96), uint256.MustFromBig(sqrtRatioBX96), uint256.MustFromBig(liquidity), roundUp, result)
-
+	NewSqrtPriceCalculator().GetAmount0DeltaV2(uint256.MustFromBig(sqrtRatioAX96), uint256.MustFromBig(sqrtRatioBX96), uint256.MustFromBig(liquidity), roundUp, result)
 	return result.ToBig()
 }
 
@@ -189,6 +184,7 @@ func (c *SqrtPriceCalculator) getNextSqrtPriceFromAmount1RoundingDown(sqrtPX96 *
 	var err error
 
 	if add {
+		// <=
 		// if amount.Cmp(MaxUint160) <= 0 {
 		if !amount.Gt(MaxUint160) {
 			c.quotient.Div(c.tmp.Lsh(amount, 96), liquidity)
@@ -212,6 +208,7 @@ func (c *SqrtPriceCalculator) getNextSqrtPriceFromAmount1RoundingDown(sqrtPX96 *
 		return err
 	}
 
+	// <=
 	// if sqrtPX96.Cmp(c.quotient) <= 0 {
 	if !sqrtPX96.Gt(c.quotient) {
 		return ErrInvariant

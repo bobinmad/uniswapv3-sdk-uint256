@@ -94,9 +94,8 @@ var (
 func GetSqrtRatioAtTick(tick int) (*big.Int, error) {
 	// panic("GetSqrtRatioAtTick() is deprecated")
 
-	calculator := NewTickCalculator()
 	result := new(Uint160)
-	calculator.GetSqrtRatioAtTickV2(tick, result)
+	NewTickCalculator().GetSqrtRatioAtTickV2(tick, result)
 	return result.ToBig(), nil
 }
 

@@ -12,7 +12,8 @@ import (
 )
 
 func token(sortOrder, decimals, chainID uint) *entities.Token {
-	if sortOrder > 9 || sortOrder%1 != 0 {
+	// if sortOrder > 9 || sortOrder%1 != 0 {
+	if sortOrder > 9 {
 		panic("invalid sort order")
 	}
 	address := common.HexToAddress("0x" + strings.Repeat(fmt.Sprint(sortOrder), 40))

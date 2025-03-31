@@ -273,13 +273,22 @@ func (p *Pool) GetOutputAmount(inputAmount *entities.CurrencyAmount,
 	} else {
 		outputToken = p.Token0
 	}
-	pool, err := NewPoolV2(
+	// pool, err := NewPoolV2(
+	// 	p.Token0,
+	// 	p.Token1,
+	// 	p.Fee,
+	// 	swapResult.SqrtRatioX96,
+	// 	swapResult.Liquidity,
+	// 	swapResult.CurrentTick,
+	// 	p.TickDataProvider,
+	// )
+
+	pool := NewPoolV3(
+		uint16(p.Fee),
+		int32(p.TickCurrent),
+		p.SqrtRatioX96,
 		p.Token0,
 		p.Token1,
-		p.Fee,
-		swapResult.SqrtRatioX96,
-		swapResult.Liquidity,
-		swapResult.CurrentTick,
 		p.TickDataProvider,
 	)
 	if err != nil {
@@ -295,17 +304,19 @@ func (p *Pool) GetOutputAmount(inputAmount *entities.CurrencyAmount,
 
 func (p *Pool) GetOutputAmountV2(inputAmount *utils.Int256, zeroForOne bool,
 	sqrtPriceLimitX96 *utils.Uint160) (*GetAmountResultV2, error) {
-	swapResult, err := p.swap(zeroForOne, inputAmount, sqrtPriceLimitX96)
+
+	swapResult := new(SwapResultV2)
+	err := p.Swap(zeroForOne, inputAmount, sqrtPriceLimitX96, swapResult)
 	if err != nil {
 		return nil, err
 	}
 	return &GetAmountResultV2{
-		ReturnedAmount:     new(utils.Int256).Neg(swapResult.amountCalculated),
-		RemainingAmountIn:  new(utils.Int256).Set(swapResult.remainingAmountIn),
-		SqrtRatioX96:       swapResult.sqrtRatioX96,
-		Liquidity:          swapResult.liquidity,
-		CurrentTick:        swapResult.currentTick,
-		CrossInitTickLoops: swapResult.crossInitTickLoops,
+		ReturnedAmount:     new(utils.Int256).Neg(swapResult.AmountCalculated),
+		RemainingAmountIn:  new(utils.Int256).Set(swapResult.RemainingAmountIn),
+		SqrtRatioX96:       swapResult.SqrtRatioX96,
+		Liquidity:          swapResult.Liquidity,
+		CurrentTick:        swapResult.CurrentTick,
+		CrossInitTickLoops: swapResult.CrossInitTickLoops,
 	}, nil
 }
 
@@ -326,7 +337,8 @@ func (p *Pool) GetInputAmount(outputAmount *entities.CurrencyAmount,
 		return nil, nil, err
 	}
 	q.Neg(q)
-	swapResult, err := p.swap(zeroForOne, q, sqrtPriceLimitX96)
+	swapResult := new(SwapResultV2)
+	err = p.Swap(zeroForOne, q, sqrtPriceLimitX96, swapResult)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -336,19 +348,28 @@ func (p *Pool) GetInputAmount(outputAmount *entities.CurrencyAmount,
 	} else {
 		inputToken = p.Token1
 	}
-	pool, err := NewPoolV2(
+	// pool, err := NewPoolV3(
+	// 	p.Token0,
+	// 	p.Token1,
+	// 	p.Fee,
+	// 	swapResult.sqrtRatioX96,
+	// 	swapResult.liquidity,
+	// 	swapResult.currentTick,
+	// 	p.TickDataProvider,
+	// )
+
+	pool := NewPoolV3(
+		uint16(p.Fee),
+		int32(p.TickCurrent),
+		p.SqrtRatioX96,
 		p.Token0,
 		p.Token1,
-		p.Fee,
-		swapResult.sqrtRatioX96,
-		swapResult.liquidity,
-		swapResult.currentTick,
 		p.TickDataProvider,
 	)
 	if err != nil {
 		return nil, nil, err
 	}
-	return entities.FromRawAmount(inputToken, swapResult.amountCalculated.ToBig()), pool, nil
+	return entities.FromRawAmount(inputToken, swapResult.AmountCalculated.ToBig()), pool, nil
 }
 
 /**
@@ -361,165 +382,166 @@ func (p *Pool) GetInputAmount(outputAmount *entities.CurrencyAmount,
  * @returns swapResult.liquidity
  * @returns swapResult.tickCurrent
  */
-func (p *Pool) swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLimitX96 *utils.Uint160) (*SwapResult,
-	error) {
-	var err error
-	if sqrtPriceLimitX96 == nil {
-		if zeroForOne {
-			sqrtPriceLimitX96 = new(uint256.Int).AddUint64(utils.MinSqrtRatioU256, 1)
-		} else {
-			sqrtPriceLimitX96 = new(uint256.Int).SubUint64(utils.MaxSqrtRatioU256, 1)
-		}
-	}
+func (p *Pool) swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLimitX96 *utils.Uint160) (*SwapResult, error) {
+	panic("swap() is deprecated, use Swap() instead")
 
-	if zeroForOne {
-		if sqrtPriceLimitX96.Lt(utils.MinSqrtRatioU256) {
-			return nil, ErrSqrtPriceLimitX96TooLow
-		}
-		if sqrtPriceLimitX96.Cmp(p.SqrtRatioX96) >= 0 {
-			return nil, ErrSqrtPriceLimitX96TooHigh
-		}
-	} else {
-		if sqrtPriceLimitX96.Gt(utils.MaxSqrtRatioU256) {
-			return nil, ErrSqrtPriceLimitX96TooHigh
-		}
-		if sqrtPriceLimitX96.Cmp(p.SqrtRatioX96) <= 0 {
-			return nil, ErrSqrtPriceLimitX96TooLow
-		}
-	}
+	// var err error
+	// if sqrtPriceLimitX96 == nil {
+	// 	if zeroForOne {
+	// 		sqrtPriceLimitX96 = new(uint256.Int).AddUint64(utils.MinSqrtRatioU256, 1)
+	// 	} else {
+	// 		sqrtPriceLimitX96 = new(uint256.Int).SubUint64(utils.MaxSqrtRatioU256, 1)
+	// 	}
+	// }
 
-	exactInput := amountSpecified.Sign() >= 0
+	// if zeroForOne {
+	// 	if sqrtPriceLimitX96.Lt(utils.MinSqrtRatioU256) {
+	// 		return nil, ErrSqrtPriceLimitX96TooLow
+	// 	}
+	// 	if sqrtPriceLimitX96.Cmp(p.SqrtRatioX96) >= 0 {
+	// 		return nil, ErrSqrtPriceLimitX96TooHigh
+	// 	}
+	// } else {
+	// 	if sqrtPriceLimitX96.Gt(utils.MaxSqrtRatioU256) {
+	// 		return nil, ErrSqrtPriceLimitX96TooHigh
+	// 	}
+	// 	if sqrtPriceLimitX96.Cmp(p.SqrtRatioX96) <= 0 {
+	// 		return nil, ErrSqrtPriceLimitX96TooLow
+	// 	}
+	// }
 
-	// keep track of swap state
+	// exactInput := amountSpecified.Sign() >= 0
 
-	state := struct {
-		amountSpecifiedRemaining *utils.Int256
-		amountCalculated         *utils.Int256
-		sqrtPriceX96             *utils.Uint160
-		tick                     int
-		liquidity                *utils.Uint128
-	}{
-		amountSpecifiedRemaining: new(utils.Int256).Set(amountSpecified),
-		amountCalculated:         int256.NewInt(0),
-		sqrtPriceX96:             new(utils.Uint160).Set(p.SqrtRatioX96),
-		tick:                     p.TickCurrent,
-		liquidity:                new(utils.Uint128).Set(p.Liquidity),
-	}
+	// // keep track of swap state
 
-	// crossInitTickLoops is the number of loops that cross an initialized tick.
-	// We only count when tick passes an initialized tick, since gas only significant in this case.
-	crossInitTickLoops := 0
+	// state := struct {
+	// 	amountSpecifiedRemaining *utils.Int256
+	// 	amountCalculated         *utils.Int256
+	// 	sqrtPriceX96             *utils.Uint160
+	// 	tick                     int
+	// 	liquidity                *utils.Uint128
+	// }{
+	// 	amountSpecifiedRemaining: new(utils.Int256).Set(amountSpecified),
+	// 	amountCalculated:         int256.NewInt(0),
+	// 	sqrtPriceX96:             new(utils.Uint160).Set(p.SqrtRatioX96),
+	// 	tick:                     p.TickCurrent,
+	// 	liquidity:                new(utils.Uint128).Set(p.Liquidity),
+	// }
 
-	// start swap while loop
-	for !state.amountSpecifiedRemaining.IsZero() && !state.sqrtPriceX96.Eq(sqrtPriceLimitX96) {
-		var step StepComputations
-		step.sqrtPriceStartX96.Set(state.sqrtPriceX96)
+	// // crossInitTickLoops is the number of loops that cross an initialized tick.
+	// // We only count when tick passes an initialized tick, since gas only significant in this case.
+	// crossInitTickLoops := 0
 
-		// because each iteration of the while loop rounds, we can't optimize this code (relative to the smart contract)
-		// by simply traversing to the next available tick, we instead need to exactly replicate
-		// tickBitmap.nextInitializedTickWithinOneWord
-		step.tickNext, step.initialized, err = p.TickDataProvider.NextInitializedTickIndex(state.tick, zeroForOne)
-		if err != nil {
-			return nil, err
-		}
+	// // start swap while loop
+	// for !state.amountSpecifiedRemaining.IsZero() && !state.sqrtPriceX96.Eq(sqrtPriceLimitX96) {
+	// 	var step StepComputations
+	// 	step.sqrtPriceStartX96.Set(state.sqrtPriceX96)
 
-		if step.tickNext < utils.MinTick {
-			step.tickNext = utils.MinTick
-		} else if step.tickNext > utils.MaxTick {
-			step.tickNext = utils.MaxTick
-		}
+	// 	// because each iteration of the while loop rounds, we can't optimize this code (relative to the smart contract)
+	// 	// by simply traversing to the next available tick, we instead need to exactly replicate
+	// 	// tickBitmap.nextInitializedTickWithinOneWord
+	// 	step.tickNext, step.initialized, err = p.TickDataProvider.NextInitializedTickIndex(state.tick, zeroForOne)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
 
-		p.tickCalculator.GetSqrtRatioAtTickV2(step.tickNext, &step.sqrtPriceNextX96)
+	// 	if step.tickNext < utils.MinTick {
+	// 		step.tickNext = utils.MinTick
+	// 	} else if step.tickNext > utils.MaxTick {
+	// 		step.tickNext = utils.MaxTick
+	// 	}
 
-		var targetValue utils.Uint160
-		if zeroForOne {
-			if step.sqrtPriceNextX96.Lt(sqrtPriceLimitX96) {
-				targetValue.Set(sqrtPriceLimitX96)
-			} else {
-				targetValue.Set(&step.sqrtPriceNextX96)
-			}
-		} else {
-			if step.sqrtPriceNextX96.Gt(sqrtPriceLimitX96) {
-				targetValue.Set(sqrtPriceLimitX96)
-			} else {
-				targetValue.Set(&step.sqrtPriceNextX96)
-			}
-		}
+	// 	p.tickCalculator.GetSqrtRatioAtTickV2(step.tickNext, &step.sqrtPriceNextX96)
 
-		var nxtSqrtPriceX96 utils.Uint160
-		err = p.swapStepCalculator.ComputeSwapStep(state.sqrtPriceX96, &targetValue, state.liquidity, state.amountSpecifiedRemaining,
-			p.Fee,
-			&nxtSqrtPriceX96, &step.amountIn, &step.amountOut, &step.feeAmount)
-		if err != nil {
-			return nil, err
-		}
-		state.sqrtPriceX96.Set(&nxtSqrtPriceX96)
+	// 	var targetValue utils.Uint160
+	// 	if zeroForOne {
+	// 		if step.sqrtPriceNextX96.Lt(sqrtPriceLimitX96) {
+	// 			targetValue.Set(sqrtPriceLimitX96)
+	// 		} else {
+	// 			targetValue.Set(&step.sqrtPriceNextX96)
+	// 		}
+	// 	} else {
+	// 		if step.sqrtPriceNextX96.Gt(sqrtPriceLimitX96) {
+	// 			targetValue.Set(sqrtPriceLimitX96)
+	// 		} else {
+	// 			targetValue.Set(&step.sqrtPriceNextX96)
+	// 		}
+	// 	}
 
-		var amountInPlusFee utils.Uint256
-		amountInPlusFee.Add(&step.amountIn, &step.feeAmount)
+	// 	var nxtSqrtPriceX96 utils.Uint160
+	// 	err = p.swapStepCalculator.ComputeSwapStep(state.sqrtPriceX96, &targetValue, state.liquidity, state.amountSpecifiedRemaining,
+	// 		p.Fee,
+	// 		&nxtSqrtPriceX96, &step.amountIn, &step.amountOut, &step.feeAmount)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	state.sqrtPriceX96.Set(&nxtSqrtPriceX96)
 
-		var amountInPlusFeeSigned utils.Int256
-		err = p.intTypes.ToInt256(&amountInPlusFee, &amountInPlusFeeSigned)
-		if err != nil {
-			return nil, err
-		}
+	// 	var amountInPlusFee utils.Uint256
+	// 	amountInPlusFee.Add(&step.amountIn, &step.feeAmount)
 
-		var amountOutSigned utils.Int256
-		err = p.intTypes.ToInt256(&step.amountOut, &amountOutSigned)
-		if err != nil {
-			return nil, err
-		}
+	// 	var amountInPlusFeeSigned utils.Int256
+	// 	err = p.intTypes.ToInt256(&amountInPlusFee, &amountInPlusFeeSigned)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
 
-		if exactInput {
-			state.amountSpecifiedRemaining.Sub(state.amountSpecifiedRemaining, &amountInPlusFeeSigned)
-			state.amountCalculated.Sub(state.amountCalculated, &amountOutSigned)
-		} else {
-			state.amountSpecifiedRemaining.Add(state.amountSpecifiedRemaining, &amountOutSigned)
-			state.amountCalculated.Add(state.amountCalculated, &amountInPlusFeeSigned)
-		}
+	// 	var amountOutSigned utils.Int256
+	// 	err = p.intTypes.ToInt256(&step.amountOut, &amountOutSigned)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
 
-		// TODO
-		if state.sqrtPriceX96.Eq(&step.sqrtPriceNextX96) {
-			// if the tick is initialized, run the tick transition
-			if step.initialized {
-				tick, err := p.TickDataProvider.GetTick(step.tickNext)
-				if err != nil {
-					return nil, err
-				}
+	// 	if exactInput {
+	// 		state.amountSpecifiedRemaining.Sub(state.amountSpecifiedRemaining, &amountInPlusFeeSigned)
+	// 		state.amountCalculated.Sub(state.amountCalculated, &amountOutSigned)
+	// 	} else {
+	// 		state.amountSpecifiedRemaining.Add(state.amountSpecifiedRemaining, &amountOutSigned)
+	// 		state.amountCalculated.Add(state.amountCalculated, &amountInPlusFeeSigned)
+	// 	}
 
-				liquidityNet := tick.LiquidityNet
-				// if we're moving leftward, we interpret liquidityNet as the opposite sign
-				// safe because liquidityNet cannot be type(int128).min
-				if zeroForOne {
-					liquidityNet = new(utils.Int128).Neg(liquidityNet)
-				}
-				p.intTypes.AddDeltaInPlace(state.liquidity, liquidityNet)
+	// 	// TODO
+	// 	if state.sqrtPriceX96.Eq(&step.sqrtPriceNextX96) {
+	// 		// if the tick is initialized, run the tick transition
+	// 		if step.initialized {
+	// 			tick, err := p.TickDataProvider.GetTick(step.tickNext)
+	// 			if err != nil {
+	// 				return nil, err
+	// 			}
 
-				crossInitTickLoops++
-			}
-			if zeroForOne {
-				state.tick = step.tickNext - 1
-			} else {
-				state.tick = step.tickNext
-			}
+	// 			liquidityNet := tick.LiquidityNet
+	// 			// if we're moving leftward, we interpret liquidityNet as the opposite sign
+	// 			// safe because liquidityNet cannot be type(int128).min
+	// 			if zeroForOne {
+	// 				liquidityNet = new(utils.Int128).Neg(liquidityNet)
+	// 			}
+	// 			p.intTypes.AddDeltaInPlace(state.liquidity, liquidityNet)
 
-		} else if !state.sqrtPriceX96.Eq(&step.sqrtPriceStartX96) {
-			// recompute unless we're on a lower tick boundary (i.e. already transitioned ticks), and haven't moved
-			state.tick, err = p.tickCalculator.GetTickAtSqrtRatioV2(state.sqrtPriceX96)
-			if err != nil {
-				return nil, err
-			}
-		}
-	}
+	// 			crossInitTickLoops++
+	// 		}
+	// 		if zeroForOne {
+	// 			state.tick = step.tickNext - 1
+	// 		} else {
+	// 			state.tick = step.tickNext
+	// 		}
 
-	return &SwapResult{
-		amountCalculated:   state.amountCalculated,
-		sqrtRatioX96:       state.sqrtPriceX96,
-		liquidity:          state.liquidity,
-		currentTick:        state.tick,
-		remainingAmountIn:  state.amountSpecifiedRemaining,
-		crossInitTickLoops: crossInitTickLoops,
-	}, nil
+	// 	} else if !state.sqrtPriceX96.Eq(&step.sqrtPriceStartX96) {
+	// 		// recompute unless we're on a lower tick boundary (i.e. already transitioned ticks), and haven't moved
+	// 		state.tick, err = p.tickCalculator.GetTickAtSqrtRatioV2(state.sqrtPriceX96)
+	// 		if err != nil {
+	// 			return nil, err
+	// 		}
+	// 	}
+	// }
+
+	// return &SwapResult{
+	// 	amountCalculated:   state.amountCalculated,
+	// 	sqrtRatioX96:       state.sqrtPriceX96,
+	// 	liquidity:          state.liquidity,
+	// 	currentTick:        state.tick,
+	// 	remainingAmountIn:  state.amountSpecifiedRemaining,
+	// 	crossInitTickLoops: crossInitTickLoops,
+	// }, nil
 }
 
 func (p *Pool) tickSpacing() int {
