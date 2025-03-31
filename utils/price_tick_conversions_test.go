@@ -96,13 +96,16 @@ func TestPriceToClosestTick(t *testing.T) {
 		{"1.01 t2/1 t0", args{tickToPriceNoError(token0, token2_6decimals, -276225), token0, token2_6decimals}, -276225},
 		{"1 t0/1.01 t2", args{tickToPriceNoError(token2_6decimals, token0, -276225), token2_6decimals, token0}, -276225},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := PriceToClosestTick(tt.args.price, tt.args.baseToken, tt.args.quoteToken)
+
 			if err != nil {
 				t.Errorf("PriceToClosestTick() error = %v", err)
 				return
 			}
+
 			if got != tt.wantTick {
 				t.Errorf("PriceToClosestTick() = %v, want %v", got, tt.wantTick)
 			}

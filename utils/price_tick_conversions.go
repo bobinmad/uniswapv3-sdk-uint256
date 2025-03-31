@@ -43,20 +43,24 @@ func PriceToClosestTick(price *entities.Price, baseToken, quoteToken *entities.T
 	if err != nil {
 		return 0, err
 	}
+
 	var sqrtRatioX96 *uint256.Int
 	if sorted {
 		sqrtRatioX96 = EncodeSqrtRatioX96(uint256.MustFromBig(price.Numerator), uint256.MustFromBig(price.Denominator))
 	} else {
 		sqrtRatioX96 = EncodeSqrtRatioX96(uint256.MustFromBig(price.Denominator), uint256.MustFromBig(price.Numerator))
 	}
+
 	tick, err := NewTickCalculator().GetTickAtSqrtRatioV2(sqrtRatioX96)
 	if err != nil {
 		return 0, err
 	}
+
 	nextTickPrice, err := TickToPrice(baseToken, quoteToken, tick+1)
 	if err != nil {
 		return 0, err
 	}
+
 	if sorted {
 		if !price.LessThan(nextTickPrice.Fraction) {
 			tick++
@@ -66,5 +70,6 @@ func PriceToClosestTick(price *entities.Price, baseToken, quoteToken *entities.T
 			tick++
 		}
 	}
+
 	return tick, nil
 }

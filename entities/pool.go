@@ -262,7 +262,8 @@ func (p *Pool) GetOutputAmount(inputAmount *entities.CurrencyAmount,
 	if err != nil {
 		return nil, err
 	}
-	swapResult, err := p.swap(zeroForOne, q, sqrtPriceLimitX96)
+	swapResult := new(SwapResultV2)
+	err = p.Swap(zeroForOne, q, sqrtPriceLimitX96, swapResult)
 	if err != nil {
 		return nil, err
 	}
@@ -276,20 +277,19 @@ func (p *Pool) GetOutputAmount(inputAmount *entities.CurrencyAmount,
 		p.Token0,
 		p.Token1,
 		p.Fee,
-		swapResult.sqrtRatioX96,
-		swapResult.liquidity,
-		swapResult.currentTick,
+		swapResult.SqrtRatioX96,
+		swapResult.Liquidity,
+		swapResult.CurrentTick,
 		p.TickDataProvider,
 	)
 	if err != nil {
 		return nil, err
 	}
 	return &GetAmountResult{
-		ReturnedAmount: entities.FromRawAmount(outputToken,
-			new(utils.Int256).Neg(swapResult.amountCalculated).ToBig()),
-		RemainingAmountIn:  entities.FromRawAmount(inputAmount.Currency, swapResult.remainingAmountIn.ToBig()),
+		ReturnedAmount: entities.FromRawAmount(outputToken, new(utils.Int256).Neg(swapResult.AmountCalculated).ToBig()),
+		RemainingAmountIn:  entities.FromRawAmount(inputAmount.Currency, swapResult.RemainingAmountIn.ToBig()),
 		NewPoolState:       pool,
-		CrossInitTickLoops: swapResult.crossInitTickLoops,
+		CrossInitTickLoops: swapResult.CrossInitTickLoops,
 	}, nil
 }
 
