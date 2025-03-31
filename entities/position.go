@@ -394,10 +394,10 @@ func FromAmounts(pool *Pool, tickLower, tickUpper int, amount0, amount1 *uint256
 	tickCalculator := utils.NewTickCalculator()
 	liquidityCalculator := utils.NewMaxLiquidityForAmountsCalculator()
 
-	var sqrtRatioAX96 *utils.Uint160
+	var sqrtRatioAX96 = new(utils.Uint160)
 	tickCalculator.GetSqrtRatioAtTickV2(tickLower, sqrtRatioAX96)
 
-	var sqrtRatioBX96 *utils.Uint160
+	var sqrtRatioBX96 = new(utils.Uint160)
 	tickCalculator.GetSqrtRatioAtTickV2(tickUpper, sqrtRatioBX96)
 
 	return NewPosition(pool, liquidityCalculator.MaxLiquidityForAmounts(pool.SqrtRatioX96, sqrtRatioAX96, sqrtRatioBX96, amount0, amount1, useFullPrecision), tickLower, tickUpper)
