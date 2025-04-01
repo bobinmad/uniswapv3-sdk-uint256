@@ -56,8 +56,8 @@ func (c *MaxLiquidityForAmountsCalculator) maxLiquidityForAmount0Precise(sqrtRat
 		sqrtRatioAX96, sqrtRatioBX96 = sqrtRatioBX96, sqrtRatioAX96
 	}
 
-	numerator := new(uint256.Int).Mul(new(uint256.Int).Mul(amount0, sqrtRatioAX96), sqrtRatioBX96)
-	denominator := new(uint256.Int).Mul(constants.Q96U256, new(uint256.Int).Sub(sqrtRatioBX96, sqrtRatioAX96))
+	numerator := c.res0.Mul(c.res1.Mul(amount0, sqrtRatioAX96), sqrtRatioBX96)
+	denominator := c.tmp.Mul(constants.Q96U256, c.tmp2.Sub(sqrtRatioBX96, sqrtRatioAX96))
 	result.Div(numerator, denominator)
 }
 
