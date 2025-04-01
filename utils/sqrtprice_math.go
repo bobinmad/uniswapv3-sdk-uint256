@@ -65,7 +65,7 @@ func (c *SqrtPriceCalculator) GetAmount0DeltaV2(sqrtRatioAX96, sqrtRatioBX96 *Ui
 		sqrtRatioAX96, sqrtRatioBX96 = sqrtRatioBX96, sqrtRatioAX96
 	}
 
-	c.numerator1.Lsh(liquidity, 96)
+	c.numerator1.Lsh(new(uint256.Int).Set(liquidity), 96)
 	c.numerator2.Sub(sqrtRatioBX96, sqrtRatioAX96)
 
 	if roundUp {

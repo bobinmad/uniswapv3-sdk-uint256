@@ -176,6 +176,7 @@ func (p *Position) CalcAmounts() (*utils.Uint256, *utils.Uint256) {
 		// calc amount0
 		p.tickCalculator.GetSqrtRatioAtTickV2(p.TickLower, p.sqrtTickLowerTmp)
 		p.tickCalculator.GetSqrtRatioAtTickV2(p.TickUpper, p.sqrtTickUpperTmp)
+
 		p.sqrtPriceCalculator.GetAmount0DeltaV2(p.sqrtTickLowerTmp, p.sqrtTickUpperTmp, p.Liquidity, false, p.amount0Tmp)
 
 		// amount1 is zero

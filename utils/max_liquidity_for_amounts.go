@@ -103,13 +103,14 @@ func (c *MaxLiquidityForAmountsCalculator) MaxLiquidityForAmounts(sqrtRatioCurre
 		maxLiquidityForAmount0(sqrtRatioAX96, sqrtRatioBX96, amount0, c.res)
 		return c.res
 	} else if sqrtRatioCurrentX96.Lt(sqrtRatioBX96) {
-		// res0 := new(uint256.Int)
+		// тут необходимы именно новые переменные. нельзя заюзать статик-кэш, иначе будет ошибка.
+		res0 := new(uint256.Int)
 		res1 := new(uint256.Int)
-		maxLiquidityForAmount0(sqrtRatioCurrentX96, sqrtRatioBX96, amount0, c.res0)
+		maxLiquidityForAmount0(sqrtRatioCurrentX96, sqrtRatioBX96, amount0, res0)
 		c.maxLiquidityForAmount1(sqrtRatioAX96, sqrtRatioCurrentX96, amount1, res1)
 
-		if c.res0.Lt(res1) {
-			return c.res0
+		if res0.Lt(res1) {
+			return res0
 		}
 
 		return res1
