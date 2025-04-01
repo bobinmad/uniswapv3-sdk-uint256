@@ -37,7 +37,7 @@ func initPool() (*Pool, int, int) {
 	// }
 
 	pool := NewPoolV3(uint16(constants.FeeLow), int32(poolTickCurrent), poolSqrtRatioStart, DAI, USDC, nil)
-	pool.Liquidity = uint256.NewInt(0)
+	// pool.Liquidity = uint256.NewInt(0)
 
 	return pool, poolTickCurrent, tickSpacing
 }
