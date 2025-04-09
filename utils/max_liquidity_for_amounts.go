@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"math/big"
+
 	"github.com/KyberNetwork/uniswapv3-sdk-uint256/constants"
 	"github.com/holiman/uint256"
 )
@@ -11,6 +13,10 @@ type MaxLiquidityForAmountsCalculator struct {
 	res1 *uint256.Int
 	tmp  *uint256.Int
 	tmp2 *uint256.Int
+
+	tmpBig  *big.Int
+	tmpBig0 *big.Int
+	tmpBig1 *big.Int
 }
 
 func NewMaxLiquidityForAmountsCalculator() *MaxLiquidityForAmountsCalculator {
@@ -20,6 +26,10 @@ func NewMaxLiquidityForAmountsCalculator() *MaxLiquidityForAmountsCalculator {
 		res1: new(uint256.Int),
 		tmp:  new(uint256.Int),
 		tmp2: new(uint256.Int),
+
+		tmpBig:  new(big.Int),
+		tmpBig0: new(big.Int),
+		tmpBig1: new(big.Int),
 	}
 }
 
@@ -56,9 +66,13 @@ func (c *MaxLiquidityForAmountsCalculator) maxLiquidityForAmount0Precise(sqrtRat
 		sqrtRatioAX96, sqrtRatioBX96 = sqrtRatioBX96, sqrtRatioAX96
 	}
 
-	numerator := c.res0.Mul(c.res1.Mul(amount0, sqrtRatioAX96), sqrtRatioBX96)
-	denominator := c.tmp.Mul(constants.Q96U256, c.tmp2.Sub(sqrtRatioBX96, sqrtRatioAX96))
-	result.Div(numerator, denominator)
+	sqrtRatioAX96Big := sqrtRatioAX96.ToBig()
+	sqrtRatioBX96Big := sqrtRatioBX96.ToBig()
+
+	numerator := c.tmpBig0.Mul(c.tmpBig0.Mul(amount0.ToBig(), sqrtRatioAX96Big), sqrtRatioBX96Big)
+	denominator := c.tmpBig1.Mul(constants.Q96, c.tmpBig1.Sub(sqrtRatioBX96Big, sqrtRatioAX96Big))
+
+	result.SetFromBig(c.tmpBig.Div(numerator, denominator))
 }
 
 /**

@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"math/big"
 	"reflect"
 	"testing"
 
@@ -20,16 +21,19 @@ func TestMaxLiquidityForAmounts(t *testing.T) {
 		useFullPrecision    bool
 	}
 
+	var tmp *big.Int
+
 	// tmp, _ := new(big.Int).SetString("1214437677402050006470401421068302637228917309992228326090730924516431320489727", 10)
-	// // spew.Dump(tmp)
-	// // lgamounts0 := uint256.MustFromBig(tmp)
-	// //spew.Dump(lgamounts0)
+	// lgamounts0 := new(uint256.Int)
+	// lgamounts0.SetFromBig(tmp)
 
 	// tmp, _ = new(big.Int).SetString("1214437677402050006470401421098959354205873606971497132040612572422243086574654", 10)
-	// // lgamounts1 := uint256.MustFromBig(tmp)
+	// lgamounts1 := new(uint256.Int)
+	// lgamounts1.SetFromBig(tmp)
 
-	// tmp, _ = new(big.Int).SetString("1214437677402050006470401421082903520362793114274352355276488318240158678126184", 10)
-	// // lgamounts2 := uint256.MustFromBig(tmp)
+	tmp, _ = new(big.Int).SetString("1214437677402050006470401421082903520362793114274352355276488318240158678126184", 10)
+	lgamounts2 := new(uint256.Int)
+	lgamounts2.SetFromBig(tmp)
 
 	// lgamounts0, _ := new(big.Int).SetString("1214437677402050006470401421068302637228917309992228326090730924516431320489727", 10)
 	// lgamounts1, _ := new(big.Int).SetString("1214437677402050006470401421098959354205873606971497132040612572422243086574654", 10)
@@ -208,18 +212,18 @@ func TestMaxLiquidityForAmounts(t *testing.T) {
 			},
 			want: uint256.NewInt(1048),
 		},
-		// {
-		// 	name: "precise - price below - max token0, 200 token1",
-		// 	args: args{
-		// 		EncodeSqrtRatioX96(uint256.NewInt(99), uint256.NewInt(110)),
-		// 		EncodeSqrtRatioX96(uint256.NewInt(100), uint256.NewInt(110)),
-		// 		EncodeSqrtRatioX96(uint256.NewInt(110), uint256.NewInt(100)),
-		// 		MaxUint256U256,
-		// 		uint256.NewInt(200),
-		// 		true,
-		// 	},
-		// 	want: lgamounts2,
-		// },
+		{
+			name: "precise - price below - max token0, 200 token1",
+			args: args{
+				EncodeSqrtRatioX96(uint256.NewInt(99), uint256.NewInt(110)),
+				EncodeSqrtRatioX96(uint256.NewInt(100), uint256.NewInt(110)),
+				EncodeSqrtRatioX96(uint256.NewInt(110), uint256.NewInt(100)),
+				MaxUint256U256,
+				uint256.NewInt(200),
+				true,
+			},
+			want: lgamounts2,
+		},
 		{
 			name: "precise - price above - 100 token0, 200 token1",
 			args: args{
@@ -256,6 +260,20 @@ func TestMaxLiquidityForAmounts(t *testing.T) {
 			},
 			want: uint256.NewInt(2097),
 		},
+
+		// // IRQ test
+		// {
+		// 	name: "precise - imprecise",
+		// 	args: args{
+		// 		EncodeSqrtRatioX96(uint256.NewInt(111), uint256.NewInt(100)),
+		// 		EncodeSqrtRatioX96(uint256.NewInt(100), uint256.NewInt(110)),
+		// 		EncodeSqrtRatioX96(uint256.NewInt(110), uint256.NewInt(100)),
+		// 		MaxUint256U256,
+		// 		uint256.NewInt(200),
+		// 		true,
+		// 	},
+		// 	want: StrToUint256("36185896987858459994840"),
+		// },
 	}
 
 	calculator := NewMaxLiquidityForAmountsCalculator()
@@ -267,4 +285,10 @@ func TestMaxLiquidityForAmounts(t *testing.T) {
 			}
 		})
 	}
+}
+
+func StrToUint256(val string) (v *uint256.Int) {
+	v = new(uint256.Int)
+	v.SetFromDecimal(val)
+	return
 }
