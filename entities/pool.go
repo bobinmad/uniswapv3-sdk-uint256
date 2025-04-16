@@ -581,6 +581,7 @@ type State struct {
 
 func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLimitX96 *utils.Uint160, swapResult *SwapResultV2) error {
 	var err error
+
 	if sqrtPriceLimitX96 == nil {
 		if zeroForOne {
 			sqrtPriceLimitX96 = sqrtPriceLimitX96Upper
@@ -654,21 +655,18 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 			}
 		}
 
-		err = p.swapStepCalculator.ComputeSwapStep(p.lastState.sqrtPriceX96, p.targetValue, p.lastState.liquidity, p.lastState.amountSpecifiedRemaining, p.Fee, p.nxtSqrtPriceX96, &p.step.amountIn, &p.step.amountOut, &p.step.feeAmount)
-		if err != nil {
+		if err = p.swapStepCalculator.ComputeSwapStep(p.lastState.sqrtPriceX96, p.targetValue, p.lastState.liquidity, p.lastState.amountSpecifiedRemaining, p.Fee, p.nxtSqrtPriceX96, &p.step.amountIn, &p.step.amountOut, &p.step.feeAmount); err != nil {
 			return err
 		}
 		p.lastState.sqrtPriceX96.Set(p.nxtSqrtPriceX96)
 
 		p.amountInPlusFee.Add(&p.step.amountIn, &p.step.feeAmount)
 
-		err = p.intTypes.ToInt256(p.amountInPlusFee, p.amountInPlusFeeSigned)
-		if err != nil {
+		if err = p.intTypes.ToInt256(p.amountInPlusFee, p.amountInPlusFeeSigned); err != nil {
 			return err
 		}
 
-		err = p.intTypes.ToInt256(&p.step.amountOut, p.amountOutSigned)
-		if err != nil {
+		if err = p.intTypes.ToInt256(&p.step.amountOut, p.amountOutSigned); err != nil {
 			return err
 		}
 

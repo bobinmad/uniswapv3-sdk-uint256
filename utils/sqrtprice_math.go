@@ -65,7 +65,7 @@ func (c *SqrtPriceCalculator) GetAmount0DeltaV2(sqrtRatioAX96, sqrtRatioBX96 *Ui
 		sqrtRatioAX96, sqrtRatioBX96 = sqrtRatioBX96, sqrtRatioAX96
 	}
 
-	c.numerator1.Lsh(new(uint256.Int).Set(liquidity), 96)
+	c.numerator1.Lsh(liquidity, 96)
 	c.numerator2.Sub(sqrtRatioBX96, sqrtRatioAX96)
 
 	if roundUp {
@@ -113,32 +113,26 @@ func (c *SqrtPriceCalculator) GetAmount1DeltaV2(sqrtRatioAX96, sqrtRatioBX96 *Ui
 	}
 
 	// : FullMath.mulDiv(liquidity, sqrtRatioBX96 - sqrtRatioAX96, FixedPoint96.Q96);
-	if err = c.fullMath.MulDivV2(liquidity, c.diff, constants.Q96U256, result, nil); err != nil {
-		return err
-	}
-	return nil
+	return c.fullMath.MulDivV2(liquidity, c.diff, constants.Q96U256, result, nil)
 }
 
 func (c *SqrtPriceCalculator) GetNextSqrtPriceFromInput(sqrtPX96 *Uint160, liquidity *Uint128, amountIn *uint256.Int, zeroForOne bool, result *Uint160) error {
-	if sqrtPX96.Sign() <= 0 {
+	if sqrtPX96.Sign() <= 0 || liquidity.Sign() <= 0 {
 		return ErrSqrtPriceLessThanZero
 	}
-	if liquidity.Sign() <= 0 {
-		return ErrLiquidityLessThanZero
-	}
+
 	if zeroForOne {
 		return c.getNextSqrtPriceFromAmount0RoundingUp(sqrtPX96, liquidity, amountIn, true, result)
 	}
+
 	return c.getNextSqrtPriceFromAmount1RoundingDown(sqrtPX96, liquidity, amountIn, true, result)
 }
 
 func (c *SqrtPriceCalculator) GetNextSqrtPriceFromOutput(sqrtPX96 *Uint160, liquidity *Uint128, amountOut *uint256.Int, zeroForOne bool, result *Uint160) error {
-	if sqrtPX96.Sign() <= 0 {
+	if sqrtPX96.Sign() <= 0 || liquidity.Sign() <= 0 {
 		return ErrSqrtPriceLessThanZero
 	}
-	if liquidity.Sign() <= 0 {
-		return ErrLiquidityLessThanZero
-	}
+
 	if zeroForOne {
 		return c.getNextSqrtPriceFromAmount1RoundingDown(sqrtPX96, liquidity, amountOut, false, result)
 	}

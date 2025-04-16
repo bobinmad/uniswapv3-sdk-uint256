@@ -115,61 +115,62 @@ func (c *TickCalculator) GetSqrtRatioAtTickV2(tick int, result *Uint160) {
 	} else {
 		c.ratio.Set(sqrtConst2)
 	}
-	if (c.absTick & 0x2) != 0 {
+
+	if c.absTick&0x2 != 0 {
 		c.mulShift(c.ratio, sqrtConst3)
 	}
-	if (c.absTick & 0x4) != 0 {
+	if c.absTick&0x4 != 0 {
 		c.mulShift(c.ratio, sqrtConst4)
 	}
-	if (c.absTick & 0x8) != 0 {
+	if c.absTick&0x8 != 0 {
 		c.mulShift(c.ratio, sqrtConst5)
 	}
-	if (c.absTick & 0x10) != 0 {
+	if c.absTick&0x10 != 0 {
 		c.mulShift(c.ratio, sqrtConst6)
 	}
-	if (c.absTick & 0x20) != 0 {
+	if c.absTick&0x20 != 0 {
 		c.mulShift(c.ratio, sqrtConst7)
 	}
-	if (c.absTick & 0x40) != 0 {
+	if c.absTick&0x40 != 0 {
 		c.mulShift(c.ratio, sqrtConst8)
 	}
-	if (c.absTick & 0x80) != 0 {
+	if c.absTick&0x80 != 0 {
 		c.mulShift(c.ratio, sqrtConst9)
 	}
-	if (c.absTick & 0x100) != 0 {
+	if c.absTick&0x100 != 0 {
 		c.mulShift(c.ratio, sqrtConst10)
 	}
-	if (c.absTick & 0x200) != 0 {
+	if c.absTick&0x200 != 0 {
 		c.mulShift(c.ratio, sqrtConst11)
 	}
-	if (c.absTick & 0x400) != 0 {
+	if c.absTick&0x400 != 0 {
 		c.mulShift(c.ratio, sqrtConst12)
 	}
-	if (c.absTick & 0x800) != 0 {
+	if c.absTick&0x800 != 0 {
 		c.mulShift(c.ratio, sqrtConst13)
 	}
-	if (c.absTick & 0x1000) != 0 {
+	if c.absTick&0x1000 != 0 {
 		c.mulShift(c.ratio, sqrtConst14)
 	}
-	if (c.absTick & 0x2000) != 0 {
+	if c.absTick&0x2000 != 0 {
 		c.mulShift(c.ratio, sqrtConst15)
 	}
-	if (c.absTick & 0x4000) != 0 {
+	if c.absTick&0x4000 != 0 {
 		c.mulShift(c.ratio, sqrtConst16)
 	}
-	if (c.absTick & 0x8000) != 0 {
+	if c.absTick&0x8000 != 0 {
 		c.mulShift(c.ratio, sqrtConst17)
 	}
-	if (c.absTick & 0x10000) != 0 {
+	if c.absTick&0x10000 != 0 {
 		c.mulShift(c.ratio, sqrtConst18)
 	}
-	if (c.absTick & 0x20000) != 0 {
+	if c.absTick&0x20000 != 0 {
 		c.mulShift(c.ratio, sqrtConst19)
 	}
-	if (c.absTick & 0x40000) != 0 {
+	if c.absTick&0x40000 != 0 {
 		c.mulShift(c.ratio, sqrtConst20)
 	}
-	if (c.absTick & 0x80000) != 0 {
+	if c.absTick&0x80000 != 0 {
 		c.mulShift(c.ratio, sqrtConst21)
 	}
 
@@ -212,7 +213,7 @@ func (c *TickCalculator) GetTickAtSqrtRatioV2(sqrtRatioX96 *Uint160) (int, error
 		return 0, err
 	}
 
-	if msb >= 128 {
+	if msb > 127 {
 		c.r.Rsh(c.sqrtRatioX128, msb-127)
 	} else {
 		c.r.Lsh(c.sqrtRatioX128, 127-msb)
@@ -220,6 +221,7 @@ func (c *TickCalculator) GetTickAtSqrtRatioV2(sqrtRatioX96 *Uint160) (int, error
 
 	c.log2.Lsh(c.log2.SetInt64(int64(msb-128)), 64)
 
+	var tmpsigned *int256.Int
 	for i := 0; i < 14; i++ {
 		c.tmp.Mul(c.r, c.r)
 		c.r.Rsh(c.tmp, 127)
@@ -227,7 +229,7 @@ func (c *TickCalculator) GetTickAtSqrtRatioV2(sqrtRatioX96 *Uint160) (int, error
 		c.tmp.Lsh(c.f, uint(63-i))
 
 		// this is for Or, so we can cast the underlying words directly without copying
-		tmpsigned := (*int256.Int)(c.tmp)
+		tmpsigned = (*int256.Int)(c.tmp)
 
 		c.log2.Or(c.log2, tmpsigned)
 		c.r.Rsh(c.r, uint(c.f.Uint64()))
@@ -242,7 +244,7 @@ func (c *TickCalculator) GetTickAtSqrtRatioV2(sqrtRatioX96 *Uint160) (int, error
 		return tickLow, nil
 	}
 
-	c.GetSqrtRatioAtTickV2(int(tickHigh), c.sqrtRatio)
+	c.GetSqrtRatioAtTickV2(tickHigh, c.sqrtRatio)
 	if !c.sqrtRatio.Gt(sqrtRatioX96) {
 		return tickHigh, nil
 	}
