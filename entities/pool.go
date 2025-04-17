@@ -166,7 +166,7 @@ func NewPoolV3(
 		Fee:              constants.FeeAmount(fee),
 		TickDataProvider: ticksHandler,
 		TickCurrent:      int(initTick),
-		SqrtRatioX96:     new(uint256.Int).Set(initSqrtPriceX96),
+		SqrtRatioX96:     initSqrtPriceX96.Clone(),
 		Liquidity:        uint256.NewInt(0),
 		Token0:           token0,
 		Token1:           token1,
@@ -312,7 +312,7 @@ func (p *Pool) GetOutputAmountV2(inputAmount *utils.Int256, zeroForOne bool,
 	}
 	return &GetAmountResultV2{
 		ReturnedAmount:     new(utils.Int256).Neg(swapResult.AmountCalculated),
-		RemainingAmountIn:  new(utils.Int256).Set(swapResult.RemainingAmountIn),
+		RemainingAmountIn:  swapResult.RemainingAmountIn.Clone(),
 		SqrtRatioX96:       swapResult.SqrtRatioX96,
 		Liquidity:          swapResult.Liquidity,
 		CurrentTick:        swapResult.CurrentTick,
@@ -579,6 +579,8 @@ type State struct {
 	liquidity                *utils.Uint128
 }
 
+var swapResultTmp = new(SwapResultV2)
+
 func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLimitX96 *utils.Uint160, swapResult *SwapResultV2) error {
 	var err error
 
@@ -614,6 +616,9 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 	p.lastState.sqrtPriceX96.Set(p.SqrtRatioX96)
 	p.lastState.tick = p.TickCurrent
 	p.lastState.liquidity.Set(p.Liquidity)
+	if swapResult == nil {
+		swapResult = swapResultTmp
+	}
 	swapResult.StepsFee = []StepFeeResult{}
 	swapResult.CrossInitTickLoops = 0
 

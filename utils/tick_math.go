@@ -175,7 +175,7 @@ func (c *TickCalculator) GetSqrtRatioAtTickV2(tick int, result *Uint160) {
 	}
 
 	if tick > 0 {
-		c.ratio.Set(result.Div(MaxUint256, c.ratio))
+		c.ratio.Div(MaxUint256, c.ratio)
 	}
 
 	// back to Q96

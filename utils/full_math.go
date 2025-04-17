@@ -35,9 +35,7 @@ func (m *FullMath) MulDivRoundingUp(a, b, denominator *uint256.Int) (*uint256.In
 }
 
 func (m *FullMath) MulDivRoundingUpV2(a, b, denominator, result *uint256.Int) error {
-	m.remainder.Clear()
-
-	if err := m.MulDivV2(a, b, denominator, result, m.remainder); err != nil {
+	if err := m.MulDivV2(a, b, denominator, result, m.remainder.Clear()); err != nil {
 		return err
 	}
 
