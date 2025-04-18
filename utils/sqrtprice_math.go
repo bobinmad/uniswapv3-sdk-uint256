@@ -209,6 +209,8 @@ func (c *SqrtPriceCalculator) getNextSqrtPriceFromAmount1RoundingDown(sqrtPX96 *
 	}
 
 	// always fits 160 bits
-	result.Set(c.quotient.Sub(sqrtPX96, c.quotient))
+	// result.Set(c.quotient.Sub(sqrtPX96, c.quotient))
+	result.Sub(sqrtPX96, c.quotient)
+
 	return nil
 }
