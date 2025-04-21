@@ -61,9 +61,9 @@ func NewSqrtPriceCalculator() *SqrtPriceCalculator {
 
 func (c *SqrtPriceCalculator) GetAmount0DeltaV2(sqrtRatioAX96, sqrtRatioBX96 *Uint160, liquidity *Uint128, roundUp bool, result *Uint256) error {
 	// https://github.com/Uniswap/v3-core/blob/d8b1c635c275d2a9450bd6a78f3fa2484fef73eb/contracts/libraries/SqrtPriceMath.sol#L159
-	if sqrtRatioAX96.Gt(sqrtRatioBX96) {
-		sqrtRatioAX96, sqrtRatioBX96 = sqrtRatioBX96, sqrtRatioAX96
-	}
+	// if sqrtRatioAX96.Gt(sqrtRatioBX96) {
+	// 	sqrtRatioAX96, sqrtRatioBX96 = sqrtRatioBX96, sqrtRatioAX96
+	// }
 
 	c.numerator1.Lsh(liquidity, 96)
 	c.numerator2.Sub(sqrtRatioBX96, sqrtRatioAX96)
@@ -96,16 +96,14 @@ func GetAmount1Delta(sqrtRatioAX96, sqrtRatioBX96, liquidity *big.Int, roundUp b
 }
 
 func (c *SqrtPriceCalculator) GetAmount1DeltaV2(sqrtRatioAX96, sqrtRatioBX96 *Uint160, liquidity *Uint128, roundUp bool, result *Uint256) error {
-	var err error
-
 	// https://github.com/Uniswap/v3-core/blob/d8b1c635c275d2a9450bd6a78f3fa2484fef73eb/contracts/libraries/SqrtPriceMath.sol#L188
-	if sqrtRatioAX96.Gt(sqrtRatioBX96) {
-		sqrtRatioAX96, sqrtRatioBX96 = sqrtRatioBX96, sqrtRatioAX96
-	}
+	// if sqrtRatioAX96.Gt(sqrtRatioBX96) {
+	// 	sqrtRatioAX96, sqrtRatioBX96 = sqrtRatioBX96, sqrtRatioAX96
+	// }
 
 	c.diff.Sub(sqrtRatioBX96, sqrtRatioAX96)
 	if roundUp {
-		if err = c.fullMath.MulDivRoundingUpV2(liquidity, c.diff, constants.Q96U256, result); err != nil {
+		if err := c.fullMath.MulDivRoundingUpV2(liquidity, c.diff, constants.Q96U256, result); err != nil {
 			return err
 		}
 

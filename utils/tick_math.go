@@ -19,6 +19,7 @@ type TickCalculator struct {
 	logSqrt10001, tmp1, tmp2 *Int256
 	sqrtRatio                *Uint160
 	log2                     *int256.Int
+	tmpsigned                *int256.Int
 }
 
 func NewTickCalculator() *TickCalculator {
@@ -35,6 +36,7 @@ func NewTickCalculator() *TickCalculator {
 		tmp2:          new(Int256),
 		sqrtRatio:     new(Uint160),
 		log2:          new(int256.Int),
+		tmpsigned:     new(int256.Int),
 	}
 }
 
@@ -221,7 +223,6 @@ func (c *TickCalculator) GetTickAtSqrtRatioV2(sqrtRatioX96 *Uint160) (int, error
 
 	c.log2.Lsh(c.log2.SetInt64(int64(msb-128)), 64)
 
-	var tmpsigned *int256.Int
 	for i := 0; i < 14; i++ {
 		c.tmp.Mul(c.r, c.r)
 		c.r.Rsh(c.tmp, 127)
@@ -229,9 +230,9 @@ func (c *TickCalculator) GetTickAtSqrtRatioV2(sqrtRatioX96 *Uint160) (int, error
 		c.tmp.Lsh(c.f, uint(63-i))
 
 		// this is for Or, so we can cast the underlying words directly without copying
-		tmpsigned = (*int256.Int)(c.tmp)
+		c.tmpsigned = (*int256.Int)(c.tmp)
 
-		c.log2.Or(c.log2, tmpsigned)
+		c.log2.Or(c.log2, c.tmpsigned)
 		c.r.Rsh(c.r, uint(c.f.Uint64()))
 	}
 
