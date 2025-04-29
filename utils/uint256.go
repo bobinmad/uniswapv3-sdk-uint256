@@ -108,7 +108,7 @@ func (ut *Uint256Utils) udivrem(quot, u []uint64, d *uint256.Int, rem *uint256.I
 		}
 	}
 
-	shift := uint(bits.LeadingZeros64(d[dLen-1]))
+	shift := bits.LeadingZeros64(d[dLen-1])
 
 	ut.dnStorage.Clear()
 	dn := ut.dnStorage[:dLen]
@@ -142,8 +142,7 @@ func (ut *Uint256Utils) udivrem(quot, u []uint64, d *uint256.Int, rem *uint256.I
 	// TODO: Skip the highest word of numerator if not significant.
 
 	if dLen == 1 {
-		r := udivremBy1(quot, un, dn[0])
-		rem.SetUint64(r >> shift)
+		rem.SetUint64(udivremBy1(quot, un, dn[0]) >> shift)
 		return
 	}
 
