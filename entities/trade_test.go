@@ -79,7 +79,7 @@ var (
 )
 
 func v2StylePool(token0, token1 *entities.Token, reserve0, reserve1 *entities.CurrencyAmount, feeAmount constants.FeeAmount) *Pool {
-	sqrtRatioX96 := utils.EncodeSqrtRatioX96(uint256.MustFromBig(reserve1.Quotient()), uint256.MustFromBig(reserve0.Quotient()))
+	sqrtRatioX96 := utils.EncodeSqrtRatioX96(reserve1.Quotient(), reserve0.Quotient())
 	liquidity := new(big.Int).Sqrt(new(big.Int).Mul(reserve0.Quotient(), reserve1.Quotient()))
 	liquidityGross := uint256.MustFromBig(liquidity)
 	liquidityNet := int256.MustFromBig(liquidity)

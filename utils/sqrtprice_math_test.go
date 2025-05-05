@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"math/big"
 	"testing"
 
 	"github.com/holiman/uint256"
@@ -13,7 +14,7 @@ var sqrtPriceCalculator = NewSqrtPriceCalculator()
 
 func TestGetNextSqrtPriceFromInput(t *testing.T) {
 	// https://github.com/Uniswap/v3-core/blob/main/test/SqrtPriceMath.spec.ts
-	p1 := EncodeSqrtRatioX96(uint256.NewInt(1), uint256.NewInt(1))
+	p1 := EncodeSqrtRatioX96(big.NewInt(1), big.NewInt(1))
 
 	tests := []struct {
 		price      string
@@ -64,7 +65,7 @@ func TestGetNextSqrtPriceFromInput(t *testing.T) {
 
 func TestGetNextSqrtPriceFromOutput(t *testing.T) {
 	// https://github.com/Uniswap/v3-core/blob/main/test/SqrtPriceMath.spec.ts
-	p1 := EncodeSqrtRatioX96(uint256.NewInt(1), uint256.NewInt(1))
+	p1 := EncodeSqrtRatioX96(big.NewInt(1), big.NewInt(1))
 
 	tests := []struct {
 		price      string
@@ -118,12 +119,12 @@ func TestGetNextSqrtPriceFromOutput(t *testing.T) {
 
 func TestGetAmount0Delta(t *testing.T) {
 	// https://github.com/Uniswap/v3-core/blob/main/test/SqrtPriceMath.spec.ts
-	p1 := EncodeSqrtRatioX96(uint256.NewInt(1), uint256.NewInt(1))
-	p2 := EncodeSqrtRatioX96(uint256.NewInt(2), uint256.NewInt(1))
-	p3 := EncodeSqrtRatioX96(uint256.NewInt(121), uint256.NewInt(100))
+	p1 := EncodeSqrtRatioX96(big.NewInt(1), big.NewInt(1))
+	p2 := EncodeSqrtRatioX96(big.NewInt(2), big.NewInt(1))
+	p3 := EncodeSqrtRatioX96(big.NewInt(121), big.NewInt(100))
 
-	p4 := EncodeSqrtRatioX96(new(uint256.Int).Exp(uint256.NewInt(2), uint256.NewInt(90)), uint256.NewInt(1))
-	p5 := EncodeSqrtRatioX96(new(uint256.Int).Exp(uint256.NewInt(2), uint256.NewInt(96)), uint256.NewInt(1))
+	p4 := EncodeSqrtRatioX96(new(big.Int).Exp(big.NewInt(2), big.NewInt(90), nil), big.NewInt(1))
+	p5 := EncodeSqrtRatioX96(new(big.Int).Exp(big.NewInt(2), big.NewInt(96), nil), big.NewInt(1))
 
 	tests := []struct {
 		price      string
@@ -153,10 +154,10 @@ func TestGetAmount0Delta(t *testing.T) {
 
 func TestGetAmount1Delta(t *testing.T) {
 	// https://github.com/Uniswap/v3-core/blob/main/test/SqrtPriceMath.spec.ts
-	p1 := EncodeSqrtRatioX96(uint256.NewInt(1), uint256.NewInt(1))
-	p2 := EncodeSqrtRatioX96(uint256.NewInt(2), uint256.NewInt(1))
-	p3 := EncodeSqrtRatioX96(uint256.NewInt(121), uint256.NewInt(100))
-	p4 := EncodeSqrtRatioX96(uint256.NewInt(100), uint256.NewInt(121))
+	p1 := EncodeSqrtRatioX96(big.NewInt(1), big.NewInt(1))
+	p2 := EncodeSqrtRatioX96(big.NewInt(2), big.NewInt(1))
+	p3 := EncodeSqrtRatioX96(big.NewInt(121), big.NewInt(100))
+	p4 := EncodeSqrtRatioX96(big.NewInt(100), big.NewInt(121))
 
 	tests := []struct {
 		price      string

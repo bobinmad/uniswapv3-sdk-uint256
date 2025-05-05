@@ -47,9 +47,9 @@ func TestMaxLiquidityForAmounts(t *testing.T) {
 		{
 			name: "imprecise - price inside - 100 token0, 200 token1",
 			args: args{
-				EncodeSqrtRatioX96(uint256.NewInt(1), uint256.NewInt(1)),
-				EncodeSqrtRatioX96(uint256.NewInt(100), uint256.NewInt(110)),
-				EncodeSqrtRatioX96(uint256.NewInt(110), uint256.NewInt(100)),
+				EncodeSqrtRatioX96(big.NewInt(1), big.NewInt(1)),
+				EncodeSqrtRatioX96(big.NewInt(100), big.NewInt(110)),
+				EncodeSqrtRatioX96(big.NewInt(110), big.NewInt(100)),
 				uint256.NewInt(100),
 				uint256.NewInt(200),
 				false,
@@ -59,9 +59,9 @@ func TestMaxLiquidityForAmounts(t *testing.T) {
 		{
 			name: "imprecise - price inside - 100 token0, max token1",
 			args: args{
-				EncodeSqrtRatioX96(uint256.NewInt(1), uint256.NewInt(1)),
-				EncodeSqrtRatioX96(uint256.NewInt(100), uint256.NewInt(110)),
-				EncodeSqrtRatioX96(uint256.NewInt(110), uint256.NewInt(100)),
+				EncodeSqrtRatioX96(big.NewInt(1), big.NewInt(1)),
+				EncodeSqrtRatioX96(big.NewInt(100), big.NewInt(110)),
+				EncodeSqrtRatioX96(big.NewInt(110), big.NewInt(100)),
 				uint256.NewInt(100),
 				MaxUint256U256,
 				false,
@@ -71,9 +71,9 @@ func TestMaxLiquidityForAmounts(t *testing.T) {
 		{
 			name: "imprecise - price inside - max token0, 200 token1",
 			args: args{
-				EncodeSqrtRatioX96(uint256.NewInt(1), uint256.NewInt(1)),
-				EncodeSqrtRatioX96(uint256.NewInt(100), uint256.NewInt(110)),
-				EncodeSqrtRatioX96(uint256.NewInt(110), uint256.NewInt(100)),
+				EncodeSqrtRatioX96(big.NewInt(1), big.NewInt(1)),
+				EncodeSqrtRatioX96(big.NewInt(100), big.NewInt(110)),
+				EncodeSqrtRatioX96(big.NewInt(110), big.NewInt(100)),
 				MaxUint256U256,
 				uint256.NewInt(200),
 				false,
@@ -83,9 +83,9 @@ func TestMaxLiquidityForAmounts(t *testing.T) {
 		{
 			name: "imprecise - price below - 100 token0, 200 token1",
 			args: args{
-				EncodeSqrtRatioX96(uint256.NewInt(99), uint256.NewInt(110)),
-				EncodeSqrtRatioX96(uint256.NewInt(100), uint256.NewInt(110)),
-				EncodeSqrtRatioX96(uint256.NewInt(110), uint256.NewInt(100)),
+				EncodeSqrtRatioX96(big.NewInt(99), big.NewInt(110)),
+				EncodeSqrtRatioX96(big.NewInt(100), big.NewInt(110)),
+				EncodeSqrtRatioX96(big.NewInt(110), big.NewInt(100)),
 				uint256.NewInt(100),
 				uint256.NewInt(200),
 				false,
@@ -95,9 +95,9 @@ func TestMaxLiquidityForAmounts(t *testing.T) {
 		{
 			name: "imprecise - price below - 100 token0, max token1",
 			args: args{
-				EncodeSqrtRatioX96(uint256.NewInt(99), uint256.NewInt(110)),
-				EncodeSqrtRatioX96(uint256.NewInt(100), uint256.NewInt(110)),
-				EncodeSqrtRatioX96(uint256.NewInt(110), uint256.NewInt(100)),
+				EncodeSqrtRatioX96(big.NewInt(99), big.NewInt(110)),
+				EncodeSqrtRatioX96(big.NewInt(100), big.NewInt(110)),
+				EncodeSqrtRatioX96(big.NewInt(110), big.NewInt(100)),
 				uint256.NewInt(100),
 				MaxUint256U256,
 				false,
@@ -119,9 +119,9 @@ func TestMaxLiquidityForAmounts(t *testing.T) {
 		{
 			name: "imprecise - price above - 100 token0, 200 token1",
 			args: args{
-				EncodeSqrtRatioX96(uint256.NewInt(111), uint256.NewInt(100)),
-				EncodeSqrtRatioX96(uint256.NewInt(100), uint256.NewInt(110)),
-				EncodeSqrtRatioX96(uint256.NewInt(110), uint256.NewInt(100)),
+				EncodeSqrtRatioX96(big.NewInt(111), big.NewInt(100)),
+				EncodeSqrtRatioX96(big.NewInt(100), big.NewInt(110)),
+				EncodeSqrtRatioX96(big.NewInt(110), big.NewInt(100)),
 				uint256.NewInt(100),
 				uint256.NewInt(200),
 				false,
@@ -143,9 +143,9 @@ func TestMaxLiquidityForAmounts(t *testing.T) {
 		{
 			name: "imprecise - price above - max token0, 200 token1",
 			args: args{
-				EncodeSqrtRatioX96(uint256.NewInt(111), uint256.NewInt(100)),
-				EncodeSqrtRatioX96(uint256.NewInt(100), uint256.NewInt(110)),
-				EncodeSqrtRatioX96(uint256.NewInt(110), uint256.NewInt(100)),
+				EncodeSqrtRatioX96(big.NewInt(111), big.NewInt(100)),
+				EncodeSqrtRatioX96(big.NewInt(100), big.NewInt(110)),
+				EncodeSqrtRatioX96(big.NewInt(110), big.NewInt(100)),
 				MaxUint256U256,
 				uint256.NewInt(200),
 				false,
@@ -155,9 +155,9 @@ func TestMaxLiquidityForAmounts(t *testing.T) {
 		{
 			name: "precise - price inside - 100 token0, 200 token1",
 			args: args{
-				EncodeSqrtRatioX96(uint256.NewInt(1), uint256.NewInt(1)),
-				EncodeSqrtRatioX96(uint256.NewInt(100), uint256.NewInt(110)),
-				EncodeSqrtRatioX96(uint256.NewInt(110), uint256.NewInt(100)),
+				EncodeSqrtRatioX96(big.NewInt(1), big.NewInt(1)),
+				EncodeSqrtRatioX96(big.NewInt(100), big.NewInt(110)),
+				EncodeSqrtRatioX96(big.NewInt(110), big.NewInt(100)),
 				uint256.NewInt(100),
 				uint256.NewInt(200),
 				true,
@@ -167,9 +167,9 @@ func TestMaxLiquidityForAmounts(t *testing.T) {
 		{
 			name: "precise - price inside - 100 token0, max token1",
 			args: args{
-				EncodeSqrtRatioX96(uint256.NewInt(1), uint256.NewInt(1)),
-				EncodeSqrtRatioX96(uint256.NewInt(100), uint256.NewInt(110)),
-				EncodeSqrtRatioX96(uint256.NewInt(110), uint256.NewInt(100)),
+				EncodeSqrtRatioX96(big.NewInt(1), big.NewInt(1)),
+				EncodeSqrtRatioX96(big.NewInt(100), big.NewInt(110)),
+				EncodeSqrtRatioX96(big.NewInt(110), big.NewInt(100)),
 				uint256.NewInt(100),
 				MaxUint256U256,
 				true,
@@ -179,9 +179,9 @@ func TestMaxLiquidityForAmounts(t *testing.T) {
 		{
 			name: "precise - price inside - max token0, 200 token1",
 			args: args{
-				EncodeSqrtRatioX96(uint256.NewInt(1), uint256.NewInt(1)),
-				EncodeSqrtRatioX96(uint256.NewInt(100), uint256.NewInt(110)),
-				EncodeSqrtRatioX96(uint256.NewInt(110), uint256.NewInt(100)),
+				EncodeSqrtRatioX96(big.NewInt(1), big.NewInt(1)),
+				EncodeSqrtRatioX96(big.NewInt(100), big.NewInt(110)),
+				EncodeSqrtRatioX96(big.NewInt(110), big.NewInt(100)),
 				MaxUint256U256,
 				uint256.NewInt(200),
 				true,
@@ -191,9 +191,9 @@ func TestMaxLiquidityForAmounts(t *testing.T) {
 		{
 			name: "precise - price below - 100 token0, 200 token1",
 			args: args{
-				EncodeSqrtRatioX96(uint256.NewInt(99), uint256.NewInt(110)),
-				EncodeSqrtRatioX96(uint256.NewInt(100), uint256.NewInt(110)),
-				EncodeSqrtRatioX96(uint256.NewInt(110), uint256.NewInt(100)),
+				EncodeSqrtRatioX96(big.NewInt(99), big.NewInt(110)),
+				EncodeSqrtRatioX96(big.NewInt(100), big.NewInt(110)),
+				EncodeSqrtRatioX96(big.NewInt(110), big.NewInt(100)),
 				uint256.NewInt(100),
 				uint256.NewInt(200),
 				true,
@@ -203,9 +203,9 @@ func TestMaxLiquidityForAmounts(t *testing.T) {
 		{
 			name: "precise - price below - 100 token0, max token1",
 			args: args{
-				EncodeSqrtRatioX96(uint256.NewInt(99), uint256.NewInt(110)),
-				EncodeSqrtRatioX96(uint256.NewInt(100), uint256.NewInt(110)),
-				EncodeSqrtRatioX96(uint256.NewInt(110), uint256.NewInt(100)),
+				EncodeSqrtRatioX96(big.NewInt(99), big.NewInt(110)),
+				EncodeSqrtRatioX96(big.NewInt(100), big.NewInt(110)),
+				EncodeSqrtRatioX96(big.NewInt(110), big.NewInt(100)),
 				uint256.NewInt(100),
 				MaxUint256U256,
 				true,
@@ -215,9 +215,9 @@ func TestMaxLiquidityForAmounts(t *testing.T) {
 		{
 			name: "precise - price below - max token0, 200 token1",
 			args: args{
-				EncodeSqrtRatioX96(uint256.NewInt(99), uint256.NewInt(110)),
-				EncodeSqrtRatioX96(uint256.NewInt(100), uint256.NewInt(110)),
-				EncodeSqrtRatioX96(uint256.NewInt(110), uint256.NewInt(100)),
+				EncodeSqrtRatioX96(big.NewInt(99), big.NewInt(110)),
+				EncodeSqrtRatioX96(big.NewInt(100), big.NewInt(110)),
+				EncodeSqrtRatioX96(big.NewInt(110), big.NewInt(100)),
 				MaxUint256U256,
 				uint256.NewInt(200),
 				true,
@@ -227,9 +227,9 @@ func TestMaxLiquidityForAmounts(t *testing.T) {
 		{
 			name: "precise - price above - 100 token0, 200 token1",
 			args: args{
-				EncodeSqrtRatioX96(uint256.NewInt(111), uint256.NewInt(100)),
-				EncodeSqrtRatioX96(uint256.NewInt(100), uint256.NewInt(110)),
-				EncodeSqrtRatioX96(uint256.NewInt(110), uint256.NewInt(100)),
+				EncodeSqrtRatioX96(big.NewInt(111), big.NewInt(100)),
+				EncodeSqrtRatioX96(big.NewInt(100), big.NewInt(110)),
+				EncodeSqrtRatioX96(big.NewInt(110), big.NewInt(100)),
 				uint256.NewInt(100),
 				uint256.NewInt(200),
 				true,
@@ -251,9 +251,9 @@ func TestMaxLiquidityForAmounts(t *testing.T) {
 		{
 			name: "precise - price above - max token0, 200 token1",
 			args: args{
-				EncodeSqrtRatioX96(uint256.NewInt(111), uint256.NewInt(100)),
-				EncodeSqrtRatioX96(uint256.NewInt(100), uint256.NewInt(110)),
-				EncodeSqrtRatioX96(uint256.NewInt(110), uint256.NewInt(100)),
+				EncodeSqrtRatioX96(big.NewInt(111), big.NewInt(100)),
+				EncodeSqrtRatioX96(big.NewInt(100), big.NewInt(110)),
+				EncodeSqrtRatioX96(big.NewInt(110), big.NewInt(100)),
 				MaxUint256U256,
 				uint256.NewInt(200),
 				true,

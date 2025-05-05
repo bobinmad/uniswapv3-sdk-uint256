@@ -206,15 +206,15 @@ func (p *Position) ratiosAfterSlippage(slippageTolerance *entities.Percent) (sqr
 	priceLower := p.Pool.Token0Price().Fraction.Multiply(entities.NewPercent(big.NewInt(1), big.NewInt(1)).Subtract(slippageTolerance).Fraction)
 	priceUpper := p.Pool.Token0Price().Fraction.Multiply(entities.NewPercent(big.NewInt(1), big.NewInt(1)).Add(slippageTolerance).Fraction)
 
-	sqrtRatioX96Lower = utils.EncodeSqrtRatioX96(uint256.MustFromBig(priceLower.Numerator), uint256.MustFromBig(priceLower.Denominator))
-	// if sqrtRatioX96Lower.Cmp(utils.MinSqrtRatioU256) <= 0 {
-	if !sqrtRatioX96Lower.Gt(utils.MinSqrtRatioU256) {
+	sqrtRatioX96Lower = utils.EncodeSqrtRatioX96(priceLower.Numerator, priceLower.Denominator)
+	if sqrtRatioX96Lower.Cmp(utils.MinSqrtRatioU256) <= 0 {
+		// if !sqrtRatioX96Lower.Gt(utils.MinSqrtRatioU256) {
 		sqrtRatioX96Lower = new(uint256.Int).Add(utils.MinSqrtRatioU256, utils.U256One)
 	}
 
-	sqrtRatioX96Upper = utils.EncodeSqrtRatioX96(uint256.MustFromBig(priceUpper.Numerator), uint256.MustFromBig(priceUpper.Denominator))
-	// if sqrtRatioX96Upper.Cmp(utils.MaxSqrtRatioU256) >= 0 {
-	if !sqrtRatioX96Upper.Lt(utils.MaxSqrtRatioU256) {
+	sqrtRatioX96Upper = utils.EncodeSqrtRatioX96(priceUpper.Numerator, priceUpper.Denominator)
+	if sqrtRatioX96Upper.Cmp(utils.MaxSqrtRatioU256) >= 0 {
+		// if !sqrtRatioX96Upper.Lt(utils.MaxSqrtRatioU256) {
 		sqrtRatioX96Upper = new(uint256.Int).Sub(utils.MinSqrtRatioU256, utils.U256One)
 	}
 

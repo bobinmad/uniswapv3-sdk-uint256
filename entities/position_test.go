@@ -14,8 +14,8 @@ import (
 )
 
 var (
-	B100e6         = uint256.NewInt(100e6)
-	B100e12        = uint256.NewInt(100e12)
+	B100e6         = big.NewInt(100e6)
+	B100e12        = big.NewInt(100e12)
 	B100e18        = decimal.NewFromBigInt(big.NewInt(100), 18).BigInt()
 	B100e18Uint256 = uint256.MustFromBig(B100e18)
 )
@@ -23,7 +23,7 @@ var (
 func initPool() (*Pool, int, int) {
 	USDC := entities.NewToken(1, common.HexToAddress("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"), 6, "USDC", "USD Coin")
 	DAI := entities.NewToken(1, common.HexToAddress("0x6B175474E89094C44Da98b954EedeAC495271d0F"), 18, "DAI", "DAI Stablecoin")
-	poolSqrtRatioStart := utils.EncodeSqrtRatioX96(B100e6, B100e18Uint256)
+	poolSqrtRatioStart := utils.EncodeSqrtRatioX96(B100e6, B100e18)
 	poolTickCurrent, err := utils.GetTickAtSqrtRatio(poolSqrtRatioStart.ToBig())
 	if err != nil {
 		panic(err)
@@ -84,7 +84,7 @@ func TestAmount0(t *testing.T) {
 	DAIUSDCPool, poolTickCurrent, tickSpacing := initPool()
 
 	// is correct for price above
-	p, err := NewPosition(DAIUSDCPool, B100e12, NearestUsableTick(poolTickCurrent, tickSpacing)+tickSpacing, NearestUsableTick(poolTickCurrent, tickSpacing)+tickSpacing*2)
+	p, err := NewPosition(DAIUSDCPool, uint256.MustFromBig(B100e12), NearestUsableTick(poolTickCurrent, tickSpacing)+tickSpacing, NearestUsableTick(poolTickCurrent, tickSpacing)+tickSpacing*2)
 	assert.NoError(t, err)
 	amount0 := p.CalcAmount0()
 	// assert.NoError(t, err)

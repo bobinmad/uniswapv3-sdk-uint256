@@ -12,11 +12,10 @@ import (
  * @param amount0 The denominator amount i.e., the amount of token0
  * @returns The sqrt ratio
  */
-func EncodeSqrtRatioX96(amount1, amount0 *uint256.Int) *uint256.Int {
+func EncodeSqrtRatioX96(amount1, amount0 *big.Int) *uint256.Int {
 	// здесь почему-то нормально считает только на big.Int
-	numerator := new(big.Int).Lsh(amount1.ToBig(), 192)
-	denominator := amount0.ToBig()
-	ratioX192 := new(big.Int).Div(numerator, denominator)
+
+	ratioX192 := new(big.Int).Div(new(big.Int).Lsh(amount1, 192), amount0)
 	return uint256.MustFromBig(new(big.Int).Sqrt(ratioX192))
 
 	// numerator := new(uint256.Int).Lsh(amount1, 192)

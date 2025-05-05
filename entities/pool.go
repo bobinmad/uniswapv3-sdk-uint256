@@ -158,7 +158,7 @@ func NewPoolV2(tokenA, tokenB *entities.Token, fee constants.FeeAmount, sqrtRati
 func NewPoolV3(
 	fee uint16,
 	initTick int32,
-	initSqrtPriceX96 *uint256.Int,
+	initSqrtPriceX96 *utils.Uint160,
 	token0, token1 *entities.Token,
 	ticksHandler TickDataProvider,
 ) *Pool {
@@ -167,7 +167,7 @@ func NewPoolV3(
 		TickDataProvider: ticksHandler,
 		TickCurrent:      int(initTick),
 		SqrtRatioX96:     initSqrtPriceX96.Clone(),
-		Liquidity:        uint256.NewInt(0),
+		Liquidity:        new(utils.Uint128),
 		Token0:           token0,
 		Token1:           token1,
 		lastState: State{
