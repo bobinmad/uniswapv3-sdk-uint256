@@ -313,23 +313,13 @@ func (p *Position) BurnAmountsWithSlippage(slippageTolerance *entities.Percent) 
 	if err != nil {
 		return nil, nil, err
 	}
-	// poolLower, err := NewPool(p.Pool.Token0, p.Pool.Token1, p.Pool.Fee, sqrtRatioX96Lower.ToBig(), big.NewInt(0) /* liquidity doesn't matter */, tickLower, nil)
-	// if err != nil {
-	// 	return nil, nil, err
-	// }
 	poolLower := NewPoolV3(uint16(p.Pool.Fee), int32(tickLower), sqrtRatioX96Lower, p.Pool.Token0, p.Pool.Token1, nil)
-	// poolLower.Liquidity = uint256.NewInt(0)
 
 	tickUpper, err := utils.GetTickAtSqrtRatio(sqrtRatioX96Upper.ToBig())
 	if err != nil {
 		return nil, nil, err
 	}
-	// poolUpper, err := NewPool(p.Pool.Token0, p.Pool.Token1, p.Pool.Fee, sqrtRatioX96Upper.ToBig(), big.NewInt(0) /* liquidity doesn't matter */, tickUpper, nil)
-	// if err != nil {
-	// 	return nil, nil, err
-	// }
 	poolUpper := NewPoolV3(uint16(p.Pool.Fee), int32(tickUpper), sqrtRatioX96Upper, p.Pool.Token0, p.Pool.Token1, nil)
-	// poolUpper.Liquidity = uint256.NewInt(0)
 
 	// we want the smaller amounts...
 	// ...which occurs at the upper price for amount0...
