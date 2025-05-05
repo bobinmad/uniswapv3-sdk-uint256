@@ -220,7 +220,7 @@ func TestMintAmountsWithSlippage(t *testing.T) {
 	// is correct for pool at max price
 	// maxPricePool, err := NewPool(DAI, USDC, constants.FeeLow, new(big.Int).Sub(utils.MaxSqrtRatio, big.NewInt(1)), big.NewInt(0), utils.MaxTick-1, nil)
 	maxPricePool := NewPoolV3(uint16(constants.FeeLow), int32(utils.MaxTick-1), new(uint256.Int).Sub(utils.MaxSqrtRatioU256, uint256.NewInt(1)), DAI, USDC, nil)
-	maxPricePool.Liquidity = uint256.MustFromBig(big.NewInt(1))
+	maxPricePool.Liquidity = uint256.NewInt(1)
 
 	assert.NoError(t, err)
 	p, err = NewPosition(maxPricePool, B100e18Uint256,

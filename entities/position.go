@@ -350,6 +350,7 @@ func (p *Position) BurnAmountsWithSlippage(slippageTolerance *entities.Percent) 
 	if err != nil {
 		return nil, nil, err
 	}
+
 	return uint256.MustFromBig(a0.Quotient()), uint256.MustFromBig(a1.Quotient()), nil
 }
 
