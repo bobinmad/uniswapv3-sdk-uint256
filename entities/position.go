@@ -238,7 +238,7 @@ func (p *Position) ratiosAfterSlippage(slippageTolerance *entities.Percent) (sqr
  */
 func (p *Position) MintAmountsWithSlippage(slippageTolerance *entities.Percent) (amount0, amount1 *uint256.Int, err error) {
 	// get lower/upper prices
-	sqrtRatioX96Lower, sqrtRatioX96Upper := p.ratiosAfterSlippage(slippageTolerance)
+	sqrtRatioX96Upper, sqrtRatioX96Lower := p.ratiosAfterSlippage(slippageTolerance)
 
 	// construct counterfactual pools
 	tickLower, err := p.tickCalculator.GetTickAtSqrtRatioV2(sqrtRatioX96Lower)
