@@ -67,12 +67,12 @@ type Pool struct {
 }
 
 type SwapResult struct {
-	amountCalculated   *utils.Int256
-	sqrtRatioX96       *utils.Uint160
-	liquidity          *utils.Uint128
-	remainingAmountIn  *utils.Int256
-	currentTick        int
-	crossInitTickLoops int
+	// amountCalculated   *utils.Int256
+	// sqrtRatioX96       *utils.Uint160
+	// liquidity          *utils.Uint128
+	// remainingAmountIn  *utils.Int256
+	// currentTick        int
+	// crossInitTickLoops int
 }
 
 type GetAmountResult struct {
@@ -291,9 +291,9 @@ func (p *Pool) GetOutputAmount(inputAmount *entities.CurrencyAmount,
 		p.Token1,
 		p.TickDataProvider,
 	)
-	if err != nil {
-		return nil, err
-	}
+	// if err != nil {
+	// 	return nil, err
+	// }
 	return &GetAmountResult{
 		ReturnedAmount:     entities.FromRawAmount(outputToken, new(utils.Int256).Neg(swapResult.AmountCalculated).ToBig()),
 		RemainingAmountIn:  entities.FromRawAmount(inputAmount.Currency, swapResult.RemainingAmountIn.ToBig()),
@@ -366,9 +366,9 @@ func (p *Pool) GetInputAmount(outputAmount *entities.CurrencyAmount,
 		p.Token1,
 		p.TickDataProvider,
 	)
-	if err != nil {
-		return nil, nil, err
-	}
+	// if err != nil {
+	// 	return nil, nil, err
+	// }
 	return entities.FromRawAmount(inputToken, swapResult.AmountCalculated.ToBig()), pool, nil
 }
 
