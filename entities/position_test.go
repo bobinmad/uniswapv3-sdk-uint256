@@ -17,6 +17,7 @@ var (
 	B100e6         = big.NewInt(100e6)
 	B100e12        = big.NewInt(100e12)
 	B100e18        = decimal.NewFromBigInt(big.NewInt(100), 18).BigInt()
+	B100e12Uint256 = uint256.MustFromBig(B100e12)
 	B100e18Uint256 = uint256.MustFromBig(B100e18)
 )
 
@@ -31,13 +32,7 @@ func initPool() (*Pool, int, int) {
 
 	tickSpacing := constants.TickSpacings[constants.FeeLow]
 
-	// p, err := NewPool(DAI, USDC, constants.FeeLow, poolSqrtRatioStart.ToBig(), big.NewInt(0), poolTickCurrent, nil)
-	// if err != nil {
-	// 	panic(err)
-	// }
-
 	pool := NewPoolV3(uint16(constants.FeeLow), int32(poolTickCurrent), poolSqrtRatioStart, DAI, USDC, nil)
-	// pool.Liquidity = uint256.NewInt(0)
 
 	return pool, poolTickCurrent, tickSpacing
 }
@@ -84,7 +79,7 @@ func TestAmount0(t *testing.T) {
 	DAIUSDCPool, poolTickCurrent, tickSpacing := initPool()
 
 	// is correct for price above
-	p, err := NewPosition(DAIUSDCPool, uint256.MustFromBig(B100e12), NearestUsableTick(poolTickCurrent, tickSpacing)+tickSpacing, NearestUsableTick(poolTickCurrent, tickSpacing)+tickSpacing*2)
+	p, err := NewPosition(DAIUSDCPool, B100e12Uint256, NearestUsableTick(poolTickCurrent, tickSpacing)+tickSpacing, NearestUsableTick(poolTickCurrent, tickSpacing)+tickSpacing*2)
 	assert.NoError(t, err)
 	amount0 := p.CalcAmount0()
 	// assert.NoError(t, err)
@@ -205,7 +200,7 @@ func TestMintAmountsWithSlippage(t *testing.T) {
 
 	// is correct for pool at min price
 	minPricePool := NewPoolV3(uint16(constants.FeeLow), int32(utils.MinTick), utils.MinSqrtRatioU256, DAI, USDC, nil)
-	minPricePool.Liquidity = uint256.MustFromBig(big.NewInt(1))
+	minPricePool.Liquidity = uint256.NewInt(1)
 
 	assert.NoError(t, err)
 	p, err = NewPosition(minPricePool, B100e18Uint256,
@@ -325,7 +320,7 @@ func TestBurnAmountsWithSlippage(t *testing.T) {
 	// is correct for pool at max price
 	// maxPricePool, err := NewPool(DAI, USDC, constants.FeeLow, new(big.Int).Sub(utils.MaxSqrtRatio, big.NewInt(1)), big.NewInt(0), utils.MaxTick-1, nil)
 	maxPricePool := NewPoolV3(uint16(constants.FeeLow), int32(utils.MaxTick-1), new(uint256.Int).Sub(utils.MaxSqrtRatioU256, uint256.NewInt(1)), DAI, USDC, nil)
-	maxPricePool.Liquidity = uint256.MustFromBig(big.NewInt(1))
+	maxPricePool.Liquidity = uint256.NewInt(1)
 
 	assert.NoError(t, err)
 	p, err = NewPosition(maxPricePool, B100e18Uint256,
