@@ -8,7 +8,7 @@ require (
 	github.com/ethereum/go-ethereum v1.10.20
 	github.com/holiman/uint256 v1.2.3
 	github.com/shopspring/decimal v1.3.1
-	github.com/stretchr/testify v1.8.4
+	github.com/stretchr/testify v1.10.0
 )
 
 require (
