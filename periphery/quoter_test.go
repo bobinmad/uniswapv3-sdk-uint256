@@ -62,6 +62,8 @@ func TestEncodeRouteToPath(t *testing.T) {
 }
 
 func TestQuoteCallParameters(t *testing.T) {
+	// pool_0_1 := entities.NewPoolV3(uint16(constants.FeeMedium), int32(0), utils.EncodeSqrtRatioX96(constants.One, constants.One), token0, token1, nil)
+	// pool_1_weth := entities.NewPoolV3(uint16(constants.FeeMedium), int32(0), utils.EncodeSqrtRatioX96(constants.One, constants.One), token1, weth, nil)
 	pool_0_1 := makePool(token0, token1)
 	pool_1_weth := makePool(token1, weth)
 

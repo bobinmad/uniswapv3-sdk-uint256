@@ -15,6 +15,7 @@ import (
 func TestSwapCallParametersSingleTradeInput(t *testing.T) {
 	pool_0_1 := makePool(token0, token1)
 	pool_1_weth := makePool(token1, weth)
+
 	// pool_0_2 := makePool(token0, token2)
 	// pool_0_3 := makePool(token0, token3)
 	// pool_2_3 := makePool(token2, token3)

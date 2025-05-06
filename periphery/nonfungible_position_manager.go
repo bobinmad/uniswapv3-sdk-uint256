@@ -12,6 +12,7 @@ import (
 	core "github.com/daoleno/uniswap-sdk-core/entities"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/holiman/uint256"
 )
 
 //go:embed contracts/interfaces/INonfungiblePositionManager.sol/INonfungiblePositionManager.json
@@ -158,7 +159,7 @@ func CreateCallParameters(pool *entities.Pool) (*utils.MethodParameters, error) 
 }
 
 func AddCallParameters(position *entities.Position, opts *AddLiquidityOptions) (*utils.MethodParameters, error) {
-	if position.Liquidity.Cmp(constants.Zero) <= 0 {
+	if !position.Liquidity.Gt(constants.ZeroU256) {
 		return nil, ErrZeroLiquidity
 	}
 
@@ -211,10 +212,10 @@ func AddCallParameters(position *entities.Position, opts *AddLiquidityOptions) (
 			Fee:            big.NewInt(int64(position.Pool.Fee)),
 			TickLower:      big.NewInt(int64(position.TickLower)),
 			TickUpper:      big.NewInt(int64(position.TickUpper)),
-			Amount0Desired: amount0Desired,
-			Amount1Desired: amount1Desired,
-			Amount0Min:     amount0Min,
-			Amount1Min:     amount1Min,
+			Amount0Desired: amount0Desired.ToBig(),
+			Amount1Desired: amount1Desired.ToBig(),
+			Amount0Min:     amount0Min.ToBig(),
+			Amount1Min:     amount1Min.ToBig(),
 			Recipient:      opts.Recipient,
 			Deadline:       opts.Deadline,
 		})
@@ -228,10 +229,10 @@ func AddCallParameters(position *entities.Position, opts *AddLiquidityOptions) (
 	if opts.IncreaseSpecificOptions != nil {
 		calldata, err := abi.Pack("increaseLiquidity", &IncreaseLiquidityParams{
 			TokenId:        opts.TokenID,
-			Amount0Desired: amount0Desired,
-			Amount1Desired: amount1Desired,
-			Amount0Min:     amount0Min,
-			Amount1Min:     amount1Min,
+			Amount0Desired: amount0Desired.ToBig(),
+			Amount1Desired: amount1Desired.ToBig(),
+			Amount0Min:     amount0Min.ToBig(),
+			Amount1Min:     amount1Min.ToBig(),
 			Deadline:       opts.Deadline,
 		})
 		if err != nil {
@@ -248,9 +249,9 @@ func AddCallParameters(position *entities.Position, opts *AddLiquidityOptions) (
 		}
 
 		if position.Pool.Token0.Equal(wrapped) {
-			value = amount0Desired
+			value = amount0Desired.ToBig()
 		} else {
-			value = amount1Desired
+			value = amount1Desired.ToBig()
 		}
 
 		// we only need to refund if we're actually sending ETH
@@ -350,7 +351,7 @@ func RemoveCallParameters(position *entities.Position, opts *RemoveLiquidityOpti
 	// construct a partial position with a percentage of liquidity
 	partialPosition, err := entities.NewPosition(
 		position.Pool,
-		opts.LiquidityPercentage.Multiply(core.NewPercent(position.Liquidity, big.NewInt(1))).Quotient(),
+		uint256.MustFromBig(opts.LiquidityPercentage.Multiply(core.NewPercent(position.Liquidity.ToBig(), big.NewInt(1))).Quotient()),
 		position.TickLower,
 		position.TickUpper,
 	)
@@ -358,7 +359,7 @@ func RemoveCallParameters(position *entities.Position, opts *RemoveLiquidityOpti
 		return nil, err
 	}
 
-	if partialPosition.Liquidity.Cmp(constants.Zero) <= 0 {
+	if !partialPosition.Liquidity.Gt(constants.ZeroU256) {
 		return nil, ErrZeroLiquidity
 	}
 
@@ -380,9 +381,9 @@ func RemoveCallParameters(position *entities.Position, opts *RemoveLiquidityOpti
 	// remove liquidity
 	calldata, err := abi.Pack("decreaseLiquidity", &DecreaseLiquidityParams{
 		TokenId:    opts.TokenID,
-		Liquidity:  partialPosition.Liquidity,
-		Amount0Min: amount0Min,
-		Amount1Min: amount1Min,
+		Liquidity:  partialPosition.Liquidity.ToBig(),
+		Amount0Min: amount0Min.ToBig(),
+		Amount1Min: amount1Min.ToBig(),
 		Deadline:   opts.Deadline})
 	if err != nil {
 		return nil, err
@@ -392,8 +393,8 @@ func RemoveCallParameters(position *entities.Position, opts *RemoveLiquidityOpti
 	collectOpts := &CollectOptions{
 		TokenID: opts.TokenID,
 		// add the underlying value to the expected currency already owed
-		ExpectedCurrencyOwed0: opts.CollectOptions.ExpectedCurrencyOwed0.Add(core.FromRawAmount(opts.CollectOptions.ExpectedCurrencyOwed0.Currency, amount0Min)),
-		ExpectedCurrencyOwed1: opts.CollectOptions.ExpectedCurrencyOwed1.Add(core.FromRawAmount(opts.CollectOptions.ExpectedCurrencyOwed1.Currency, amount1Min)),
+		ExpectedCurrencyOwed0: opts.CollectOptions.ExpectedCurrencyOwed0.Add(core.FromRawAmount(opts.CollectOptions.ExpectedCurrencyOwed0.Currency, amount0Min.ToBig())),
+		ExpectedCurrencyOwed1: opts.CollectOptions.ExpectedCurrencyOwed1.Add(core.FromRawAmount(opts.CollectOptions.ExpectedCurrencyOwed1.Currency, amount1Min.ToBig())),
 		ExpectedTokenOwed0:    opts.CollectOptions.ExpectedTokenOwed0,
 		ExpectedTokenOwed1:    opts.CollectOptions.ExpectedTokenOwed1,
 		Recipient:             opts.CollectOptions.Recipient,
