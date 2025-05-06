@@ -262,7 +262,8 @@ func TestBurnAmountsWithSlippage(t *testing.T) {
 	amount0, amount1, err = p.BurnAmountsWithSlippage(slippageTolerance)
 	assert.NoError(t, err)
 	//! 120054069145287995769396 in v3-sdk
-	assert.Equal(t, "120054069145287995769397", amount0.Dec())
+	// assert.Equal(t, "120054069145287995769397", amount0.Dec())
+	assert.Equal(t, "120054069145287995769396", amount0.Dec())
 	assert.Equal(t, "79831926242", amount1.Dec())
 
 	// 0.05% slippage
@@ -296,7 +297,8 @@ func TestBurnAmountsWithSlippage(t *testing.T) {
 	amount0, amount1, err = p.BurnAmountsWithSlippage(slippageTolerance)
 	assert.NoError(t, err)
 	// ! 95063440240746211454822 in v3-sdk
-	assert.Equal(t, "95063440240746211454823", amount0.Dec())
+	// assert.Equal(t, "95063440240746211454823", amount0.Dec())
+	assert.Equal(t, "95063440240746211454822", amount0.Dec())
 	assert.Equal(t, "54828800460", amount1.Dec())
 
 	// 5% slippage tolerance

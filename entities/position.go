@@ -246,24 +246,14 @@ func (p *Position) MintAmountsWithSlippage(slippageTolerance *entities.Percent) 
 		return nil, nil, err
 	}
 
-	// poolLower, err := NewPool(p.Pool.Token0, p.Pool.Token1, p.Pool.Fee, sqrtRatioX96Lower.ToBig(), big.NewInt(0) /* liquidity doesn't matter */, tickLower, nil)
-	// if err != nil {
-	// 	return nil, nil, err
-	// }
 	poolLower := NewPoolV3(uint16(p.Pool.Fee), int32(tickLower), sqrtRatioX96Lower, p.Pool.Token0, p.Pool.Token1, nil)
-	// poolLower.Liquidity = uint256.NewInt(0)
 
 	tickUpper, err := p.tickCalculator.GetTickAtSqrtRatioV2(sqrtRatioX96Upper)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	// poolUpper, err := NewPool(p.Pool.Token0, p.Pool.Token1, p.Pool.Fee, sqrtRatioX96Upper.ToBig(), big.NewInt(0) /* liquidity doesn't matter */, tickUpper, nil)
-	// if err != nil {
-	// 	return nil, nil, err
-	// }
 	poolUpper := NewPoolV3(uint16(p.Pool.Fee), int32(tickUpper), sqrtRatioX96Upper, p.Pool.Token0, p.Pool.Token1, nil)
-	// poolUpper.Liquidity = uint256.NewInt(0)
 
 	// because the router is imprecise, we need to calculate the position that will be created (assuming no slippage)
 	// the mint amounts are what will be passed as calldata
@@ -278,20 +268,20 @@ func (p *Position) MintAmountsWithSlippage(slippageTolerance *entities.Percent) 
 
 	// we want the smaller amounts...
 	// ...which occurs at the upper price for amount0...
-	pUpper, err := NewPosition(poolUpper, positionThatWillBeCreated.Liquidity, p.TickLower, p.TickUpper)
+	positionUpper, err := NewPosition(poolUpper, positionThatWillBeCreated.Liquidity, p.TickLower, p.TickUpper)
 	if err != nil {
 		return nil, nil, err
 	}
 	// ...and the lower for amount1
-	pLower, err := NewPosition(poolLower, positionThatWillBeCreated.Liquidity, p.TickLower, p.TickUpper)
+	positionLower, err := NewPosition(poolLower, positionThatWillBeCreated.Liquidity, p.TickLower, p.TickUpper)
 	if err != nil {
 		return nil, nil, err
 	}
-	amount0, _, err = pLower.MintAmounts()
+	amount0, _, err = positionLower.MintAmounts()
 	if err != nil {
 		return nil, nil, err
 	}
-	_, amount1, err = pUpper.MintAmounts()
+	_, amount1, err = positionUpper.MintAmounts()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -309,13 +299,13 @@ func (p *Position) BurnAmountsWithSlippage(slippageTolerance *entities.Percent) 
 	sqrtRatioX96Lower, sqrtRatioX96Upper := p.ratiosAfterSlippage(slippageTolerance)
 
 	// construct counterfactual pools
-	tickLower, err := utils.GetTickAtSqrtRatio(sqrtRatioX96Lower.ToBig())
+	tickLower, err := p.tickCalculator.GetTickAtSqrtRatioV2(sqrtRatioX96Lower)
 	if err != nil {
 		return nil, nil, err
 	}
 	poolLower := NewPoolV3(uint16(p.Pool.Fee), int32(tickLower), sqrtRatioX96Lower, p.Pool.Token0, p.Pool.Token1, nil)
 
-	tickUpper, err := utils.GetTickAtSqrtRatio(sqrtRatioX96Upper.ToBig())
+	tickUpper, err := p.tickCalculator.GetTickAtSqrtRatioV2(sqrtRatioX96Upper)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -323,25 +313,17 @@ func (p *Position) BurnAmountsWithSlippage(slippageTolerance *entities.Percent) 
 
 	// we want the smaller amounts...
 	// ...which occurs at the upper price for amount0...
-	pUpper, err := NewPosition(poolUpper, p.Liquidity, p.TickLower, p.TickUpper)
+	positionUpper, err := NewPosition(poolUpper, p.Liquidity, p.TickLower, p.TickUpper)
 	if err != nil {
 		return nil, nil, err
 	}
 	// ...and the lower for amount1
-	pLower, err := NewPosition(poolLower, p.Liquidity, p.TickLower, p.TickUpper)
-	if err != nil {
-		return nil, nil, err
-	}
-	a0, err := pUpper.Amount0(false)
-	if err != nil {
-		return nil, nil, err
-	}
-	a1, err := pLower.Amount1(false)
+	positionLower, err := NewPosition(poolLower, p.Liquidity, p.TickLower, p.TickUpper)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return uint256.MustFromBig(a0.Quotient()), uint256.MustFromBig(a1.Quotient()), nil
+	return positionUpper.CalcAmount0(), positionLower.CalcAmount1(), nil
 }
 
 /**
