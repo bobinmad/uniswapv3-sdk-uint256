@@ -69,7 +69,7 @@ func TestComputeSwapStep(t *testing.T) {
 				uint256.MustFromDecimal(tt.priceTarget),
 				uint256.MustFromDecimal(tt.liquidity),
 				int256.MustFromDec(tt.amount),
-				tt.fee,
+				uint64(tt.fee),
 				&sqrtRatioNextX96, &amountIn, &amountOut, &feeAmount,
 			)
 

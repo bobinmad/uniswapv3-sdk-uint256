@@ -19,7 +19,7 @@ type Int128 = int256.Int
 
 type IntTypes struct {
 	yuint *Uint128
-	ba    [32]byte
+	// ba    [32]byte
 }
 
 func NewIntTypes() *IntTypes {
@@ -43,16 +43,20 @@ func (t *IntTypes) ToInt256(value *Uint256, result *Int256) error {
 	if value.Sign() < 0 {
 		return ErrExceedMaxInt256
 	}
+
+	copy(result[:], value[:])
 	// var ba [32]byte
-	value.WriteToArray32(&t.ba)
-	result.SetBytes32(t.ba[:])
+	// value.WriteToArray32(&t.ba)
+	// result.SetBytes32(t.ba[:])
 	return nil
 }
 
 func (t *IntTypes) ToUInt256(value *Int256, result *Uint256) {
+	copy(result[:], value[:])
+
 	// var ba [32]byte
-	value.WriteToArray32(&t.ba)
-	result.SetBytes32(t.ba[:])
+	// value.WriteToArray32(&t.ba)
+	// result.SetBytes32(t.ba[:])
 }
 
 // https://github.com/Uniswap/v3-core/blob/main/contracts/libraries/SafeCast.sol
@@ -70,12 +74,12 @@ func (t *IntTypes) AddDeltaInPlace(x *Uint128, y *Int128) error {
 	// and both of them is using two's complement internally
 	// so just cast `y` to uint256 and add them together
 	// var ba [32]byte
-	y.WriteToArray32(&t.ba)
+	// y.WriteToArray32(&t.ba)
 	// var yuint Uint128
-	t.yuint.SetBytes32(t.ba[:])
-	x.Add(x, t.yuint)
+	//t.yuint.SetBytes32(t.ba[:])
 
-	if x.Gt(Uint128Max) {
+	copy(t.yuint[:], y[:])
+	if x.Add(x, t.yuint).Gt(Uint128Max) {
 		// could be overflow or underflow
 		return ErrOverflowUint128
 	}

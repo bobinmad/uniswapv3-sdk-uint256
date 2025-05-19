@@ -42,20 +42,18 @@ type SqrtPriceCalculator struct {
 	diff                        *uint256.Int
 	deno                        *uint256.Int
 	product                     *uint256.Int
-	denominator                 *uint256.Int
 }
 
 func NewSqrtPriceCalculator() *SqrtPriceCalculator {
 	return &SqrtPriceCalculator{
-		fullMath:    NewFullMath(),
-		numerator1:  new(uint256.Int),
-		numerator2:  new(uint256.Int),
-		tmp:         new(uint256.Int),
-		quotient:    new(uint256.Int),
-		diff:        new(uint256.Int),
-		deno:        new(uint256.Int),
-		product:     new(uint256.Int),
-		denominator: new(uint256.Int),
+		fullMath:   NewFullMath(),
+		numerator1: new(uint256.Int),
+		numerator2: new(uint256.Int),
+		tmp:        new(uint256.Int),
+		quotient:   new(uint256.Int),
+		diff:       new(uint256.Int),
+		deno:       new(uint256.Int),
+		product:    new(uint256.Int),
 	}
 }
 
@@ -149,10 +147,10 @@ func (c *SqrtPriceCalculator) getNextSqrtPriceFromAmount0RoundingUp(sqrtPX96 *Ui
 
 	if add {
 		if c.tmp.Div(c.product, amount).Eq(sqrtPX96) {
-			addIn256(c.numerator1, c.product, c.denominator)
+			addIn256(c.numerator1, c.product, c.deno)
 			// >=
-			if !c.denominator.Lt(c.numerator1) {
-				return c.fullMath.MulDivRoundingUpV2(c.numerator1, sqrtPX96, c.denominator, result)
+			if !c.deno.Lt(c.numerator1) {
+				return c.fullMath.MulDivRoundingUpV2(c.numerator1, sqrtPX96, c.deno, result)
 			}
 		}
 
@@ -168,7 +166,7 @@ func (c *SqrtPriceCalculator) getNextSqrtPriceFromAmount0RoundingUp(sqrtPX96 *Ui
 			return ErrInvariant
 		}
 
-		return c.fullMath.MulDivRoundingUpV2(c.numerator1, sqrtPX96, c.denominator.Sub(c.numerator1, c.product), result)
+		return c.fullMath.MulDivRoundingUpV2(c.numerator1, sqrtPX96, c.deno.Sub(c.numerator1, c.product), result)
 	}
 }
 

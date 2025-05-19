@@ -8,26 +8,16 @@ import (
 )
 
 type MaxLiquidityForAmountsCalculator struct {
-	res  *uint256.Int
-	res0 *uint256.Int
-	res1 *uint256.Int
-	tmp  *uint256.Int
-	tmp2 *uint256.Int
-
-	tmpBig  *big.Int
+	tmp0    *uint256.Int
+	tmp1    *uint256.Int
 	tmpBig0 *big.Int
 	tmpBig1 *big.Int
 }
 
 func NewMaxLiquidityForAmountsCalculator() *MaxLiquidityForAmountsCalculator {
 	return &MaxLiquidityForAmountsCalculator{
-		res:  new(uint256.Int),
-		res0: new(uint256.Int),
-		res1: new(uint256.Int),
-		tmp:  new(uint256.Int),
-		tmp2: new(uint256.Int),
-
-		tmpBig:  new(big.Int),
+		tmp0:    new(uint256.Int),
+		tmp1:    new(uint256.Int),
 		tmpBig0: new(big.Int),
 		tmpBig1: new(big.Int),
 	}
@@ -49,8 +39,8 @@ func (c *MaxLiquidityForAmountsCalculator) maxLiquidityForAmount0Imprecise(sqrtR
 		sqrtRatioAX96, sqrtRatioBX96 = sqrtRatioBX96, sqrtRatioAX96
 	}
 
-	intermediate := c.tmp.Div(c.tmp2.Mul(sqrtRatioAX96, sqrtRatioBX96), constants.Q96U256)
-	result.Div(c.tmp.Mul(amount0, intermediate), c.tmp2.Sub(sqrtRatioBX96, sqrtRatioAX96))
+	intermediate := c.tmp0.Div(c.tmp1.Mul(sqrtRatioAX96, sqrtRatioBX96), constants.Q96U256)
+	result.Div(c.tmp0.Mul(amount0, intermediate), c.tmp1.Sub(sqrtRatioBX96, sqrtRatioAX96))
 }
 
 /**
@@ -72,7 +62,7 @@ func (c *MaxLiquidityForAmountsCalculator) maxLiquidityForAmount0Precise(sqrtRat
 	numerator := c.tmpBig0.Mul(c.tmpBig0.Mul(amount0.ToBig(), sqrtRatioAX96Big), sqrtRatioBX96Big)
 	denominator := c.tmpBig1.Mul(constants.Q96, c.tmpBig1.Sub(sqrtRatioBX96Big, sqrtRatioAX96Big))
 
-	result.SetFromBig(c.tmpBig.Div(numerator, denominator))
+	result.SetFromBig(c.tmpBig1.Div(numerator, denominator))
 }
 
 /**
@@ -87,7 +77,7 @@ func (c *MaxLiquidityForAmountsCalculator) maxLiquidityForAmount1(sqrtRatioAX96,
 		sqrtRatioAX96, sqrtRatioBX96 = sqrtRatioBX96, sqrtRatioAX96
 	}
 
-	result.Div(c.tmp.Mul(amount1, constants.Q96U256), c.tmp2.Sub(sqrtRatioBX96, sqrtRatioAX96))
+	result.Div(c.tmp0.Mul(amount1, constants.Q96U256), c.tmp1.Sub(sqrtRatioBX96, sqrtRatioAX96))
 }
 
 /**
@@ -114,8 +104,8 @@ func (c *MaxLiquidityForAmountsCalculator) MaxLiquidityForAmounts(sqrtRatioCurre
 	}
 
 	if !sqrtRatioCurrentX96.Gt(sqrtRatioAX96) {
-		maxLiquidityForAmount0(sqrtRatioAX96, sqrtRatioBX96, amount0, c.res)
-		return c.res
+		maxLiquidityForAmount0(sqrtRatioAX96, sqrtRatioBX96, amount0, c.tmp0)
+		return c.tmp0
 	} else if sqrtRatioCurrentX96.Lt(sqrtRatioBX96) {
 		// тут необходимы именно новые переменные. нельзя заюзать статик-кэш, иначе будет ошибка.
 		res0 := new(uint256.Int)
@@ -130,6 +120,6 @@ func (c *MaxLiquidityForAmountsCalculator) MaxLiquidityForAmounts(sqrtRatioCurre
 		return res1
 	}
 
-	c.maxLiquidityForAmount1(sqrtRatioAX96, sqrtRatioBX96, amount1, c.res)
-	return c.res
+	c.maxLiquidityForAmount1(sqrtRatioAX96, sqrtRatioBX96, amount1, c.tmp0)
+	return c.tmp0
 }

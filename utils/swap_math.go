@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"github.com/KyberNetwork/uniswapv3-sdk-uint256/constants"
 	"github.com/holiman/uint256"
 )
 
@@ -44,7 +43,7 @@ func (c *SwapStepCalculator) ComputeSwapStep(
 	sqrtRatioTargetX96 *Uint160,
 	liquidity *Uint128,
 	amountRemaining *Int256,
-	feePips constants.FeeAmount,
+	feePips uint64,
 	sqrtRatioNextX96 *Uint160, amountIn, amountOut, feeAmount *Uint256,
 ) error {
 	var err error
@@ -52,7 +51,7 @@ func (c *SwapStepCalculator) ComputeSwapStep(
 	zeroForOne := !sqrtRatioCurrentX96.Lt(sqrtRatioTargetX96)
 	exactIn := amountRemaining.Sign() >= 0
 
-	c.maxFeeMinusFeePips.SetUint64(MaxFeeInt - uint64(feePips))
+	c.maxFeeMinusFeePips.SetUint64(MaxFeeInt - feePips)
 	if exactIn {
 		c.intTypes.ToUInt256(amountRemaining, c.amountRemainingU)
 		c.tmpUint256.Div(c.tmpUint256.Mul(c.amountRemainingU, c.maxFeeMinusFeePips), MaxFeeUint256)
@@ -128,7 +127,7 @@ func (c *SwapStepCalculator) ComputeSwapStep(
 		// we didn't reach the target, so take the remainder of the maximum input as fee
 		feeAmount.Sub(c.amountRemainingU, amountIn)
 	} else {
-		err = c.fullMath.MulDivRoundingUpV2(amountIn, c.feePipsUin256Tmp.SetUint64(uint64(feePips)), c.maxFeeMinusFeePips, feeAmount)
+		err = c.fullMath.MulDivRoundingUpV2(amountIn, c.feePipsUin256Tmp.SetUint64(feePips), c.maxFeeMinusFeePips, feeAmount)
 	}
 
 	return err
