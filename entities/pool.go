@@ -157,7 +157,7 @@ func NewPoolV2(tokenA, tokenB *entities.Token, fee constants.FeeAmount, sqrtRati
 
 func NewPoolV3(
 	fee uint16,
-	initTick int32,
+	initTick int,
 	initSqrtPriceX96 *utils.Uint160,
 	token0, token1 *entities.Token,
 	ticksHandler TickDataProvider,
@@ -165,7 +165,7 @@ func NewPoolV3(
 	return &Pool{
 		Fee:              constants.FeeAmount(fee),
 		TickDataProvider: ticksHandler,
-		TickCurrent:      int(initTick),
+		TickCurrent:      initTick,
 		SqrtRatioX96:     initSqrtPriceX96.Clone(),
 		Liquidity:        new(utils.Uint128),
 		Token0:           token0,
@@ -285,7 +285,7 @@ func (p *Pool) GetOutputAmount(inputAmount *entities.CurrencyAmount,
 
 	pool := NewPoolV3(
 		uint16(p.Fee),
-		int32(p.TickCurrent),
+		p.TickCurrent,
 		p.SqrtRatioX96,
 		p.Token0,
 		p.Token1,
@@ -360,7 +360,7 @@ func (p *Pool) GetInputAmount(outputAmount *entities.CurrencyAmount,
 
 	pool := NewPoolV3(
 		uint16(p.Fee),
-		int32(p.TickCurrent),
+		p.TickCurrent,
 		p.SqrtRatioX96,
 		p.Token0,
 		p.Token1,

@@ -246,14 +246,14 @@ func (p *Position) MintAmountsWithSlippage(slippageTolerance *entities.Percent) 
 		return nil, nil, err
 	}
 
-	poolLower := NewPoolV3(uint16(p.Pool.Fee), int32(tickLower), sqrtRatioX96Lower, p.Pool.Token0, p.Pool.Token1, nil)
+	poolLower := NewPoolV3(uint16(p.Pool.Fee), tickLower, sqrtRatioX96Lower, p.Pool.Token0, p.Pool.Token1, nil)
 
 	tickUpper, err := p.tickCalculator.GetTickAtSqrtRatioV2(sqrtRatioX96Upper)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	poolUpper := NewPoolV3(uint16(p.Pool.Fee), int32(tickUpper), sqrtRatioX96Upper, p.Pool.Token0, p.Pool.Token1, nil)
+	poolUpper := NewPoolV3(uint16(p.Pool.Fee), tickUpper, sqrtRatioX96Upper, p.Pool.Token0, p.Pool.Token1, nil)
 
 	// because the router is imprecise, we need to calculate the position that will be created (assuming no slippage)
 	// the mint amounts are what will be passed as calldata
@@ -303,13 +303,13 @@ func (p *Position) BurnAmountsWithSlippage(slippageTolerance *entities.Percent) 
 	if err != nil {
 		return nil, nil, err
 	}
-	poolLower := NewPoolV3(uint16(p.Pool.Fee), int32(tickLower), sqrtRatioX96Lower, p.Pool.Token0, p.Pool.Token1, nil)
+	poolLower := NewPoolV3(uint16(p.Pool.Fee), tickLower, sqrtRatioX96Lower, p.Pool.Token0, p.Pool.Token1, nil)
 
 	tickUpper, err := p.tickCalculator.GetTickAtSqrtRatioV2(sqrtRatioX96Upper)
 	if err != nil {
 		return nil, nil, err
 	}
-	poolUpper := NewPoolV3(uint16(p.Pool.Fee), int32(tickUpper), sqrtRatioX96Upper, p.Pool.Token0, p.Pool.Token1, nil)
+	poolUpper := NewPoolV3(uint16(p.Pool.Fee), tickUpper, sqrtRatioX96Upper, p.Pool.Token0, p.Pool.Token1, nil)
 
 	// we want the smaller amounts...
 	// ...which occurs at the upper price for amount0...
