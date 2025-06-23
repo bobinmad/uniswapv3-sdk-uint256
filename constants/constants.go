@@ -51,9 +51,10 @@ var (
 	OneU256     = uint256.NewInt(1)
 
 	// used in liquidity amount math
-	Q96        = new(big.Int).Exp(big.NewInt(2), big.NewInt(96), nil)
-	Q192       = new(big.Int).Exp(Q96, big.NewInt(2), nil)
-	Q192Big, _ = new(big.Float).SetString(Q192.String())
+	Q96             = new(big.Int).Exp(big.NewInt(2), big.NewInt(96), nil)
+	Q192            = new(big.Int).Exp(Q96, big.NewInt(2), nil)
+	Q192Big, _      = new(big.Float).SetString(Q192.String())
+	Q192BigFloat, _ = new(big.Float).SetString(Q192.String())
 
 	Q96U256 = new(uint256.Int).Exp(uint256.NewInt(2), uint256.NewInt(96))
 
