@@ -13,11 +13,10 @@ var (
 )
 
 type FullMath struct {
-	u256utils *Uint256Utils
-	rem       *uint256.Int
-	result    *uint256.Int
-	remainder *Uint256
-	quot      [8]uint64
+	u256utils   *Uint256Utils
+	rem, result *uint256.Int
+	remainder   *Uint256
+	quot        [8]uint64
 }
 
 func NewFullMath() *FullMath {

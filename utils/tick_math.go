@@ -10,33 +10,23 @@ import (
 
 type TickCalculator struct {
 	bitCalculator            *BitCalculator
-	absTick                  int
-	ratio, rem               *Uint256
-	tmp                      *Uint256
-	sqrtRatioX128            *Uint256
-	r                        *Uint256
-	f                        *Uint256
+	tmp0, tmp, r             *Uint256
 	logSqrt10001, tmp1, tmp2 *Int256
 	sqrtRatio                *Uint160
-	log2                     *int256.Int
-	tmpsigned                *int256.Int
+	tmpsigned                *Int256
 }
 
 func NewTickCalculator() *TickCalculator {
 	return &TickCalculator{
 		bitCalculator: NewBitCalculator(),
-		ratio:         new(Uint256),
-		rem:           new(Uint256),
+		tmp0:          new(Uint256),
 		tmp:           new(Uint256),
-		sqrtRatioX128: new(Uint256),
 		r:             new(Uint256),
-		f:             new(Uint256),
 		logSqrt10001:  new(Int256),
 		tmp1:          new(Int256),
 		tmp2:          new(Int256),
 		sqrtRatio:     new(Uint160),
-		log2:          new(int256.Int),
-		tmpsigned:     new(int256.Int),
+		tmpsigned:     new(Int256),
 	}
 }
 
@@ -106,83 +96,84 @@ func GetSqrtRatioAtTick(tick int) (*big.Int, error) {
  * @param tick the tick for which to compute the sqrt ratio
  */
 func (c *TickCalculator) GetSqrtRatioAtTickV2(tick int, result *Uint160) {
+	var absTick int
 	if tick < 0 {
-		c.absTick = -tick
+		absTick = -tick
 	} else {
-		c.absTick = tick
+		absTick = tick
 	}
 
-	if c.absTick&0x1 != 0 {
-		c.ratio.Set(sqrtConst1)
+	if absTick&0x1 != 0 {
+		c.tmp0.Set(sqrtConst1)
 	} else {
-		c.ratio.Set(sqrtConst2)
+		c.tmp0.Set(sqrtConst2)
 	}
 
-	if c.absTick&0x2 != 0 {
-		c.mulShift(c.ratio, sqrtConst3)
+	if absTick&0x2 != 0 {
+		c.mulShift(c.tmp0, sqrtConst3)
 	}
-	if c.absTick&0x4 != 0 {
-		c.mulShift(c.ratio, sqrtConst4)
+	if absTick&0x4 != 0 {
+		c.mulShift(c.tmp0, sqrtConst4)
 	}
-	if c.absTick&0x8 != 0 {
-		c.mulShift(c.ratio, sqrtConst5)
+	if absTick&0x8 != 0 {
+		c.mulShift(c.tmp0, sqrtConst5)
 	}
-	if c.absTick&0x10 != 0 {
-		c.mulShift(c.ratio, sqrtConst6)
+	if absTick&0x10 != 0 {
+		c.mulShift(c.tmp0, sqrtConst6)
 	}
-	if c.absTick&0x20 != 0 {
-		c.mulShift(c.ratio, sqrtConst7)
+	if absTick&0x20 != 0 {
+		c.mulShift(c.tmp0, sqrtConst7)
 	}
-	if c.absTick&0x40 != 0 {
-		c.mulShift(c.ratio, sqrtConst8)
+	if absTick&0x40 != 0 {
+		c.mulShift(c.tmp0, sqrtConst8)
 	}
-	if c.absTick&0x80 != 0 {
-		c.mulShift(c.ratio, sqrtConst9)
+	if absTick&0x80 != 0 {
+		c.mulShift(c.tmp0, sqrtConst9)
 	}
-	if c.absTick&0x100 != 0 {
-		c.mulShift(c.ratio, sqrtConst10)
+	if absTick&0x100 != 0 {
+		c.mulShift(c.tmp0, sqrtConst10)
 	}
-	if c.absTick&0x200 != 0 {
-		c.mulShift(c.ratio, sqrtConst11)
+	if absTick&0x200 != 0 {
+		c.mulShift(c.tmp0, sqrtConst11)
 	}
-	if c.absTick&0x400 != 0 {
-		c.mulShift(c.ratio, sqrtConst12)
+	if absTick&0x400 != 0 {
+		c.mulShift(c.tmp0, sqrtConst12)
 	}
-	if c.absTick&0x800 != 0 {
-		c.mulShift(c.ratio, sqrtConst13)
+	if absTick&0x800 != 0 {
+		c.mulShift(c.tmp0, sqrtConst13)
 	}
-	if c.absTick&0x1000 != 0 {
-		c.mulShift(c.ratio, sqrtConst14)
+	if absTick&0x1000 != 0 {
+		c.mulShift(c.tmp0, sqrtConst14)
 	}
-	if c.absTick&0x2000 != 0 {
-		c.mulShift(c.ratio, sqrtConst15)
+	if absTick&0x2000 != 0 {
+		c.mulShift(c.tmp0, sqrtConst15)
 	}
-	if c.absTick&0x4000 != 0 {
-		c.mulShift(c.ratio, sqrtConst16)
+	if absTick&0x4000 != 0 {
+		c.mulShift(c.tmp0, sqrtConst16)
 	}
-	if c.absTick&0x8000 != 0 {
-		c.mulShift(c.ratio, sqrtConst17)
+	if absTick&0x8000 != 0 {
+		c.mulShift(c.tmp0, sqrtConst17)
 	}
-	if c.absTick&0x10000 != 0 {
-		c.mulShift(c.ratio, sqrtConst18)
+	if absTick&0x10000 != 0 {
+		c.mulShift(c.tmp0, sqrtConst18)
 	}
-	if c.absTick&0x20000 != 0 {
-		c.mulShift(c.ratio, sqrtConst19)
+	if absTick&0x20000 != 0 {
+		c.mulShift(c.tmp0, sqrtConst19)
 	}
-	if c.absTick&0x40000 != 0 {
-		c.mulShift(c.ratio, sqrtConst20)
+	if absTick&0x40000 != 0 {
+		c.mulShift(c.tmp0, sqrtConst20)
 	}
-	if c.absTick&0x80000 != 0 {
-		c.mulShift(c.ratio, sqrtConst21)
+	if absTick&0x80000 != 0 {
+		c.mulShift(c.tmp0, sqrtConst21)
 	}
 
 	if tick > 0 {
-		c.ratio.Div(MaxUint256, c.ratio)
+		c.tmp0.Div(MaxUint256, c.tmp0)
 	}
 
 	// back to Q96
-	result.DivMod(c.ratio, Q32U256, c.rem)
-	if !c.rem.IsZero() {
+	result.DivMod(c.tmp0, Q32U256, c.tmp)
+	if !c.tmp.IsZero() {
 		result.AddUint64(result, 1)
 	}
 }
@@ -209,34 +200,34 @@ func (c *TickCalculator) GetTickAtSqrtRatioV2(sqrtRatioX96 *Uint160) (int, error
 		return 0, ErrInvalidSqrtRatio
 	}
 
-	c.sqrtRatioX128.Lsh(sqrtRatioX96, 32)
-	msb, err := c.bitCalculator.MostSignificantBit(c.sqrtRatioX128)
+	c.tmp.Lsh(sqrtRatioX96, 32)
+	msb, err := c.bitCalculator.MostSignificantBit(c.tmp)
 	if err != nil {
 		return 0, err
 	}
 
 	if msb > 127 {
-		c.r.Rsh(c.sqrtRatioX128, msb-127)
+		c.r.Rsh(c.tmp, msb-127)
 	} else {
-		c.r.Lsh(c.sqrtRatioX128, 127-msb)
+		c.r.Lsh(c.tmp, 127-msb)
 	}
 
-	c.log2.Lsh(c.log2.SetInt64(int64(msb-128)), 64)
+	c.tmp1.Lsh(c.tmp1.SetInt64(int64(msb-128)), 64)
 
 	for i := 0; i < 14; i++ {
 		c.tmp.Mul(c.r, c.r)
 		c.r.Rsh(c.tmp, 127)
-		c.f.Rsh(c.r, 128)
-		c.tmp.Lsh(c.f, uint(63-i))
+		c.tmp0.Rsh(c.r, 128)
+		c.tmp.Lsh(c.tmp0, uint(63-i))
 
 		// this is for Or, so we can cast the underlying words directly without copying
 		c.tmpsigned = (*int256.Int)(c.tmp)
 
-		c.log2.Or(c.log2, c.tmpsigned)
-		c.r.Rsh(c.r, uint(c.f.Uint64()))
+		c.tmp1.Or(c.tmp1, c.tmpsigned)
+		c.r.Rsh(c.r, uint(c.tmp0.Uint64()))
 	}
 
-	c.logSqrt10001.Mul(c.log2, magicSqrt10001)
+	c.logSqrt10001.Mul(c.tmp1, magicSqrt10001)
 
 	tickLow := int(c.tmp2.Rsh(c.tmp1.Sub(c.logSqrt10001, magicTickLow), 128).Uint64())
 	tickHigh := int(c.tmp2.Rsh(c.tmp1.Add(c.logSqrt10001, magicTickHigh), 128).Uint64())
