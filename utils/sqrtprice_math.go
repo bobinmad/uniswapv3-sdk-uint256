@@ -39,7 +39,6 @@ type SqrtPriceCalculator struct {
 	fullMath                    *FullMath
 	numerator1, numerator2, tmp *uint256.Int
 	quotient                    *uint256.Int
-	diff                        *uint256.Int
 	deno                        *uint256.Int
 	product                     *uint256.Int
 }
@@ -51,7 +50,6 @@ func NewSqrtPriceCalculator() *SqrtPriceCalculator {
 		numerator2: new(uint256.Int),
 		tmp:        new(uint256.Int),
 		quotient:   new(uint256.Int),
-		diff:       new(uint256.Int),
 		deno:       new(uint256.Int),
 		product:    new(uint256.Int),
 	}
@@ -99,9 +97,9 @@ func (c *SqrtPriceCalculator) GetAmount1DeltaV2(sqrtRatioAX96, sqrtRatioBX96 *Ui
 	// 	sqrtRatioAX96, sqrtRatioBX96 = sqrtRatioBX96, sqrtRatioAX96
 	// }
 
-	c.diff.Sub(sqrtRatioBX96, sqrtRatioAX96)
+	c.tmp.Sub(sqrtRatioBX96, sqrtRatioAX96)
 	if roundUp {
-		if err := c.fullMath.MulDivRoundingUpV2(liquidity, c.diff, constants.Q96U256, result); err != nil {
+		if err := c.fullMath.MulDivRoundingUpV2(liquidity, c.tmp, constants.Q96U256, result); err != nil {
 			return err
 		}
 
@@ -109,7 +107,7 @@ func (c *SqrtPriceCalculator) GetAmount1DeltaV2(sqrtRatioAX96, sqrtRatioBX96 *Ui
 	}
 
 	// : FullMath.mulDiv(liquidity, sqrtRatioBX96 - sqrtRatioAX96, FixedPoint96.Q96);
-	return c.fullMath.MulDivV2(liquidity, c.diff, constants.Q96U256, result, nil)
+	return c.fullMath.MulDivV2(liquidity, c.tmp, constants.Q96U256, result, nil)
 }
 
 func (c *SqrtPriceCalculator) GetNextSqrtPriceFromInput(sqrtPX96 *Uint160, liquidity *Uint128, amountIn *uint256.Int, zeroForOne bool, result *Uint160) error {

@@ -9,23 +9,22 @@ import (
 )
 
 type TickCalculator struct {
-	bitCalculator            *BitCalculator
-	tmp0, tmp, r             *Uint256
-	logSqrt10001, tmp1, tmp2 *Int256
-	sqrtRatio                *Uint160
-	tmpsigned                *Int256
+	bitCalculator                       *BitCalculator
+	sqrtRatio                           *Uint160
+	tmp0, tmp, r                        *Uint256
+	logSqrt10001, tmp1, tmp2, tmpsigned *Int256
 }
 
 func NewTickCalculator() *TickCalculator {
 	return &TickCalculator{
 		bitCalculator: NewBitCalculator(),
+		sqrtRatio:     new(Uint160),
 		tmp0:          new(Uint256),
 		tmp:           new(Uint256),
 		r:             new(Uint256),
 		logSqrt10001:  new(Int256),
 		tmp1:          new(Int256),
 		tmp2:          new(Int256),
-		sqrtRatio:     new(Uint160),
 		tmpsigned:     new(Int256),
 	}
 }
