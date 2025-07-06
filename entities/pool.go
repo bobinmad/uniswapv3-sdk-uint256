@@ -208,22 +208,26 @@ func (p *Pool) InvolvesToken(token *entities.Token) bool {
 
 // Token0Price returns the current mid price of the pool in terms of token0, i.e. the ratio of token1 over token0
 func (p *Pool) Token0Price() *entities.Price {
-	if p.token0Price != nil {
-		return p.token0Price
+	if p.token0Price == nil {
+		p.token0Price = p.CalcToken0Price()
 	}
-	p.token0Price = entities.NewPrice(p.Token0, p.Token1, constants.Q192,
-		new(uint256.Int).Mul(p.SqrtRatioX96, p.SqrtRatioX96).ToBig())
 	return p.token0Price
+}
+
+func (p *Pool) CalcToken0Price() *entities.Price {
+	return entities.NewPrice(p.Token0, p.Token1, constants.Q192, new(uint256.Int).Mul(p.SqrtRatioX96, p.SqrtRatioX96).ToBig())
 }
 
 // Token1Price returns the current mid price of the pool in terms of token1, i.e. the ratio of token0 over token1
 func (p *Pool) Token1Price() *entities.Price {
-	if p.token1Price != nil {
-		return p.token1Price
+	if p.token1Price == nil {
+		p.token1Price = p.CalcToken1Price()
 	}
-	p.token1Price = entities.NewPrice(p.Token1, p.Token0, new(uint256.Int).Mul(p.SqrtRatioX96, p.SqrtRatioX96).ToBig(),
-		constants.Q192)
 	return p.token1Price
+}
+
+func (p *Pool) CalcToken1Price() *entities.Price {
+	return entities.NewPrice(p.Token1, p.Token0, new(uint256.Int).Mul(p.SqrtRatioX96, p.SqrtRatioX96).ToBig(), constants.Q192)
 }
 
 /**

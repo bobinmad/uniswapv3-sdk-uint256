@@ -140,14 +140,14 @@ func (p *Position) CalcAmount0() *utils.Uint256 {
 	if p.Pool.TickCurrent < p.TickLower {
 		p.tickCalculator.GetSqrtRatioAtTickV2(p.TickLower, p.sqrtTickLowerTmp)
 		p.tickCalculator.GetSqrtRatioAtTickV2(p.TickUpper, p.sqrtTickUpperTmp)
-		p.sqrtPriceCalculator.GetAmount0DeltaV2(p.sqrtTickLowerTmp, p.sqrtTickUpperTmp, p.Liquidity, false, p.amount0Tmp)
+		p.sqrtPriceCalculator.GetAmount0DeltaV2(p.sqrtTickLowerTmp, p.sqrtTickUpperTmp, p.Liquidity, false, p.amount2Tmp)
 
-		return p.amount0Tmp
+		return p.amount2Tmp
 	} else if p.Pool.TickCurrent < p.TickUpper {
 		p.tickCalculator.GetSqrtRatioAtTickV2(p.TickUpper, p.sqrtTickUpperTmp)
-		p.sqrtPriceCalculator.GetAmount0DeltaV2(p.Pool.SqrtRatioX96, p.sqrtTickUpperTmp, p.Liquidity, false, p.amount0Tmp)
+		p.sqrtPriceCalculator.GetAmount0DeltaV2(p.Pool.SqrtRatioX96, p.sqrtTickUpperTmp, p.Liquidity, false, p.amount2Tmp)
 
-		return p.amount0Tmp
+		return p.amount2Tmp
 	}
 
 	return Zero
@@ -158,15 +158,15 @@ func (p *Position) CalcAmount1() *utils.Uint256 {
 		return Zero
 	} else if p.Pool.TickCurrent < p.TickUpper {
 		p.tickCalculator.GetSqrtRatioAtTickV2(p.TickLower, p.sqrtTickLowerTmp)
-		p.sqrtPriceCalculator.GetAmount1DeltaV2(p.sqrtTickLowerTmp, p.Pool.SqrtRatioX96, p.Liquidity, false, p.amount1Tmp)
+		p.sqrtPriceCalculator.GetAmount1DeltaV2(p.sqrtTickLowerTmp, p.Pool.SqrtRatioX96, p.Liquidity, false, p.amount2Tmp)
 
-		return p.amount1Tmp
+		return p.amount2Tmp
 	} else {
 		p.tickCalculator.GetSqrtRatioAtTickV2(p.TickLower, p.sqrtTickLowerTmp)
 		p.tickCalculator.GetSqrtRatioAtTickV2(p.TickUpper, p.sqrtTickUpperTmp)
-		p.sqrtPriceCalculator.GetAmount1DeltaV2(p.sqrtTickLowerTmp, p.sqrtTickUpperTmp, p.Liquidity, false, p.amount1Tmp)
+		p.sqrtPriceCalculator.GetAmount1DeltaV2(p.sqrtTickLowerTmp, p.sqrtTickUpperTmp, p.Liquidity, false, p.amount2Tmp)
 
-		return p.amount1Tmp
+		return p.amount2Tmp
 	}
 }
 
@@ -176,24 +176,24 @@ func (p *Position) CalcAmounts() (*utils.Uint256, *utils.Uint256) {
 
 	if p.Pool.TickCurrent < p.TickLower {
 		// calc amount0
-		p.sqrtPriceCalculator.GetAmount0DeltaV2(p.sqrtTickLowerTmp, p.sqrtTickUpperTmp, p.Liquidity, true, p.amount0Tmp)
+		p.sqrtPriceCalculator.GetAmount0DeltaV2(p.sqrtTickLowerTmp, p.sqrtTickUpperTmp, p.Liquidity, true, p.amount1Tmp)
 
 		// amount1 is zero
-		return p.amount0Tmp, Zero
+		return p.amount1Tmp, Zero
 	} else if p.Pool.TickCurrent < p.TickUpper {
 		// calc amount0
-		p.sqrtPriceCalculator.GetAmount0DeltaV2(p.Pool.SqrtRatioX96, p.sqrtTickUpperTmp, p.Liquidity, true, p.amount0Tmp)
+		p.sqrtPriceCalculator.GetAmount0DeltaV2(p.Pool.SqrtRatioX96, p.sqrtTickUpperTmp, p.Liquidity, true, p.amount1Tmp)
 
 		// calc amount1
-		p.sqrtPriceCalculator.GetAmount1DeltaV2(p.sqrtTickLowerTmp, p.Pool.SqrtRatioX96, p.Liquidity, true, p.amount1Tmp)
+		p.sqrtPriceCalculator.GetAmount1DeltaV2(p.sqrtTickLowerTmp, p.Pool.SqrtRatioX96, p.Liquidity, true, p.amount2Tmp)
 
-		return p.amount0Tmp, p.amount1Tmp
+		return p.amount1Tmp, p.amount2Tmp
 	} else {
 		// calc amount1
-		p.sqrtPriceCalculator.GetAmount1DeltaV2(p.sqrtTickLowerTmp, p.sqrtTickUpperTmp, p.Liquidity, true, p.amount1Tmp)
+		p.sqrtPriceCalculator.GetAmount1DeltaV2(p.sqrtTickLowerTmp, p.sqrtTickUpperTmp, p.Liquidity, true, p.amount2Tmp)
 
 		// amount0 is zero
-		return Zero, p.amount1Tmp
+		return Zero, p.amount2Tmp
 	}
 }
 

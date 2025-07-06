@@ -32,7 +32,7 @@ func initPool() (*Pool, int, int) {
 
 	tickSpacing := constants.TickSpacings[constants.FeeLow]
 
-	pool := NewPoolV3(uint16(constants.FeeLow), int32(poolTickCurrent), poolSqrtRatioStart, DAI, USDC, nil)
+	pool := NewPoolV3(uint16(constants.FeeLow), poolTickCurrent, poolSqrtRatioStart, DAI, USDC, nil)
 
 	return pool, poolTickCurrent, tickSpacing
 }
@@ -199,7 +199,7 @@ func TestMintAmountsWithSlippage(t *testing.T) {
 	slippageTolerance = entities.NewPercent(big.NewInt(5), big.NewInt(100))
 
 	// is correct for pool at min price
-	minPricePool := NewPoolV3(uint16(constants.FeeLow), int32(utils.MinTick), utils.MinSqrtRatioU256, DAI, USDC, nil)
+	minPricePool := NewPoolV3(uint16(constants.FeeLow), utils.MinTick, utils.MinSqrtRatioU256, DAI, USDC, nil)
 	minPricePool.Liquidity = uint256.NewInt(1)
 
 	assert.NoError(t, err)
@@ -214,7 +214,7 @@ func TestMintAmountsWithSlippage(t *testing.T) {
 
 	// is correct for pool at max price
 	// maxPricePool, err := NewPool(DAI, USDC, constants.FeeLow, new(big.Int).Sub(utils.MaxSqrtRatio, big.NewInt(1)), big.NewInt(0), utils.MaxTick-1, nil)
-	maxPricePool := NewPoolV3(uint16(constants.FeeLow), int32(utils.MaxTick-1), new(uint256.Int).Sub(utils.MaxSqrtRatioU256, uint256.NewInt(1)), DAI, USDC, nil)
+	maxPricePool := NewPoolV3(uint16(constants.FeeLow), utils.MaxTick-1, new(uint256.Int).Sub(utils.MaxSqrtRatioU256, uint256.NewInt(1)), DAI, USDC, nil)
 	maxPricePool.Liquidity = uint256.NewInt(1)
 
 	//assert.NoError(t, err)
@@ -306,7 +306,7 @@ func TestBurnAmountsWithSlippage(t *testing.T) {
 
 	// is correct for pool at min price
 	// minPricePool, err := NewPool(DAI, USDC, constants.FeeLow, utils.MinSqrtRatio, big.NewInt(0), utils.MinTick, nil)
-	minPricePool := NewPoolV3(uint16(constants.FeeLow), int32(utils.MinTick), utils.MinSqrtRatioU256, DAI, USDC, nil)
+	minPricePool := NewPoolV3(uint16(constants.FeeLow), utils.MinTick, utils.MinSqrtRatioU256, DAI, USDC, nil)
 
 	assert.NoError(t, err)
 	p, err = NewPosition(minPricePool, B100e18Uint256,
@@ -321,7 +321,7 @@ func TestBurnAmountsWithSlippage(t *testing.T) {
 
 	// is correct for pool at max price
 	// maxPricePool, err := NewPool(DAI, USDC, constants.FeeLow, new(big.Int).Sub(utils.MaxSqrtRatio, big.NewInt(1)), big.NewInt(0), utils.MaxTick-1, nil)
-	maxPricePool := NewPoolV3(uint16(constants.FeeLow), int32(utils.MaxTick-1), new(uint256.Int).Sub(utils.MaxSqrtRatioU256, uint256.NewInt(1)), DAI, USDC, nil)
+	maxPricePool := NewPoolV3(uint16(constants.FeeLow), utils.MaxTick-1, new(uint256.Int).Sub(utils.MaxSqrtRatioU256, uint256.NewInt(1)), DAI, USDC, nil)
 	maxPricePool.Liquidity = uint256.NewInt(1)
 
 	assert.NoError(t, err)
