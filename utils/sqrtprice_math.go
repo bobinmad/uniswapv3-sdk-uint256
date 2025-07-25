@@ -17,13 +17,13 @@ var (
 	MaxUint160 = uint256.MustFromHex("0xffffffffffffffffffffffffffffffffffffffff")
 )
 
-func multiplyIn256(x, y, product *uint256.Int) *uint256.Int {
-	return product.Mul(x, y) // no need to And with MaxUint256 here
-}
+// func multiplyIn256(x, y, product *uint256.Int) *uint256.Int {
+// 	return product.Mul(x, y) // no need to And with MaxUint256 here
+// }
 
-func addIn256(x, y, sum *uint256.Int) *uint256.Int {
-	return sum.Add(x, y) // no need to And with MaxUint256 here
-}
+// func addIn256(x, y, sum *uint256.Int) *uint256.Int {
+// 	return sum.Add(x, y) // no need to And with MaxUint256 here
+// }
 
 // deprecated
 func GetAmount0Delta(sqrtRatioAX96, sqrtRatioBX96, liquidity *big.Int, roundUp bool) *big.Int {
@@ -141,11 +141,14 @@ func (c *SqrtPriceCalculator) getNextSqrtPriceFromAmount0RoundingUp(sqrtPX96 *Ui
 	}
 
 	c.numerator1.Lsh(liquidity, 96)
-	multiplyIn256(amount, sqrtPX96, c.product)
+	// multiplyIn256(amount, sqrtPX96, c.product)
+	c.product.Mul(amount, sqrtPX96)
 
 	if add {
 		if c.tmp.Div(c.product, amount).Eq(sqrtPX96) {
-			addIn256(c.numerator1, c.product, c.deno)
+			// addIn256(c.numerator1, c.product, c.deno)
+			c.deno.Add(c.numerator1, c.product)
+
 			// >=
 			if !c.deno.Lt(c.numerator1) {
 				return c.fullMath.MulDivRoundingUpV2(c.numerator1, sqrtPX96, c.deno, result)

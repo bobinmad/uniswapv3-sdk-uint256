@@ -68,9 +68,9 @@ func TestAddDeltaInPlace(t *testing.T) {
 
 	// 2**128-15 + 15 overflows
 	tmp := new(uint256.Int).SubUint64(new(uint256.Int).Exp(uint256.NewInt(2), uint256.NewInt(128)), 15)
-	assert.ErrorIs(t, ErrOverflowUint128, intTypes.AddDeltaInPlace(tmp, int256.NewInt(15)))
+	assert.ErrorIs(t, ErrOverflowUint128, intTypes.AddDeltaInPlaceV1(tmp, int256.NewInt(15)))
 	// 0 + -1 underflows
-	assert.ErrorIs(t, ErrOverflowUint128, intTypes.AddDeltaInPlace(uint256.NewInt(0), int256.NewInt(-1)))
+	assert.ErrorIs(t, ErrOverflowUint128, intTypes.AddDeltaInPlaceV1(uint256.NewInt(0), int256.NewInt(-1)))
 	// 3 + -4 underflows underflows
-	assert.ErrorIs(t, ErrOverflowUint128, intTypes.AddDeltaInPlace(uint256.NewInt(3), int256.NewInt(-4)))
+	assert.ErrorIs(t, ErrOverflowUint128, intTypes.AddDeltaInPlaceV1(uint256.NewInt(3), int256.NewInt(-4)))
 }

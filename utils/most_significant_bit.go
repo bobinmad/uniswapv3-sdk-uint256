@@ -35,9 +35,9 @@ var powersOf2 = []powerOf2{
 }
 
 func (c *BitCalculator) MostSignificantBit(x *uint256.Int) (uint, error) {
-	if x.IsZero() {
-		return 0, ErrInvalidInput
-	}
+	// if x.IsZero() {
+	// 	return 0, ErrInvalidInput
+	// }
 
 	c.tmpX.Set(x)
 	var msb uint

@@ -37,6 +37,7 @@ var (
 	Uint160Max = uint256.MustFromHex("0xffffffffffffffffffffffffffffffffffffffff")
 )
 
+// deprecated, use pointer to Int256 instead
 // https://github.com/Uniswap/v3-core/blob/main/contracts/libraries/SafeCast.sol
 func (t *IntTypes) ToInt256(value *Uint256, result *Int256) error {
 	// if value (interpreted as a two's complement signed number) is negative -> it must be larger than max int256
@@ -51,6 +52,7 @@ func (t *IntTypes) ToInt256(value *Uint256, result *Int256) error {
 	return nil
 }
 
+// deprecated, use pointer to Uint256 instead
 func (t *IntTypes) ToUInt256(value *Int256, result *Uint256) {
 	copy(result[:], value[:])
 
@@ -69,7 +71,7 @@ func CheckToUint160(value *Uint256) error {
 }
 
 // x = x + y
-func (t *IntTypes) AddDeltaInPlace(x *Uint128, y *Int128) error {
+func (t *IntTypes) AddDeltaInPlaceV1(x *Uint128, y *Int128) error {
 	// for now we're using int256 for Int128, and uint256 for Uint128
 	// and both of them is using two's complement internally
 	// so just cast `y` to uint256 and add them together
@@ -79,9 +81,15 @@ func (t *IntTypes) AddDeltaInPlace(x *Uint128, y *Int128) error {
 	//t.yuint.SetBytes32(t.ba[:])
 
 	copy(t.yuint[:], y[:])
+	// t.yuint = (*Uint128)(y)
 	if x.Add(x, t.yuint).Gt(Uint128Max) {
 		// could be overflow or underflow
 		return ErrOverflowUint128
 	}
+	return nil
+}
+
+func (t *IntTypes) AddDeltaInPlace(x *Uint128, y *Int128) error {
+	x.Add(x, (*Uint128)(y))
 	return nil
 }

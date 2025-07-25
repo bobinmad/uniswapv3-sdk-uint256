@@ -677,13 +677,15 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 
 		p.amountInPlusFee.Add(&p.step.amountIn, &p.step.feeAmount)
 
-		if err = p.intTypes.ToInt256(p.amountInPlusFee, p.amountInPlusFeeSigned); err != nil {
-			return err
-		}
+		// if err = p.intTypes.ToInt256(p.amountInPlusFee, p.amountInPlusFeeSigned); err != nil {
+		// 	return err
+		// }
+		p.amountInPlusFeeSigned = (*utils.Int256)(p.amountInPlusFee)
 
-		if err = p.intTypes.ToInt256(&p.step.amountOut, p.amountOutSigned); err != nil {
-			return err
-		}
+		// if err = p.intTypes.ToInt256(&p.step.amountOut, p.amountOutSigned); err != nil {
+		// 	return err
+		// }
+		p.amountOutSigned = (*utils.Int256)(&p.step.amountOut)
 
 		swapResult.StepsFee = append(swapResult.StepsFee, StepFeeResult{
 			Tick:       p.lastState.tick,

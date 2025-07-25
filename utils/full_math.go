@@ -59,14 +59,15 @@ func (m *FullMath) MulDivV2(x, y, d, z, r *uint256.Int) error {
 	}
 	p := umul(x, y)
 
-	// var quot [8]uint64
+	// m.quot = [8]uint64{}
 	m.quot[7], m.quot[6], m.quot[5], m.quot[4], m.quot[3], m.quot[2], m.quot[1], m.quot[0] = 0, 0, 0, 0, 0, 0, 0, 0
 	m.u256utils.udivrem(m.quot[:], p[:], d, m.rem)
 	if r != nil {
 		r.Set(m.rem)
 	}
 
-	copy(z[:], m.quot[:4])
+	// copy(z[:], m.quot[:4])
+	z[0], z[1], z[2], z[3] = m.quot[0], m.quot[1], m.quot[2], m.quot[3]
 
 	if (m.quot[4] | m.quot[5] | m.quot[6] | m.quot[7]) != 0 {
 		return ErrMulDivOverflow
