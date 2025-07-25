@@ -23,6 +23,9 @@ type Position struct {
 	Pool      *Pool
 	TickLower int
 	TickUpper int
+	// todo: optimization
+	// PriceLower *utils.Uint160
+	// PriceUpper *utils.Uint160
 	Liquidity *uint256.Int
 
 	// calculators

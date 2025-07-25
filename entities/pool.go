@@ -25,7 +25,7 @@ type StepComputations struct {
 	sqrtPriceStartX96 utils.Uint160
 	tickNext          int
 	initialized       bool
-	sqrtPriceNextX96  utils.Uint160
+	sqrtPriceNextX96  *utils.Uint160
 	amountIn          utils.Uint256
 	amountOut         utils.Uint256
 	feeAmount         utils.Uint256
@@ -175,6 +175,9 @@ func NewPoolV3(
 			amountCalculated:         new(utils.Int256),
 			sqrtPriceX96:             new(utils.Uint160),
 			liquidity:                new(utils.Uint128),
+		},
+		step: StepComputations{
+			sqrtPriceNextX96: new(utils.Uint160),
 		},
 		liquidityNet:       new(utils.Int128),
 		swapStepCalculator: utils.NewSwapStepCalculator(),
@@ -596,21 +599,22 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 		}
 	}
 
-	if zeroForOne {
-		if sqrtPriceLimitX96.Lt(utils.MinSqrtRatioU256) {
-			return ErrSqrtPriceLimitX96TooLow
-		}
-		if !sqrtPriceLimitX96.Lt(p.SqrtRatioX96) {
-			return ErrSqrtPriceLimitX96TooHigh
-		}
-	} else {
-		if sqrtPriceLimitX96.Gt(utils.MaxSqrtRatioU256) {
-			return ErrSqrtPriceLimitX96TooHigh
-		}
-		if !sqrtPriceLimitX96.Gt(p.SqrtRatioX96) {
-			return ErrSqrtPriceLimitX96TooLow
-		}
-	}
+	// пожертвуем этими проверками
+	// if zeroForOne {
+	// 	if sqrtPriceLimitX96.Lt(utils.MinSqrtRatioU256) {
+	// 		return ErrSqrtPriceLimitX96TooLow
+	// 	}
+	// 	if !sqrtPriceLimitX96.Lt(p.SqrtRatioX96) {
+	// 		return ErrSqrtPriceLimitX96TooHigh
+	// 	}
+	// } else {
+	// 	if sqrtPriceLimitX96.Gt(utils.MaxSqrtRatioU256) {
+	// 		return ErrSqrtPriceLimitX96TooHigh
+	// 	}
+	// 	if !sqrtPriceLimitX96.Gt(p.SqrtRatioX96) {
+	// 		return ErrSqrtPriceLimitX96TooLow
+	// 	}
+	// }
 
 	exactInput := amountSpecified.Sign() >= 0
 
@@ -620,11 +624,13 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 	p.lastState.sqrtPriceX96.Set(p.SqrtRatioX96)
 	p.lastState.tick = p.TickCurrent
 	p.lastState.liquidity.Set(p.Liquidity)
+
 	if swapResult == nil {
 		swapResult = swapResultTmp
+	} else {
+		swapResult.StepsFee = []StepFeeResult{}
+		swapResult.CrossInitTickLoops = 0
 	}
-	swapResult.StepsFee = []StepFeeResult{}
-	swapResult.CrossInitTickLoops = 0
 
 	// crossInitTickLoops is the number of loops that cross an initialized tick.
 	// We only count when tick passes an initialized tick, since gas only significant in this case.
@@ -648,19 +654,19 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 			p.step.tickNext = utils.MaxTick
 		}
 
-		p.tickCalculator.GetSqrtRatioAtTickV2(p.step.tickNext, &p.step.sqrtPriceNextX96)
+		p.tickCalculator.GetSqrtRatioAtTickV2(p.step.tickNext, p.step.sqrtPriceNextX96)
 
 		if zeroForOne {
 			if p.step.sqrtPriceNextX96.Lt(sqrtPriceLimitX96) {
 				p.targetValue.Set(sqrtPriceLimitX96)
 			} else {
-				p.targetValue.Set(&p.step.sqrtPriceNextX96)
+				p.targetValue.Set(p.step.sqrtPriceNextX96)
 			}
 		} else {
 			if p.step.sqrtPriceNextX96.Gt(sqrtPriceLimitX96) {
 				p.targetValue.Set(sqrtPriceLimitX96)
 			} else {
-				p.targetValue.Set(&p.step.sqrtPriceNextX96)
+				p.targetValue.Set(p.step.sqrtPriceNextX96)
 			}
 		}
 
@@ -696,7 +702,7 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 		}
 
 		// TODO
-		if p.lastState.sqrtPriceX96.Eq(&p.step.sqrtPriceNextX96) {
+		if p.lastState.sqrtPriceX96.Eq(p.step.sqrtPriceNextX96) {
 			// if the tick is initialized, run the tick transition
 			if p.step.initialized {
 				tick, err := p.TickDataProvider.GetTick(p.step.tickNext)
