@@ -45,11 +45,12 @@ func (c *SwapStepCalculator) ComputeSwapStep(
 	amountRemaining *Int256,
 	feePips uint64,
 	sqrtRatioNextX96 *Uint160, amountIn, amountOut, feeAmount *Uint256,
+	zeroForOne, exactIn bool,
 ) error {
 	var err error
 
-	zeroForOne := !sqrtRatioCurrentX96.Lt(sqrtRatioTargetX96)
-	exactIn := amountRemaining.Sign() >= 0
+	// zeroForOne := !sqrtRatioCurrentX96.Lt(sqrtRatioTargetX96)
+	// exactIn := amountRemaining.Sign() >= 0
 
 	c.maxFeeMinusFeePips.SetUint64(MaxFeeInt - feePips)
 	if exactIn {
@@ -72,8 +73,8 @@ func (c *SwapStepCalculator) ComputeSwapStep(
 		}
 	} else {
 		// c.intTypes.ToUInt256(amountRemaining, c.amountRemainingU)
-		c.amountRemainingU = (*uint256.Int)(amountRemaining)
-		c.amountRemainingU.Neg(c.amountRemainingU)
+		c.amountRemainingU.Neg((*uint256.Int)(amountRemaining))
+		// c.amountRemainingU.Neg(c.amountRemainingU)
 
 		if zeroForOne {
 			err = c.sqrtPriceCalculator.GetAmount1DeltaV2(sqrtRatioTargetX96, sqrtRatioCurrentX96, liquidity, false, amountOut)

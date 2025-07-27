@@ -64,13 +64,20 @@ func TestComputeSwapStep(t *testing.T) {
 	var amountIn, amountOut, feeAmount Uint256
 	for i, tt := range tests {
 		t.Run(fmt.Sprintf("test %d", i), func(t *testing.T) {
+			price := uint256.MustFromDecimal(tt.price)
+			priceTarget := uint256.MustFromDecimal(tt.priceTarget)
+			liquidity := uint256.MustFromDecimal(tt.liquidity)
+			amount := int256.MustFromDec(tt.amount)
+			fee := uint64(tt.fee)
+
 			err := swapStepCalculator.ComputeSwapStep(
-				uint256.MustFromDecimal(tt.price),
-				uint256.MustFromDecimal(tt.priceTarget),
-				uint256.MustFromDecimal(tt.liquidity),
-				int256.MustFromDec(tt.amount),
-				uint64(tt.fee),
+				price,
+				priceTarget,
+				liquidity,
+				amount,
+				fee,
 				&sqrtRatioNextX96, &amountIn, &amountOut, &feeAmount,
+				!price.Lt(priceTarget), amount.Sign() >= 0,
 			)
 
 			require.Nil(t, err)
