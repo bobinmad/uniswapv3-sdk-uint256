@@ -28,11 +28,10 @@ type Position struct {
 	Liquidity  *utils.Uint128
 
 	// static cache
-	token0Amount                       *entities.CurrencyAmount
-	token1Amount                       *entities.CurrencyAmount
-	mintAmounts                        []*uint256.Int
-	sqrtTickLowerTmp, sqrtTickUpperTmp *utils.Uint160
-	amount1Tmp, amount2Tmp             *utils.Uint256
+	token0Amount           *entities.CurrencyAmount
+	token1Amount           *entities.CurrencyAmount
+	mintAmounts            []*uint256.Int
+	amount1Tmp, amount2Tmp *utils.Uint256
 }
 
 /**
@@ -54,16 +53,14 @@ func NewPosition(pool *Pool, liquidity *uint256.Int, tickLower int, tickUpper in
 	}
 
 	position := Position{
-		Pool:             pool,
-		Liquidity:        liquidity,
-		TickLower:        tickLower,
-		TickUpper:        tickUpper,
-		PriceLower:       new(utils.Uint160),
-		PriceUpper:       new(utils.Uint160),
-		sqrtTickLowerTmp: new(utils.Uint160),
-		sqrtTickUpperTmp: new(utils.Uint160),
-		amount1Tmp:       new(utils.Uint256),
-		amount2Tmp:       new(utils.Uint256),
+		Pool:       pool,
+		Liquidity:  liquidity,
+		TickLower:  tickLower,
+		TickUpper:  tickUpper,
+		PriceLower: new(utils.Uint160),
+		PriceUpper: new(utils.Uint160),
+		amount1Tmp: new(utils.Uint256),
+		amount2Tmp: new(utils.Uint256),
 	}
 
 	// сразу посчитаем цены границ позиции, они часто бывают необходимы
@@ -332,13 +329,11 @@ func (p *Position) MintAmounts() (amount0, amount1 *uint256.Int, err error) {
  * @returns The amount of liquidity for the position
  */
 func FromAmounts(pool *Pool, tickLower, tickUpper int, amount0, amount1 *uint256.Int, useFullPrecision bool) (*Position, error) {
-	tickCalculator := utils.NewTickCalculator()
+	sqrtRatioAX96 := new(utils.Uint160)
+	pool.TickCalculator.GetSqrtRatioAtTickV2(tickLower, sqrtRatioAX96)
 
-	var sqrtRatioAX96 = new(utils.Uint160)
-	tickCalculator.GetSqrtRatioAtTickV2(tickLower, sqrtRatioAX96)
-
-	var sqrtRatioBX96 = new(utils.Uint160)
-	tickCalculator.GetSqrtRatioAtTickV2(tickUpper, sqrtRatioBX96)
+	sqrtRatioBX96 := new(utils.Uint160)
+	pool.TickCalculator.GetSqrtRatioAtTickV2(tickUpper, sqrtRatioBX96)
 
 	return NewPosition(pool, utils.NewMaxLiquidityForAmountsCalculator().MaxLiquidityForAmounts(pool.SqrtRatioX96, sqrtRatioAX96, sqrtRatioBX96, amount0, amount1, useFullPrecision), tickLower, tickUpper)
 }

@@ -41,11 +41,14 @@ type Pool struct {
 	TickCurrent      int
 	TickDataProvider TickDataProvider
 
+	// calculators
 	TickCalculator      *utils.TickCalculator
 	LiquidityCalculator *utils.MaxLiquidityForAmountsCalculator
 	SqrtPriceCalculator *utils.SqrtPriceCalculator
 	IntTypes            *utils.IntTypes
+	swapStepCalculator  *utils.SwapStepCalculator
 
+	// cache
 	token0Price *entities.Price
 	token1Price *entities.Price
 
@@ -58,15 +61,13 @@ type Pool struct {
 	targetValue           *utils.Uint160
 	amountOutSigned       *utils.Int256
 	step                  StepComputations
-	swapStepCalculator    *utils.SwapStepCalculator
-
-	tmpUint256   *uint256.Int
-	tmpUint256_1 *uint256.Int
-	tmpUint256_2 *uint256.Int
-	tmpUint256_3 *uint256.Int
-	tmpUint256_4 *uint256.Int
-	tmpUint256_5 *uint256.Int
-	tmpUint256_6 *uint256.Int
+	tmpUint256            *uint256.Int
+	tmpUint256_1          *uint256.Int
+	tmpUint256_2          *uint256.Int
+	tmpUint256_3          *uint256.Int
+	tmpUint256_4          *uint256.Int
+	tmpUint256_5          *uint256.Int
+	tmpUint256_6          *uint256.Int
 }
 
 type SwapResult struct {
