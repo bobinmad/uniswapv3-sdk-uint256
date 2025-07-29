@@ -40,8 +40,11 @@ type Pool struct {
 	Liquidity        *utils.Uint128
 	TickCurrent      int
 	TickDataProvider TickDataProvider
-	tickCalculator   *utils.TickCalculator
-	intTypes         *utils.IntTypes
+
+	TickCalculator      *utils.TickCalculator
+	LiquidityCalculator *utils.MaxLiquidityForAmountsCalculator
+	SqrtPriceCalculator *utils.SqrtPriceCalculator
+	IntTypes            *utils.IntTypes
 
 	token0Price *entities.Price
 	token1Price *entities.Price
@@ -179,10 +182,12 @@ func NewPoolV3(
 		step: StepComputations{
 			sqrtPriceNextX96: new(utils.Uint160),
 		},
-		liquidityNet:       new(utils.Int128),
-		swapStepCalculator: utils.NewSwapStepCalculator(),
-		tickCalculator:     utils.NewTickCalculator(),
-		intTypes:           utils.NewIntTypes(),
+		liquidityNet:        new(utils.Int128),
+		swapStepCalculator:  utils.NewSwapStepCalculator(),
+		TickCalculator:      utils.NewTickCalculator(),
+		SqrtPriceCalculator: utils.NewSqrtPriceCalculator(),
+		LiquidityCalculator: utils.NewMaxLiquidityForAmountsCalculator(),
+		IntTypes:            utils.NewIntTypes(),
 
 		amountInPlusFee:       new(utils.Uint256),
 		amountInPlusFeeSigned: new(utils.Int256),
@@ -654,7 +659,7 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 			p.step.tickNext = utils.MaxTick
 		}
 
-		p.tickCalculator.GetSqrtRatioAtTickV2(p.step.tickNext, p.step.sqrtPriceNextX96)
+		p.TickCalculator.GetSqrtRatioAtTickV2(p.step.tickNext, p.step.sqrtPriceNextX96)
 
 		if zeroForOne {
 			if p.step.sqrtPriceNextX96.Lt(sqrtPriceLimitX96) {
@@ -719,7 +724,7 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 				if zeroForOne {
 					p.liquidityNet.Neg(p.liquidityNet)
 				}
-				p.intTypes.AddDeltaInPlace(p.lastState.liquidity, p.liquidityNet)
+				p.IntTypes.AddDeltaInPlace(p.lastState.liquidity, p.liquidityNet)
 
 				swapResult.CrossInitTickLoops++
 			}
@@ -732,7 +737,7 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 
 		} else if !p.lastState.sqrtPriceX96.Eq(&p.step.sqrtPriceStartX96) {
 			// recompute unless we're on a lower tick boundary (i.e. already transitioned ticks), and haven't moved
-			if p.lastState.tick, err = p.tickCalculator.GetTickAtSqrtRatioV2(p.lastState.sqrtPriceX96); err != nil {
+			if p.lastState.tick, err = p.TickCalculator.GetTickAtSqrtRatioV2(p.lastState.sqrtPriceX96); err != nil {
 				return err
 			}
 		}
