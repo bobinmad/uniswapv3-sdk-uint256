@@ -21,6 +21,7 @@ var (
 	ErrBelowSmallest      = errors.New("below smallest")
 	ErrAtOrAboveLargest   = errors.New("at or above largest")
 	ErrInvalidTickIndex   = errors.New("invalid tick index")
+	ErrTickNotFound       = errors.New("tick not found")
 )
 
 var (

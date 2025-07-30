@@ -131,10 +131,8 @@ func newTestPool() *Pool {
 		},
 	}
 
-	p, err := NewTickListDataProvider(ticks, constants.TickSpacings[constants.FeeLow])
-	if err != nil {
-		panic(err)
-	}
+	p := NewTicksHandler()
+	p.SetTicks(ticks)
 
 	// pool, err := NewPool(USDC, DAI, constants.FeeLow, utils.EncodeSqrtRatioX96(constants.OneU256, constants.OneU256).ToBig(), OneEther, 0, p)
 	// if err != nil {

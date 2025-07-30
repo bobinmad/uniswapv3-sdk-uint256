@@ -39,7 +39,7 @@ type Pool struct {
 	SqrtRatioX96     *utils.Uint160
 	Liquidity        *utils.Uint128
 	TickCurrent      int
-	TickDataProvider TickDataProvider
+	TickDataProvider *TicksHandler
 
 	// calculators
 	TickCalculator      *utils.TickCalculator
@@ -102,7 +102,7 @@ func GetAddress(tokenA, tokenB *entities.Token, fee constants.FeeAmount,
 
 // deprecated
 func NewPool(tokenA, tokenB *entities.Token, fee constants.FeeAmount, sqrtRatioX96 *big.Int, liquidity *big.Int,
-	tickCurrent int, ticks TickDataProvider) (*Pool, error) {
+	tickCurrent int, ticks *TicksHandler) (*Pool, error) {
 	return NewPoolV2(
 		tokenA, tokenB, fee,
 		uint256.MustFromBig(sqrtRatioX96),
@@ -123,7 +123,7 @@ func NewPool(tokenA, tokenB *entities.Token, fee constants.FeeAmount, sqrtRatioX
  * @param ticks The current state of the pool ticks or a data provider that can return tick data
  */
 func NewPoolV2(tokenA, tokenB *entities.Token, fee constants.FeeAmount, sqrtRatioX96 *utils.Uint160,
-	liquidity *utils.Uint128, tickCurrent int, ticks TickDataProvider) (*Pool, error) {
+	liquidity *utils.Uint128, tickCurrent int, ticks *TicksHandler) (*Pool, error) {
 	if fee >= constants.FeeMax {
 		return nil, ErrFeeTooHigh
 	}
@@ -164,7 +164,7 @@ func NewPoolV3(
 	initTick int,
 	initSqrtPriceX96 *utils.Uint160,
 	token0, token1 *entities.Token,
-	ticksHandler TickDataProvider,
+	ticksHandler *TicksHandler,
 ) *Pool {
 	return &Pool{
 		Fee:              constants.FeeAmount(fee),
@@ -278,6 +278,7 @@ func (p *Pool) GetOutputAmount(inputAmount *entities.CurrencyAmount,
 	swapResult := new(SwapResultV2)
 	err = p.Swap(zeroForOne, q, sqrtPriceLimitX96, swapResult)
 	if err != nil {
+		panic("wedwedewpkewpokewpodk")
 		return nil, err
 	}
 	var outputToken *entities.Token
