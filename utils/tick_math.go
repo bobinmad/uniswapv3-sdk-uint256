@@ -9,23 +9,20 @@ import (
 )
 
 type TickCalculator struct {
-	bitCalculator                       *BitCalculator
-	sqrtRatio                           *Uint160
-	tmp0, tmp, r                        *Uint256
-	logSqrt10001, tmp1, tmp2, tmpsigned *Int256
+	sqrtRatio             *Uint160
+	tmp0, tmp, r          *Uint256
+	tmp1, tmp2, tmpsigned *Int256
 }
 
 func NewTickCalculator() *TickCalculator {
 	return &TickCalculator{
-		bitCalculator: NewBitCalculator(),
-		sqrtRatio:     new(Uint160),
-		tmp0:          new(Uint256),
-		tmp:           new(Uint256),
-		r:             new(Uint256),
-		logSqrt10001:  new(Int256),
-		tmp1:          new(Int256),
-		tmp2:          new(Int256),
-		tmpsigned:     new(Int256),
+		sqrtRatio: new(Uint160),
+		tmp0:      new(Uint256),
+		tmp:       new(Uint256),
+		r:         new(Uint256),
+		tmp1:      new(Int256),
+		tmp2:      new(Int256),
+		tmpsigned: new(Int256),
 	}
 }
 
@@ -200,10 +197,7 @@ func (c *TickCalculator) GetTickAtSqrtRatioV2(sqrtRatioX96 *Uint160) (int, error
 	}
 
 	c.tmp.Lsh(sqrtRatioX96, 32)
-	msb, err := c.bitCalculator.MostSignificantBit(c.tmp)
-	if err != nil {
-		return 0, err
-	}
+	msb := MostSignificantBit(c.tmp)
 
 	if msb > 127 {
 		c.r.Rsh(c.tmp, msb-127)
@@ -219,17 +213,14 @@ func (c *TickCalculator) GetTickAtSqrtRatioV2(sqrtRatioX96 *Uint160) (int, error
 		c.tmp0.Rsh(c.r, 128)
 		c.tmp.Lsh(c.tmp0, uint(63-i))
 
-		// this is for Or, so we can cast the underlying words directly without copying
-		c.tmpsigned = (*int256.Int)(c.tmp)
-
-		c.tmp1.Or(c.tmp1, c.tmpsigned)
+		c.tmp1.Or(c.tmp1, (*int256.Int)(c.tmp))
 		c.r.Rsh(c.r, uint(c.tmp0.Uint64()))
 	}
 
-	c.logSqrt10001.Mul(c.tmp1, magicSqrt10001)
+	c.tmpsigned.Mul(c.tmp1, magicSqrt10001)
 
-	tickLow := int(c.tmp2.Rsh(c.tmp1.Sub(c.logSqrt10001, magicTickLow), 128).Uint64())
-	tickHigh := int(c.tmp2.Rsh(c.tmp1.Add(c.logSqrt10001, magicTickHigh), 128).Uint64())
+	tickLow := int(c.tmp2.Rsh(c.tmp1.Sub(c.tmpsigned, magicTickLow), 128).Uint64())
+	tickHigh := int(c.tmp2.Rsh(c.tmp1.Add(c.tmpsigned, magicTickHigh), 128).Uint64())
 
 	if tickLow == tickHigh {
 		return tickLow, nil

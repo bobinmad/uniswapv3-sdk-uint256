@@ -6,10 +6,7 @@ import (
 
 	"github.com/holiman/uint256"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
-
-var bitCalculator = NewBitCalculator()
 
 func TestMostSignificantBit(t *testing.T) {
 	tests := []struct {
@@ -29,8 +26,9 @@ func TestMostSignificantBit(t *testing.T) {
 	}
 	for i, tt := range tests {
 		t.Run(fmt.Sprintf("test %d", i), func(t *testing.T) {
-			r, err := bitCalculator.MostSignificantBit(uint256.MustFromHex(tt.value))
-			require.Nil(t, err)
+			// r := bitCalculator.MostSignificantBitV1(uint256.MustFromHex(tt.value))
+			r := MostSignificantBit(uint256.MustFromHex(tt.value))
+			// require.Nil(t, err)
 			assert.Equal(t, tt.expResult, r)
 		})
 	}

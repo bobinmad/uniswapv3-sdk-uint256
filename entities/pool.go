@@ -565,8 +565,8 @@ type StepFeeResult struct {
 	ZeroForOne bool
 	Tick       int
 	FeeAmount  utils.Uint256
-	AmountIn   utils.Uint256
-	Liquidity  utils.Uint256
+	// AmountIn   utils.Uint256
+	Liquidity utils.Uint128
 }
 
 type SwapResultV2 struct {
@@ -631,11 +631,17 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 	p.lastState.tick = p.TickCurrent
 	p.lastState.liquidity.Set(p.Liquidity)
 
-	if swapResult == nil {
-		swapResult = swapResultTmp
+	// if swapResult == nil {
+	// 	swapResult = swapResultTmp
+	// } else {
+	// 	swapResult.StepsFee = []StepFeeResult{}
+	// 	swapResult.CrossInitTickLoops = 0
+	// }
+
+	if swapResult.StepsFee == nil {
+		swapResult.StepsFee = make([]StepFeeResult, 0, 16) // заранее выделяем
 	} else {
-		swapResult.StepsFee = []StepFeeResult{}
-		swapResult.CrossInitTickLoops = 0
+		swapResult.StepsFee = swapResult.StepsFee[:0] // обнуляем без аллокации
 	}
 
 	// crossInitTickLoops is the number of loops that cross an initialized tick.
@@ -694,9 +700,9 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 		p.amountOutSigned = (*utils.Int256)(&p.step.amountOut)
 
 		swapResult.StepsFee = append(swapResult.StepsFee, StepFeeResult{
-			Tick:       p.lastState.tick,
-			FeeAmount:  p.step.feeAmount,
-			AmountIn:   p.step.amountIn,
+			Tick:      p.lastState.tick,
+			FeeAmount: p.step.feeAmount,
+			// AmountIn:   p.step.amountIn,
 			ZeroForOne: zeroForOne,
 			Liquidity:  *p.lastState.liquidity,
 		})
@@ -725,7 +731,7 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 				if zeroForOne {
 					p.liquidityNet.Neg(p.liquidityNet)
 				}
-				p.IntTypes.AddDeltaInPlace(p.lastState.liquidity, p.liquidityNet)
+				utils.AddDeltaInPlace(p.lastState.liquidity, p.liquidityNet)
 
 				swapResult.CrossInitTickLoops++
 			}
@@ -749,6 +755,10 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 	swapResult.Liquidity = p.lastState.liquidity
 	swapResult.CurrentTick = p.lastState.tick
 	swapResult.RemainingAmountIn = p.lastState.amountSpecifiedRemaining
+
+	// if len(swapResult.StepsFee) > 16 {
+	// 	fmt.Println("swapResult.StepsFee cap", len(swapResult.StepsFee))
+	// }
 
 	return nil
 }
