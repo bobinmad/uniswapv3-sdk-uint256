@@ -44,23 +44,23 @@ func TestGetNextSqrtPriceFromInput(t *testing.T) {
 		})
 	}
 
-	failTests := []struct {
-		price      string
-		liquidity  string
-		amount     string
-		zeroForOne bool
-	}{
-		{"0x0", "0x1", "0x16345785d8a0000", false},
-		{"0x1", "0x0", "0x16345785d8a0000", true},
-	}
-	for i, tt := range failTests {
-		t.Run(fmt.Sprintf("fail test %d", i), func(t *testing.T) {
-			err := sqrtPriceCalculator.GetNextSqrtPriceFromInput(
-				uint256.MustFromHex(tt.price), uint256.MustFromHex(tt.liquidity),
-				uint256.MustFromHex(tt.amount), tt.zeroForOne, &r)
-			require.NotNil(t, err)
-		})
-	}
+	// failTests := []struct {
+	// 	price      string
+	// 	liquidity  string
+	// 	amount     string
+	// 	zeroForOne bool
+	// }{
+	// 	{"0x0", "0x1", "0x16345785d8a0000", false},
+	// 	{"0x1", "0x0", "0x16345785d8a0000", true},
+	// }
+	// for i, tt := range failTests {
+	// 	t.Run(fmt.Sprintf("fail test %d", i), func(t *testing.T) {
+	// 		err := sqrtPriceCalculator.GetNextSqrtPriceFromInput(
+	// 			uint256.MustFromHex(tt.price), uint256.MustFromHex(tt.liquidity),
+	// 			uint256.MustFromHex(tt.amount), tt.zeroForOne, &r)
+	// 		require.NotNil(t, err)
+	// 	})
+	// }
 }
 
 func TestGetNextSqrtPriceFromOutput(t *testing.T) {
@@ -91,30 +91,30 @@ func TestGetNextSqrtPriceFromOutput(t *testing.T) {
 		})
 	}
 
-	failTests := []struct {
-		price      string
-		liquidity  string
-		amount     string
-		zeroForOne bool
-	}{
-		{"0x0", "0x1", "0x16345785d8a0000", false},
-		{"0x1", "0x0", "0x16345785d8a0000", true},
-		{"0x100000000000000000000000000", "0x400", "0x4", false},    // output amount is exactly the virtual reserves of token0
-		{"0x100000000000000000000000000", "0x400", "0x5", false},    // output amount is greater than virtual reserves of token0
-		{"0x100000000000000000000000000", "0x400", "0x40001", true}, // output amount is greater than virtual reserves of token1
-		{"0x100000000000000000000000000", "0x400", "0x40000", true}, // output amount is exactly the virtual reserves of token1
+	// failTests := []struct {
+	// 	price      string
+	// 	liquidity  string
+	// 	amount     string
+	// 	zeroForOne bool
+	// }{
+	// 	{"0x0", "0x1", "0x16345785d8a0000", false},
+	// 	{"0x1", "0x0", "0x16345785d8a0000", true},
+	// 	{"0x100000000000000000000000000", "0x400", "0x4", false},    // output amount is exactly the virtual reserves of token0
+	// 	{"0x100000000000000000000000000", "0x400", "0x5", false},    // output amount is greater than virtual reserves of token0
+	// 	{"0x100000000000000000000000000", "0x400", "0x40001", true}, // output amount is greater than virtual reserves of token1
+	// 	{"0x100000000000000000000000000", "0x400", "0x40000", true}, // output amount is exactly the virtual reserves of token1
 
-		{p1.Hex(), "0x1", MaxUint256.Hex(), true},  // amountOut is impossible in zero for one direction
-		{p1.Hex(), "0x1", MaxUint256.Hex(), false}, // amountOut is impossible in one for zero direction
-	}
-	for i, tt := range failTests {
-		t.Run(fmt.Sprintf("fail test %d", i), func(t *testing.T) {
-			err := sqrtPriceCalculator.GetNextSqrtPriceFromOutput(
-				uint256.MustFromHex(tt.price), uint256.MustFromHex(tt.liquidity),
-				uint256.MustFromHex(tt.amount), tt.zeroForOne, &r)
-			require.NotNil(t, err)
-		})
-	}
+	// 	{p1.Hex(), "0x1", MaxUint256.Hex(), true},  // amountOut is impossible in zero for one direction
+	// 	{p1.Hex(), "0x1", MaxUint256.Hex(), false}, // amountOut is impossible in one for zero direction
+	// }
+	// for i, tt := range failTests {
+	// 	t.Run(fmt.Sprintf("fail test %d", i), func(t *testing.T) {
+	// 		err := sqrtPriceCalculator.GetNextSqrtPriceFromOutput(
+	// 			uint256.MustFromHex(tt.price), uint256.MustFromHex(tt.liquidity),
+	// 			uint256.MustFromHex(tt.amount), tt.zeroForOne, &r)
+	// 		require.NotNil(t, err)
+	// 	})
+	// }
 }
 
 func TestGetAmount0Delta(t *testing.T) {

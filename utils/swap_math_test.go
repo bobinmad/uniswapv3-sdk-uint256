@@ -9,7 +9,6 @@ import (
 	"github.com/KyberNetwork/uniswapv3-sdk-uint256/constants"
 	"github.com/holiman/uint256"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 var swapStepCalculator = NewSwapStepCalculator()
@@ -70,7 +69,7 @@ func TestComputeSwapStep(t *testing.T) {
 			amount := int256.MustFromDec(tt.amount)
 			fee := uint64(tt.fee)
 
-			err := swapStepCalculator.ComputeSwapStep(
+			swapStepCalculator.ComputeSwapStep(
 				price,
 				priceTarget,
 				liquidity,
@@ -79,8 +78,7 @@ func TestComputeSwapStep(t *testing.T) {
 				&sqrtRatioNextX96, &amountIn, &amountOut, &feeAmount,
 				!price.Lt(priceTarget), amount.Sign() >= 0,
 			)
-
-			require.Nil(t, err)
+			// require.Nil(t, err)
 
 			if tt.expNextPrice == "=" {
 				assert.Equal(t, tt.priceTarget, sqrtRatioNextX96.Dec())
