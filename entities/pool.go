@@ -650,7 +650,8 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 
 	// start swap while loop
 	for !p.lastState.amountSpecifiedRemaining.IsZero() && !p.lastState.sqrtPriceX96.Eq(sqrtPriceLimitX96) {
-		p.step.sqrtPriceStartX96.Set(p.lastState.sqrtPriceX96)
+		// p.step.sqrtPriceStartX96.Set(p.lastState.sqrtPriceX96)
+		p.step.sqrtPriceStartX96 = *p.lastState.sqrtPriceX96
 
 		// because each iteration of the while loop rounds, we can't optimize this code (relative to the smart contract)
 		// by simply traversing to the next available tick, we instead need to exactly replicate
@@ -668,17 +669,31 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 
 		p.TickCalculator.GetSqrtRatioAtTickV2(p.step.tickNext, &p.step.sqrtPriceNextX96)
 
+		// if zeroForOne {
+		// 	if p.step.sqrtPriceNextX96.Lt(sqrtPriceLimitX96) {
+		// 		p.targetValue.Set(sqrtPriceLimitX96)
+		// 	} else {
+		// 		p.targetValue.Set(&p.step.sqrtPriceNextX96)
+		// 	}
+		// } else {
+		// 	if p.step.sqrtPriceNextX96.Gt(sqrtPriceLimitX96) {
+		// 		p.targetValue.Set(sqrtPriceLimitX96)
+		// 	} else {
+		// 		p.targetValue.Set(&p.step.sqrtPriceNextX96)
+		// 	}
+		// }
+
 		if zeroForOne {
 			if p.step.sqrtPriceNextX96.Lt(sqrtPriceLimitX96) {
-				p.targetValue.Set(sqrtPriceLimitX96)
+				*p.targetValue = *sqrtPriceLimitX96
 			} else {
-				p.targetValue.Set(&p.step.sqrtPriceNextX96)
+				*p.targetValue = p.step.sqrtPriceNextX96
 			}
 		} else {
 			if p.step.sqrtPriceNextX96.Gt(sqrtPriceLimitX96) {
-				p.targetValue.Set(sqrtPriceLimitX96)
+				*p.targetValue = *sqrtPriceLimitX96
 			} else {
-				p.targetValue.Set(&p.step.sqrtPriceNextX96)
+				*p.targetValue = p.step.sqrtPriceNextX96
 			}
 		}
 

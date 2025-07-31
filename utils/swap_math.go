@@ -60,7 +60,8 @@ func (c *SwapStepCalculator) ComputeSwapStep(
 
 		// >=
 		if !c.tmpUint256.Lt(amountIn) {
-			sqrtRatioNextX96.Set(sqrtRatioTargetX96)
+			// sqrtRatioNextX96.Set(sqrtRatioTargetX96)
+			*sqrtRatioNextX96 = *sqrtRatioTargetX96
 		} else {
 			c.sqrtPriceCalculator.GetNextSqrtPriceFromInput(sqrtRatioCurrentX96, liquidity, c.tmpUint256, zeroForOne, sqrtRatioNextX96)
 		}
@@ -74,30 +75,14 @@ func (c *SwapStepCalculator) ComputeSwapStep(
 		}
 
 		if !c.amountRemainingU.Lt(amountOut) {
-			sqrtRatioNextX96.Set(sqrtRatioTargetX96)
+			// sqrtRatioNextX96.Set(sqrtRatioTargetX96)
+			*sqrtRatioNextX96 = *sqrtRatioTargetX96
 		} else {
 			c.sqrtPriceCalculator.GetNextSqrtPriceFromOutput(sqrtRatioCurrentX96, liquidity, c.amountRemainingU, zeroForOne, sqrtRatioNextX96)
 		}
 	}
 
 	max := sqrtRatioTargetX96.Eq(sqrtRatioNextX96)
-
-	// if zeroForOne {
-	// 	if !(max && exactIn) {
-	// 		c.sqrtPriceCalculator.GetAmount0DeltaV2(sqrtRatioNextX96, sqrtRatioCurrentX96, liquidity, true, amountIn)
-	// 	}
-	// 	if !(max && !exactIn) {
-	// 		c.sqrtPriceCalculator.GetAmount1DeltaV2(sqrtRatioNextX96, sqrtRatioCurrentX96, liquidity, false, amountOut)
-	// 	}
-	// } else {
-	// 	if !(max && exactIn) {
-	// 		c.sqrtPriceCalculator.GetAmount1DeltaV2(sqrtRatioCurrentX96, sqrtRatioNextX96, liquidity, true, amountIn)
-
-	// 	}
-	// 	if !(max && !exactIn) {
-	// 		c.sqrtPriceCalculator.GetAmount0DeltaV2(sqrtRatioCurrentX96, sqrtRatioNextX96, liquidity, false, amountOut)
-	// 	}
-	// }
 
 	var useAmount0In, useAmount0Out bool
 	if zeroForOne {
@@ -127,7 +112,8 @@ func (c *SwapStepCalculator) ComputeSwapStep(
 	}
 
 	if !exactIn && amountOut.Gt(c.amountRemainingU) {
-		amountOut.Set(c.amountRemainingU)
+		// amountOut.Set(c.amountRemainingU)
+		*amountOut = *c.amountRemainingU
 	}
 
 	if exactIn && !sqrtRatioNextX96.Eq(sqrtRatioTargetX96) {

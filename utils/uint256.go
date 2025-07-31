@@ -36,13 +36,13 @@ import (
 )
 
 type Uint256Utils struct {
-	dnStorage *uint256.Int
+	dnStorage [5]uint64
 	unStorage [9]uint64
 }
 
 func NewUint256Utils() *Uint256Utils {
 	return &Uint256Utils{
-		dnStorage: new(uint256.Int),
+		// dnStorage: new(uint256.Int),
 	}
 }
 
@@ -99,7 +99,7 @@ func umulStep(z, x, y, carry uint64) (hi, lo uint64) {
 // The quotient is stored in provided quot - len(u)-len(d)+1 words.
 // It loosely follows the Knuth's division algorithm (sometimes referenced as "schoolbook" division) using 64-bit words.
 // See Knuth, Volume 2, section 4.3.1, Algorithm D.
-func (ut *Uint256Utils) udivrem(quot, u []uint64, d *uint256.Int, rem *uint256.Int) {
+func (ut *Uint256Utils) udivremV1(quot, u []uint64, d *uint256.Int, rem *uint256.Int) {
 	var dLen int
 	for i := len(d) - 1; i >= 0; i-- {
 		if d[i] != 0 {
@@ -110,7 +110,7 @@ func (ut *Uint256Utils) udivrem(quot, u []uint64, d *uint256.Int, rem *uint256.I
 
 	shift := bits.LeadingZeros64(d[dLen-1])
 
-	ut.dnStorage.Clear()
+	// ut.dnStorage.Clear()
 	dn := ut.dnStorage[:dLen]
 	for i := dLen - 1; i > 0; i-- {
 		dn[i] = (d[i] << shift) | (d[i-1] >> (64 - shift))
@@ -152,6 +152,95 @@ func (ut *Uint256Utils) udivrem(quot, u []uint64, d *uint256.Int, rem *uint256.I
 		rem[i] = (un[i] >> shift) | (un[i+1] << (64 - shift))
 	}
 	rem[dLen-1] = un[dLen-1] >> shift
+}
+
+// udivrem divides u by d and produces both quotient and remainder.
+// The quotient is stored in provided quot - len(u)-len(d)+1 words.
+// It loosely follows the Knuth's division algorithm (sometimes referenced as "schoolbook" division) using 64-bit words.
+// See Knuth, Volume 2, section 4.3.1, Algorithm D.
+func (ut *Uint256Utils) udivrem(quot, u []uint64, d *uint256.Int, rem *uint256.Int) {
+	var dLen int
+	var shift uint
+	dn := ut.dnStorage[:4] // или нужный размер
+
+	switch {
+	case d[3] != 0:
+		dLen = 4
+		shift = uint(bits.LeadingZeros64(d[3]))
+		dn[3] = (d[3] << shift) | (d[2] >> (64 - shift))
+		dn[2] = (d[2] << shift) | (d[1] >> (64 - shift))
+		dn[1] = (d[1] << shift) | (d[0] >> (64 - shift))
+		dn[0] = d[0] << shift
+	case d[2] != 0:
+		dLen = 3
+		shift = uint(bits.LeadingZeros64(d[2]))
+		dn[2] = (d[2] << shift) | (d[1] >> (64 - shift))
+		dn[1] = (d[1] << shift) | (d[0] >> (64 - shift))
+		dn[0] = d[0] << shift
+	case d[1] != 0:
+		dLen = 2
+		shift = uint(bits.LeadingZeros64(d[1]))
+		dn[1] = (d[1] << shift) | (d[0] >> (64 - shift))
+		dn[0] = d[0] << shift
+	case d[0] != 0:
+		dLen = 1
+		shift = uint(bits.LeadingZeros64(d[0]))
+		dn[0] = d[0] << shift
+	default:
+		dLen = 0
+		// обработка ошибки — деление на 0, например panic
+	}
+	dn = dn[:dLen]
+	dn[0] = d[0] << shift
+
+	var uLen int
+	for i := len(u) - 1; i >= 0; i-- {
+		if u[i] != 0 {
+			uLen = i + 1
+			break
+		}
+	}
+
+	if uLen < dLen {
+		copy(rem[:], u)
+		return
+	}
+
+	// var unStorage [9]uint64
+	un := ut.unStorage[:uLen+1]
+
+	un[uLen] = u[uLen-1] >> (64 - shift)
+	for i := uLen - 1; i > 0; i-- {
+		un[i] = (u[i] << shift) | (u[i-1] >> (64 - shift))
+	}
+	un[0] = u[0] << shift
+
+	// TODO: Skip the highest word of numerator if not significant.
+
+	if dLen == 1 {
+		rem.SetUint64(udivremBy1(quot, un, dn[0]) >> shift)
+		return
+	}
+
+	udivremKnuth(quot, un, dn)
+
+	switch dLen {
+	case 4:
+		rem[0] = (un[0] >> shift) | (un[1] << (64 - shift))
+		rem[1] = (un[1] >> shift) | (un[2] << (64 - shift))
+		rem[2] = (un[2] >> shift) | (un[3] << (64 - shift))
+		rem[3] = un[3] >> shift
+	case 3:
+		rem[0] = (un[0] >> shift) | (un[1] << (64 - shift))
+		rem[1] = (un[1] >> shift) | (un[2] << (64 - shift))
+		rem[2] = un[2] >> shift
+	case 2:
+		rem[0] = (un[0] >> shift) | (un[1] << (64 - shift))
+		rem[1] = un[1] >> shift
+	case 1:
+		rem[0] = un[0] >> shift
+	}
+	//rem[dLen-1] = un[dLen-1] >> shift
 }
 
 // udivremBy1 divides u by single normalized word d and produces both quotient and remainder.
