@@ -698,7 +698,8 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 		}
 
 		p.swapStepCalculator.ComputeSwapStep(p.lastState.sqrtPriceX96, p.targetValue, p.lastState.liquidity, p.lastState.amountSpecifiedRemaining, uint64(p.Fee), p.nxtSqrtPriceX96, &p.step.amountIn, &p.step.amountOut, &p.step.feeAmount, zeroForOne, exactInput)
-		p.lastState.sqrtPriceX96.Set(p.nxtSqrtPriceX96)
+		// p.lastState.sqrtPriceX96.Set(p.nxtSqrtPriceX96)
+		*p.lastState.sqrtPriceX96 = *p.nxtSqrtPriceX96
 
 		p.amountInPlusFee.Add(&p.step.amountIn, &p.step.feeAmount)
 
@@ -734,7 +735,7 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 				if zeroForOne {
 					p.liquidityNet.Neg(p.liquidityNet)
 				}
-				utils.AddDeltaInPlace(p.lastState.liquidity, p.liquidityNet)
+				p.lastState.liquidity.Add(p.lastState.liquidity, (*utils.Uint128)(p.liquidityNet))
 
 				swapResult.CrossInitTickLoops++
 			}
