@@ -25,7 +25,7 @@ type StepComputations struct {
 	sqrtPriceStartX96 utils.Uint160
 	tickNext          int
 	initialized       bool
-	sqrtPriceNextX96  *utils.Uint160
+	sqrtPriceNextX96  utils.Uint160
 	amountIn          utils.Uint256
 	amountOut         utils.Uint256
 	feeAmount         utils.Uint256
@@ -181,7 +181,7 @@ func NewPoolV3(
 			liquidity:                new(utils.Uint128),
 		},
 		step: StepComputations{
-			sqrtPriceNextX96: new(utils.Uint160),
+			// sqrtPriceNextX96: new(utils.Uint160),
 		},
 		liquidityNet:        new(utils.Int128),
 		swapStepCalculator:  utils.NewSwapStepCalculator(),
@@ -278,7 +278,6 @@ func (p *Pool) GetOutputAmount(inputAmount *entities.CurrencyAmount,
 	swapResult := new(SwapResultV2)
 	err = p.Swap(zeroForOne, q, sqrtPriceLimitX96, swapResult)
 	if err != nil {
-		panic("wedwedewpkewpokewpodk")
 		return nil, err
 	}
 	var outputToken *entities.Token
@@ -667,19 +666,19 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 			p.step.tickNext = utils.MaxTick
 		}
 
-		p.TickCalculator.GetSqrtRatioAtTickV2(p.step.tickNext, p.step.sqrtPriceNextX96)
+		p.TickCalculator.GetSqrtRatioAtTickV2(p.step.tickNext, &p.step.sqrtPriceNextX96)
 
 		if zeroForOne {
 			if p.step.sqrtPriceNextX96.Lt(sqrtPriceLimitX96) {
 				p.targetValue.Set(sqrtPriceLimitX96)
 			} else {
-				p.targetValue.Set(p.step.sqrtPriceNextX96)
+				p.targetValue.Set(&p.step.sqrtPriceNextX96)
 			}
 		} else {
 			if p.step.sqrtPriceNextX96.Gt(sqrtPriceLimitX96) {
 				p.targetValue.Set(sqrtPriceLimitX96)
 			} else {
-				p.targetValue.Set(p.step.sqrtPriceNextX96)
+				p.targetValue.Set(&p.step.sqrtPriceNextX96)
 			}
 		}
 
@@ -687,16 +686,6 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 		p.lastState.sqrtPriceX96.Set(p.nxtSqrtPriceX96)
 
 		p.amountInPlusFee.Add(&p.step.amountIn, &p.step.feeAmount)
-
-		// if err = p.intTypes.ToInt256(p.amountInPlusFee, p.amountInPlusFeeSigned); err != nil {
-		// 	return err
-		// }
-		p.amountInPlusFeeSigned = (*utils.Int256)(p.amountInPlusFee)
-
-		// if err = p.intTypes.ToInt256(&p.step.amountOut, p.amountOutSigned); err != nil {
-		// 	return err
-		// }
-		p.amountOutSigned = (*utils.Int256)(&p.step.amountOut)
 
 		swapResult.StepsFee = append(swapResult.StepsFee, StepFeeResult{
 			Tick:      p.lastState.tick,
@@ -707,15 +696,15 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 		})
 
 		if exactInput {
-			p.lastState.amountSpecifiedRemaining.Sub(p.lastState.amountSpecifiedRemaining, p.amountInPlusFeeSigned)
-			p.lastState.amountCalculated.Sub(p.lastState.amountCalculated, p.amountOutSigned)
+			p.lastState.amountSpecifiedRemaining.Sub(p.lastState.amountSpecifiedRemaining, (*utils.Int256)(p.amountInPlusFee))
+			p.lastState.amountCalculated.Sub(p.lastState.amountCalculated, (*utils.Int256)(&p.step.amountOut))
 		} else {
-			p.lastState.amountSpecifiedRemaining.Add(p.lastState.amountSpecifiedRemaining, p.amountOutSigned)
-			p.lastState.amountCalculated.Add(p.lastState.amountCalculated, p.amountInPlusFeeSigned)
+			p.lastState.amountSpecifiedRemaining.Add(p.lastState.amountSpecifiedRemaining, (*utils.Int256)(&p.step.amountOut))
+			p.lastState.amountCalculated.Add(p.lastState.amountCalculated, (*utils.Int256)(p.amountInPlusFee))
 		}
 
 		// TODO
-		if p.lastState.sqrtPriceX96.Eq(p.step.sqrtPriceNextX96) {
+		if p.lastState.sqrtPriceX96.Eq(&p.step.sqrtPriceNextX96) {
 			// if the tick is initialized, run the tick transition
 			if p.step.initialized {
 				tick, err := p.TickDataProvider.GetTick(p.step.tickNext)
@@ -735,12 +724,10 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 				swapResult.CrossInitTickLoops++
 			}
 
+			p.lastState.tick = p.step.tickNext
 			if zeroForOne {
-				p.lastState.tick = p.step.tickNext - 1
-			} else {
-				p.lastState.tick = p.step.tickNext
+				p.lastState.tick--
 			}
-
 		} else if !p.lastState.sqrtPriceX96.Eq(&p.step.sqrtPriceStartX96) {
 			// recompute unless we're on a lower tick boundary (i.e. already transitioned ticks), and haven't moved
 			if p.lastState.tick, err = p.TickCalculator.GetTickAtSqrtRatioV2(p.lastState.sqrtPriceX96); err != nil {
@@ -754,10 +741,6 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 	swapResult.Liquidity = p.lastState.liquidity
 	swapResult.CurrentTick = p.lastState.tick
 	swapResult.RemainingAmountIn = p.lastState.amountSpecifiedRemaining
-
-	// if len(swapResult.StepsFee) > 16 {
-	// 	fmt.Println("swapResult.StepsFee cap", len(swapResult.StepsFee))
-	// }
 
 	return nil
 }
