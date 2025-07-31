@@ -41,9 +41,7 @@ type Uint256Utils struct {
 }
 
 func NewUint256Utils() *Uint256Utils {
-	return &Uint256Utils{
-		// dnStorage: new(uint256.Int),
-	}
+	return &Uint256Utils{}
 }
 
 // umul computes full 256 x 256 -> 512 multiplication.
@@ -240,15 +238,15 @@ func (ut *Uint256Utils) udivrem(quot, u []uint64, d *uint256.Int, rem *uint256.I
 	case 1:
 		rem[0] = un[0] >> shift
 	}
-	//rem[dLen-1] = un[dLen-1] >> shift
 }
 
 // udivremBy1 divides u by single normalized word d and produces both quotient and remainder.
 // The quotient is stored in provided quot.
 func udivremBy1(quot, u []uint64, d uint64) (rem uint64) {
 	reciprocal := reciprocal2by1(d)
-	rem = u[len(u)-1] // Set the top word as remainder.
-	for j := len(u) - 2; j >= 0; j-- {
+	lenU := len(u)
+	rem = u[lenU-1] // Set the top word as remainder.
+	for j := lenU - 2; j >= 0; j-- {
 		quot[j], rem = udivrem2by1(rem, u[j], d, reciprocal)
 	}
 	return rem
@@ -275,11 +273,10 @@ func udivrem2by1(uh, ul, d, reciprocal uint64) (quot, rem uint64) {
 	if r > ql {
 		qh--
 		r += d
-	}
-
-	if r >= d {
-		qh++
-		r -= d
+		if r >= d {
+			qh++
+			r -= d
+		}
 	}
 
 	return qh, r
@@ -289,51 +286,123 @@ func udivrem2by1(uh, ul, d, reciprocal uint64) (quot, rem uint64) {
 // The quotient is stored in provided quot - len(u)-len(d) words.
 // Updates u to contain the remainder - len(d) words.
 func udivremKnuth(quot, u, d []uint64) {
-	dh := d[len(d)-1]
-	dl := d[len(d)-2]
+	lenD := len(d)
+	dh := d[lenD-1]
+	dl := d[lenD-2]
 	reciprocal := reciprocal2by1(dh)
 
-	for j := len(u) - len(d) - 1; j >= 0; j-- {
-		u2 := u[j+len(d)]
-		u1 := u[j+len(d)-1]
-		u0 := u[j+len(d)-2]
+	for j := len(u) - lenD - 1; j >= 0; j-- {
+		u2 := u[j+lenD]
+		u1 := u[j+lenD-1]
+		u0 := u[j+lenD-2]
 
 		var qhat, rhat uint64
-		if u2 >= dh { // Division overflows.
-			qhat = ^uint64(0)
-			// TODO: Add "qhat one to big" adjustment (not needed for correctness, but helps avoiding "add back" case).
-		} else {
+		if u2 < dh {
 			qhat, rhat = udivrem2by1(u2, u1, dh, reciprocal)
 			ph, pl := bits.Mul64(qhat, dl)
 			if ph > rhat || (ph == rhat && pl > u0) {
 				qhat--
-				// TODO: Add "qhat one to big" adjustment (not needed for correctness, but helps avoiding "add back" case).
 			}
+		} else {
+			qhat = ^uint64(0)
 		}
 
 		// Multiply and subtract.
 		borrow := subMulTo(u[j:], d, qhat)
-		u[j+len(d)] = u2 - borrow
-		if u2 < borrow { // Too much subtracted, add back.
+
+		ujd := &u[j+lenD]
+		old := *ujd
+		*ujd = old - borrow
+		if old < borrow {
 			qhat--
-			u[j+len(d)] += addTo(u[j:], d)
+			*ujd += addTo(u[j:], d)
 		}
 
-		quot[j] = qhat // Store quotient digit.
+		quot[j] = qhat
 	}
 }
 
 // subMulTo computes x -= y * multiplier.
 // Requires len(x) >= len(y).
 func subMulTo(x, y []uint64, multiplier uint64) uint64 {
-
 	var borrow uint64
-	for i := 0; i < len(y); i++ {
-		s, carry1 := bits.Sub64(x[i], borrow, 0)
-		ph, pl := bits.Mul64(y[i], multiplier)
+	switch len(y) {
+	// case 0:
+	// 	return 0
+
+	// case 1:
+	// 	s, carry1 := bits.Sub64(x[0], borrow, 0)
+	// 	ph, pl := bits.Mul64(y[0], multiplier)
+	// 	t, carry2 := bits.Sub64(s, pl, 0)
+	// 	x[0] = t
+	// 	borrow = ph + carry1 + carry2
+
+	case 2:
+		s, carry1 := bits.Sub64(x[0], borrow, 0)
+		ph, pl := bits.Mul64(y[0], multiplier)
 		t, carry2 := bits.Sub64(s, pl, 0)
-		x[i] = t
+		x[0] = t
 		borrow = ph + carry1 + carry2
+
+		s, carry1 = bits.Sub64(x[1], borrow, 0)
+		ph, pl = bits.Mul64(y[1], multiplier)
+		t, carry2 = bits.Sub64(s, pl, 0)
+		x[1] = t
+		borrow = ph + carry1 + carry2
+
+	case 3:
+		s, carry1 := bits.Sub64(x[0], borrow, 0)
+		ph, pl := bits.Mul64(y[0], multiplier)
+		t, carry2 := bits.Sub64(s, pl, 0)
+		x[0] = t
+		borrow = ph + carry1 + carry2
+
+		s, carry1 = bits.Sub64(x[1], borrow, 0)
+		ph, pl = bits.Mul64(y[1], multiplier)
+		t, carry2 = bits.Sub64(s, pl, 0)
+		x[1] = t
+		borrow = ph + carry1 + carry2
+
+		s, carry1 = bits.Sub64(x[2], borrow, 0)
+		ph, pl = bits.Mul64(y[2], multiplier)
+		t, carry2 = bits.Sub64(s, pl, 0)
+		x[2] = t
+		borrow = ph + carry1 + carry2
+
+	case 4:
+		s, carry1 := bits.Sub64(x[0], borrow, 0)
+		ph, pl := bits.Mul64(y[0], multiplier)
+		t, carry2 := bits.Sub64(s, pl, 0)
+		x[0] = t
+		borrow = ph + carry1 + carry2
+
+		s, carry1 = bits.Sub64(x[1], borrow, 0)
+		ph, pl = bits.Mul64(y[1], multiplier)
+		t, carry2 = bits.Sub64(s, pl, 0)
+		x[1] = t
+		borrow = ph + carry1 + carry2
+
+		s, carry1 = bits.Sub64(x[2], borrow, 0)
+		ph, pl = bits.Mul64(y[2], multiplier)
+		t, carry2 = bits.Sub64(s, pl, 0)
+		x[2] = t
+		borrow = ph + carry1 + carry2
+
+		s, carry1 = bits.Sub64(x[3], borrow, 0)
+		ph, pl = bits.Mul64(y[3], multiplier)
+		t, carry2 = bits.Sub64(s, pl, 0)
+		x[3] = t
+		borrow = ph + carry1 + carry2
+
+	default:
+		// по факту сюда не попадаем и не должны
+		for i := 0; i < len(y); i++ {
+			s, carry1 := bits.Sub64(x[i], borrow, 0)
+			ph, pl := bits.Mul64(y[i], multiplier)
+			t, carry2 := bits.Sub64(s, pl, 0)
+			x[i] = t
+			borrow = ph + carry1 + carry2
+		}
 	}
 	return borrow
 }
@@ -342,8 +411,28 @@ func subMulTo(x, y []uint64, multiplier uint64) uint64 {
 // Requires len(x) >= len(y).
 func addTo(x, y []uint64) uint64 {
 	var carry uint64
-	for i := 0; i < len(y); i++ {
-		x[i], carry = bits.Add64(x[i], y[i], carry)
+	switch len(y) {
+	// case 0:
+	// 	return 0
+	// case 1:
+	// 	x[0], carry = bits.Add64(x[0], y[0], 0)
+	case 2:
+		x[0], carry = bits.Add64(x[0], y[0], 0)
+		x[1], carry = bits.Add64(x[1], y[1], carry)
+	case 3:
+		x[0], carry = bits.Add64(x[0], y[0], 0)
+		x[1], carry = bits.Add64(x[1], y[1], carry)
+		x[2], carry = bits.Add64(x[2], y[2], carry)
+	case 4:
+		x[0], carry = bits.Add64(x[0], y[0], 0)
+		x[1], carry = bits.Add64(x[1], y[1], carry)
+		x[2], carry = bits.Add64(x[2], y[2], carry)
+		x[3], carry = bits.Add64(x[3], y[3], carry)
+	default:
+		// по факту сюда не попадаем и не должны
+		for i := 0; i < len(y); i++ {
+			x[i], carry = bits.Add64(x[i], y[i], carry)
+		}
 	}
 	return carry
 }
