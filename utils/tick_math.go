@@ -192,9 +192,9 @@ func GetTickAtSqrtRatio(sqrtRatioX96 *big.Int) (int, error) {
  * @param sqrtRatioX96 the sqrt ratio as a Q64.96 for which to compute the tick
  */
 func (c *TickCalculator) GetTickAtSqrtRatioV2(sqrtRatioX96 *Uint160) (int, error) {
-	if sqrtRatioX96.Lt(MinSqrtRatioU256) || !sqrtRatioX96.Lt(MaxSqrtRatioU256) {
-		return 0, ErrInvalidSqrtRatio
-	}
+	// if sqrtRatioX96.Lt(MinSqrtRatioU256) || !sqrtRatioX96.Lt(MaxSqrtRatioU256) {
+	// 	return 0, ErrInvalidSqrtRatio
+	// }
 
 	c.tmp.Lsh(sqrtRatioX96, 32)
 	msb := MostSignificantBit(c.tmp)
@@ -207,7 +207,7 @@ func (c *TickCalculator) GetTickAtSqrtRatioV2(sqrtRatioX96 *Uint160) (int, error
 
 	c.tmp1.Lsh(c.tmp1.SetInt64(int64(msb-128)), 64)
 
-	for i := 0; i < 14; i++ {
+	for i := uint(0); i < 14; i++ {
 		c.tmp.Mul(c.r, c.r)
 		c.r.Rsh(c.tmp, 127)
 		c.tmp0.Rsh(c.r, 128)

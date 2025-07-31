@@ -60,7 +60,6 @@ func (c *SwapStepCalculator) ComputeSwapStep(
 
 		// >=
 		if !c.tmpUint256.Lt(amountIn) {
-			// sqrtRatioNextX96.Set(sqrtRatioTargetX96)
 			*sqrtRatioNextX96 = *sqrtRatioTargetX96
 		} else {
 			c.sqrtPriceCalculator.GetNextSqrtPriceFromInput(sqrtRatioCurrentX96, liquidity, c.tmpUint256, zeroForOne, sqrtRatioNextX96)
@@ -75,7 +74,6 @@ func (c *SwapStepCalculator) ComputeSwapStep(
 		}
 
 		if !c.amountRemainingU.Lt(amountOut) {
-			// sqrtRatioNextX96.Set(sqrtRatioTargetX96)
 			*sqrtRatioNextX96 = *sqrtRatioTargetX96
 		} else {
 			c.sqrtPriceCalculator.GetNextSqrtPriceFromOutput(sqrtRatioCurrentX96, liquidity, c.amountRemainingU, zeroForOne, sqrtRatioNextX96)
@@ -112,7 +110,6 @@ func (c *SwapStepCalculator) ComputeSwapStep(
 	}
 
 	if !exactIn && amountOut.Gt(c.amountRemainingU) {
-		// amountOut.Set(c.amountRemainingU)
 		*amountOut = *c.amountRemainingU
 	}
 

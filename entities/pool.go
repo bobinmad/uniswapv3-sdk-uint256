@@ -605,23 +605,6 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 		}
 	}
 
-	// пожертвуем этими проверками
-	// if zeroForOne {
-	// 	if sqrtPriceLimitX96.Lt(utils.MinSqrtRatioU256) {
-	// 		return ErrSqrtPriceLimitX96TooLow
-	// 	}
-	// 	if !sqrtPriceLimitX96.Lt(p.SqrtRatioX96) {
-	// 		return ErrSqrtPriceLimitX96TooHigh
-	// 	}
-	// } else {
-	// 	if sqrtPriceLimitX96.Gt(utils.MaxSqrtRatioU256) {
-	// 		return ErrSqrtPriceLimitX96TooHigh
-	// 	}
-	// 	if !sqrtPriceLimitX96.Gt(p.SqrtRatioX96) {
-	// 		return ErrSqrtPriceLimitX96TooLow
-	// 	}
-	// }
-
 	exactInput := amountSpecified.Sign() >= 0
 
 	// keep track of swap state
@@ -630,13 +613,6 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 	p.lastState.sqrtPriceX96.Set(p.SqrtRatioX96)
 	p.lastState.tick = p.TickCurrent
 	p.lastState.liquidity.Set(p.Liquidity)
-
-	// if swapResult == nil {
-	// 	swapResult = swapResultTmp
-	// } else {
-	// 	swapResult.StepsFee = []StepFeeResult{}
-	// 	swapResult.CrossInitTickLoops = 0
-	// }
 
 	if swapResult.StepsFee == nil {
 		swapResult.StepsFee = make([]StepFeeResult, 0, 16) // заранее выделяем
@@ -650,7 +626,6 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 
 	// start swap while loop
 	for !p.lastState.amountSpecifiedRemaining.IsZero() && !p.lastState.sqrtPriceX96.Eq(sqrtPriceLimitX96) {
-		// p.step.sqrtPriceStartX96.Set(p.lastState.sqrtPriceX96)
 		p.step.sqrtPriceStartX96 = *p.lastState.sqrtPriceX96
 
 		// because each iteration of the while loop rounds, we can't optimize this code (relative to the smart contract)
@@ -669,20 +644,6 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 
 		p.TickCalculator.GetSqrtRatioAtTickV2(p.step.tickNext, &p.step.sqrtPriceNextX96)
 
-		// if zeroForOne {
-		// 	if p.step.sqrtPriceNextX96.Lt(sqrtPriceLimitX96) {
-		// 		p.targetValue.Set(sqrtPriceLimitX96)
-		// 	} else {
-		// 		p.targetValue.Set(&p.step.sqrtPriceNextX96)
-		// 	}
-		// } else {
-		// 	if p.step.sqrtPriceNextX96.Gt(sqrtPriceLimitX96) {
-		// 		p.targetValue.Set(sqrtPriceLimitX96)
-		// 	} else {
-		// 		p.targetValue.Set(&p.step.sqrtPriceNextX96)
-		// 	}
-		// }
-
 		if zeroForOne {
 			if p.step.sqrtPriceNextX96.Lt(sqrtPriceLimitX96) {
 				*p.targetValue = *sqrtPriceLimitX96
@@ -698,18 +659,9 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 		}
 
 		p.swapStepCalculator.ComputeSwapStep(p.lastState.sqrtPriceX96, p.targetValue, p.lastState.liquidity, p.lastState.amountSpecifiedRemaining, uint64(p.Fee), p.nxtSqrtPriceX96, &p.step.amountIn, &p.step.amountOut, &p.step.feeAmount, zeroForOne, exactInput)
-		// p.lastState.sqrtPriceX96.Set(p.nxtSqrtPriceX96)
 		*p.lastState.sqrtPriceX96 = *p.nxtSqrtPriceX96
 
 		p.amountInPlusFee.Add(&p.step.amountIn, &p.step.feeAmount)
-
-		swapResult.StepsFee = append(swapResult.StepsFee, StepFeeResult{
-			Tick:      p.lastState.tick,
-			FeeAmount: p.step.feeAmount,
-			// AmountIn:   p.step.amountIn,
-			ZeroForOne: zeroForOne,
-			Liquidity:  *p.lastState.liquidity,
-		})
 
 		if exactInput {
 			p.lastState.amountSpecifiedRemaining.Sub(p.lastState.amountSpecifiedRemaining, (*utils.Int256)(p.amountInPlusFee))
@@ -718,6 +670,14 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 			p.lastState.amountSpecifiedRemaining.Add(p.lastState.amountSpecifiedRemaining, (*utils.Int256)(&p.step.amountOut))
 			p.lastState.amountCalculated.Add(p.lastState.amountCalculated, (*utils.Int256)(p.amountInPlusFee))
 		}
+
+		swapResult.StepsFee = append(swapResult.StepsFee, StepFeeResult{
+			Tick:      p.lastState.tick,
+			FeeAmount: p.step.feeAmount,
+			// AmountIn:   p.step.amountIn,
+			ZeroForOne: zeroForOne,
+			Liquidity:  *p.lastState.liquidity,
+		})
 
 		// TODO
 		if p.lastState.sqrtPriceX96.Eq(&p.step.sqrtPriceNextX96) {
@@ -728,14 +688,15 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 					return err
 				}
 
-				p.liquidityNet.Set(tick.LiquidityNet)
-
 				// if we're moving leftward, we interpret liquidityNet as the opposite sign
 				// safe because liquidityNet cannot be type(int128).min
 				if zeroForOne {
-					p.liquidityNet.Neg(p.liquidityNet)
+					// p.liquidityNet.Neg(tick.LiquidityNet)
+					p.lastState.liquidity.Add(p.lastState.liquidity, (*utils.Uint128)(p.liquidityNet.Neg(tick.LiquidityNet)))
+				} else {
+					// p.liquidityNet = tick.LiquidityNet
+					p.lastState.liquidity.Add(p.lastState.liquidity, (*utils.Uint128)(tick.LiquidityNet))
 				}
-				p.lastState.liquidity.Add(p.lastState.liquidity, (*utils.Uint128)(p.liquidityNet))
 
 				swapResult.CrossInitTickLoops++
 			}
