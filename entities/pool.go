@@ -23,7 +23,7 @@ var (
 
 type StepComputations struct {
 	sqrtPriceStartX96 utils.Uint160
-	tickNext          int
+	tickNext          int32
 	initialized       bool
 	sqrtPriceNextX96  utils.Uint160
 	amountIn          utils.Uint256
@@ -38,7 +38,7 @@ type Pool struct {
 	Fee              constants.FeeAmount
 	SqrtRatioX96     *utils.Uint160
 	Liquidity        *utils.Uint128
-	TickCurrent      int
+	TickCurrent      int32
 	TickDataProvider *TicksHandler
 
 	// calculators
@@ -91,7 +91,7 @@ type GetAmountResultV2 struct {
 	RemainingAmountIn  *utils.Int256
 	SqrtRatioX96       *utils.Uint160
 	Liquidity          *utils.Uint128
-	CurrentTick        int
+	CurrentTick        int32
 	CrossInitTickLoops int
 }
 
@@ -102,7 +102,7 @@ func GetAddress(tokenA, tokenB *entities.Token, fee constants.FeeAmount,
 
 // deprecated
 func NewPool(tokenA, tokenB *entities.Token, fee constants.FeeAmount, sqrtRatioX96 *big.Int, liquidity *big.Int,
-	tickCurrent int, ticks *TicksHandler) (*Pool, error) {
+	tickCurrent int32, ticks *TicksHandler) (*Pool, error) {
 	return NewPoolV2(
 		tokenA, tokenB, fee,
 		uint256.MustFromBig(sqrtRatioX96),
@@ -123,7 +123,7 @@ func NewPool(tokenA, tokenB *entities.Token, fee constants.FeeAmount, sqrtRatioX
  * @param ticks The current state of the pool ticks or a data provider that can return tick data
  */
 func NewPoolV2(tokenA, tokenB *entities.Token, fee constants.FeeAmount, sqrtRatioX96 *utils.Uint160,
-	liquidity *utils.Uint128, tickCurrent int, ticks *TicksHandler) (*Pool, error) {
+	liquidity *utils.Uint128, tickCurrent int32, ticks *TicksHandler) (*Pool, error) {
 	if fee >= constants.FeeMax {
 		return nil, ErrFeeTooHigh
 	}
@@ -131,8 +131,8 @@ func NewPoolV2(tokenA, tokenB *entities.Token, fee constants.FeeAmount, sqrtRati
 	tickCalculator := utils.NewTickCalculator()
 
 	var tickCurrentSqrtRatioX96, nextTickSqrtRatioX96 utils.Uint160
-	tickCalculator.GetSqrtRatioAtTickV2(tickCurrent, &tickCurrentSqrtRatioX96)
-	tickCalculator.GetSqrtRatioAtTickV2(tickCurrent+1, &nextTickSqrtRatioX96)
+	tickCalculator.GetSqrtRatioAtTickV2(int32(tickCurrent), &tickCurrentSqrtRatioX96)
+	tickCalculator.GetSqrtRatioAtTickV2(int32(tickCurrent+1), &nextTickSqrtRatioX96)
 
 	if sqrtRatioX96.Lt(&tickCurrentSqrtRatioX96) || sqrtRatioX96.Gt(&nextTickSqrtRatioX96) {
 		return nil, ErrInvalidSqrtRatioX96
@@ -154,14 +154,14 @@ func NewPoolV2(tokenA, tokenB *entities.Token, fee constants.FeeAmount, sqrtRati
 		Fee:              fee,
 		SqrtRatioX96:     sqrtRatioX96,
 		Liquidity:        liquidity,
-		TickCurrent:      tickCurrent,
+		TickCurrent:      int32(tickCurrent),
 		TickDataProvider: ticks,
 	}, nil
 }
 
 func NewPoolV3(
 	fee uint16,
-	initTick int,
+	initTick int32,
 	initSqrtPriceX96 *utils.Uint160,
 	token0, token1 *entities.Token,
 	ticksHandler *TicksHandler,
@@ -557,13 +557,13 @@ func (p *Pool) swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 	// }, nil
 }
 
-func (p *Pool) tickSpacing() int {
+func (p *Pool) tickSpacing() int32 {
 	return constants.TickSpacings[p.Fee]
 }
 
 type StepFeeResult struct {
 	ZeroForOne bool
-	Tick       int
+	Tick       int32
 	FeeAmount  utils.Uint256
 	// AmountIn   utils.Uint256
 	Liquidity utils.Uint128
@@ -574,7 +574,7 @@ type SwapResultV2 struct {
 	SqrtRatioX96       *utils.Uint160
 	Liquidity          *utils.Uint128
 	RemainingAmountIn  *utils.Int256
-	CurrentTick        int
+	CurrentTick        int32
 	CrossInitTickLoops int
 	StepsFee           []StepFeeResult
 }
@@ -588,7 +588,7 @@ type State struct {
 	amountSpecifiedRemaining *utils.Int256
 	amountCalculated         *utils.Int256
 	sqrtPriceX96             *utils.Uint160
-	tick                     int
+	tick                     int32
 	liquidity                *utils.Uint128
 }
 

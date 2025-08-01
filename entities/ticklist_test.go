@@ -57,7 +57,7 @@ func TestNextInitializedTick(t *testing.T) {
 
 	type args struct {
 		ticks []Tick
-		tick  int
+		tick  int32
 		lte   bool
 	}
 	tests := []struct {
@@ -101,14 +101,14 @@ func TestNextInitializedTickWithinOneWord(t *testing.T) {
 	// words around 0, lte = true
 	type args struct {
 		ticks       []Tick
-		tick        int
+		tick        int32
 		lte         bool
 		tickSpacing int
 	}
 	tests := []struct {
 		name  string
 		args  args
-		want0 int
+		want0 int32
 		want1 bool
 	}{
 		// words around 0, lte = true

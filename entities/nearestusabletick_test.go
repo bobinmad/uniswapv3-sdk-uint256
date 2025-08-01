@@ -14,13 +14,13 @@ func TestNearestUsableTick(t *testing.T) {
 	assert.Panics(t, func() { NearestUsableTick(utils.MinTick-1, 1) }, "panics if tick is smaller than MinTick")
 
 	type args struct {
-		ticks       int
-		tickSpacing int
+		ticks       int32
+		tickSpacing int32
 	}
 	tests := []struct {
 		name string
 		args args
-		want int
+		want int32
 	}{
 		{name: "rounds at positive half", args: args{ticks: 5, tickSpacing: 10}, want: 10},
 		{name: "rounds down below positive half", args: args{ticks: 4, tickSpacing: 10}, want: 0},

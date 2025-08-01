@@ -21,8 +21,8 @@ var (
 // Position Represents a position on a Uniswap V3 Pool
 type Position struct {
 	Pool       *Pool
-	TickLower  int
-	TickUpper  int
+	TickLower  int32
+	TickUpper  int32
 	PriceLower *utils.Uint160
 	PriceUpper *utils.Uint160
 	Liquidity  *utils.Uint128
@@ -41,7 +41,7 @@ type Position struct {
  * @param tickLower The lower tick of the position
  * @param tickUpper The upper tick of the position
  */
-func NewPosition(pool *Pool, liquidity *uint256.Int, tickLower int, tickUpper int) (*Position, error) {
+func NewPosition(pool *Pool, liquidity *uint256.Int, tickLower, tickUpper int32) (*Position, error) {
 	if tickLower >= tickUpper {
 		return nil, ErrTickOrder
 	}
@@ -328,7 +328,7 @@ func (p *Position) MintAmounts() (amount0, amount1 *uint256.Int, err error) {
  * not what core can theoretically support
  * @returns The amount of liquidity for the position
  */
-func FromAmounts(pool *Pool, tickLower, tickUpper int, amount0, amount1 *uint256.Int, useFullPrecision bool) (*Position, error) {
+func FromAmounts(pool *Pool, tickLower, tickUpper int32, amount0, amount1 *uint256.Int, useFullPrecision bool) (*Position, error) {
 	sqrtRatioAX96 := new(utils.Uint160)
 	pool.TickCalculator.GetSqrtRatioAtTickV2(tickLower, sqrtRatioAX96)
 
@@ -348,7 +348,7 @@ func FromAmounts(pool *Pool, tickLower, tickUpper int, amount0, amount1 *uint256
  * not what core can theoretically support
  * @returns The position
  */
-func FromAmount0(pool *Pool, tickLower, tickUpper int, amount0 *uint256.Int, useFullPrecision bool) (*Position, error) {
+func FromAmount0(pool *Pool, tickLower, tickUpper int32, amount0 *uint256.Int, useFullPrecision bool) (*Position, error) {
 	return FromAmounts(pool, tickLower, tickUpper, amount0, MaxUint256U, useFullPrecision)
 }
 
@@ -360,7 +360,7 @@ func FromAmount0(pool *Pool, tickLower, tickUpper int, amount0 *uint256.Int, use
  * @param amount1 The desired amount of token1
  * @returns The position
  */
-func FromAmount1(pool *Pool, tickLower, tickUpper int, amount1 *uint256.Int) (*Position, error) {
+func FromAmount1(pool *Pool, tickLower, tickUpper int32, amount1 *uint256.Int) (*Position, error) {
 	// this function always uses full precision,
 	return FromAmounts(pool, tickLower, tickUpper, MaxUint256U, amount1, true)
 }

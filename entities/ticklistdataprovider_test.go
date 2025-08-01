@@ -612,9 +612,9 @@ func StrToUint256(val string) (v *uint256.Int) {
 	return
 }
 
-func StrToInt(s string) int {
+func StrToInt(s string) int32 {
 	i, _ := strconv.ParseInt(s, 10, 64)
-	return int(i)
+	return int32(i)
 }
 
 func StrToInt256(val string) (v *int256.Int) {

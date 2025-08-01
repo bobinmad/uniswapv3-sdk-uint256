@@ -30,7 +30,7 @@ func TestTickToPrice(t *testing.T) {
 	type args struct {
 		baseToken  *entities.Token
 		quoteToken *entities.Token
-		tick       int
+		tick       int32
 	}
 	tests := []struct {
 		name            string
@@ -65,7 +65,7 @@ func TestTickToPrice(t *testing.T) {
 }
 
 func TestPriceToClosestTick(t *testing.T) {
-	tickToPriceNoError := func(baseToken *entities.Token, quoteToken *entities.Token, tick int) *entities.Price {
+	tickToPriceNoError := func(baseToken *entities.Token, quoteToken *entities.Token, tick int32) *entities.Price {
 		p, err := TickToPrice(baseToken, quoteToken, tick)
 		if err != nil {
 			panic(err)
@@ -82,7 +82,7 @@ func TestPriceToClosestTick(t *testing.T) {
 	tests := []struct {
 		name     string
 		args     args
-		wantTick int
+		wantTick int32
 	}{
 		{"1800 t0/1 t1", args{entities.NewPrice(token1, token0, big.NewInt(1), big.NewInt(1800)), token1, token0}, -74960},
 		{"1 t1/1800 t0", args{entities.NewPrice(token0, token1, big.NewInt(1800), big.NewInt(1)), token0, token1}, -74960},

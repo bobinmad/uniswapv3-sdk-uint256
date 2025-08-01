@@ -27,8 +27,8 @@ func NewTickCalculator() *TickCalculator {
 }
 
 const (
-	MinTick = -887272  // The minimum tick that can be used on any pool.
-	MaxTick = -MinTick // The maximum tick that can be used on any pool.
+	MinTick = int32(-887272)  // The minimum tick that can be used on any pool.
+	MaxTick = int32(-MinTick) // The maximum tick that can be used on any pool.
 )
 
 var (
@@ -79,7 +79,7 @@ var (
 )
 
 // deprecated
-func GetSqrtRatioAtTick(tick int) (*big.Int, error) {
+func GetSqrtRatioAtTick(tick int32) (*big.Int, error) {
 	// panic("GetSqrtRatioAtTick() is deprecated")
 
 	result := new(Uint160)
@@ -91,8 +91,8 @@ func GetSqrtRatioAtTick(tick int) (*big.Int, error) {
  * Returns the sqrt ratio as a Q64.96 for the given tick. The sqrt ratio is computed as sqrt(1.0001)^tick
  * @param tick the tick for which to compute the sqrt ratio
  */
-func (c *TickCalculator) GetSqrtRatioAtTickV2(tick int, result *Uint160) {
-	var absTick int
+func (c *TickCalculator) GetSqrtRatioAtTickV2(tick int32, result *Uint160) {
+	var absTick int32
 	if tick < 0 {
 		absTick = -tick
 	} else {
@@ -181,7 +181,7 @@ var (
 )
 
 // deprecated
-func GetTickAtSqrtRatio(sqrtRatioX96 *big.Int) (int, error) {
+func GetTickAtSqrtRatio(sqrtRatioX96 *big.Int) (int32, error) {
 	// panic("GetTickAtSqrtRatio() is deprecated")
 	return NewTickCalculator().GetTickAtSqrtRatioV2(uint256.MustFromBig(sqrtRatioX96))
 }
@@ -191,7 +191,7 @@ func GetTickAtSqrtRatio(sqrtRatioX96 *big.Int) (int, error) {
  * and #getSqrtRatioAtTick(tick + 1) > sqrtRatioX96
  * @param sqrtRatioX96 the sqrt ratio as a Q64.96 for which to compute the tick
  */
-func (c *TickCalculator) GetTickAtSqrtRatioV2(sqrtRatioX96 *Uint160) (int, error) {
+func (c *TickCalculator) GetTickAtSqrtRatioV2(sqrtRatioX96 *Uint160) (int32, error) {
 	// if sqrtRatioX96.Lt(MinSqrtRatioU256) || !sqrtRatioX96.Lt(MaxSqrtRatioU256) {
 	// 	return 0, ErrInvalidSqrtRatio
 	// }
@@ -219,8 +219,8 @@ func (c *TickCalculator) GetTickAtSqrtRatioV2(sqrtRatioX96 *Uint160) (int, error
 
 	c.tmpsigned.Mul(c.tmp1, magicSqrt10001)
 
-	tickLow := int(c.tmp2.Rsh(c.tmp1.Sub(c.tmpsigned, magicTickLow), 128).Uint64())
-	tickHigh := int(c.tmp2.Rsh(c.tmp1.Add(c.tmpsigned, magicTickHigh), 128).Uint64())
+	tickLow := int32(c.tmp2.Rsh(c.tmp1.Sub(c.tmpsigned, magicTickLow), 128).Uint64())
+	tickHigh := int32(c.tmp2.Rsh(c.tmp1.Add(c.tmpsigned, magicTickHigh), 128).Uint64())
 
 	if tickLow == tickHigh {
 		return tickLow, nil

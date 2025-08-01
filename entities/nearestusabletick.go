@@ -11,7 +11,7 @@ import (
  * @param tick the target tick
  * @param tickSpacing the spacing of the pool
  */
-func NearestUsableTick(tick int, tickSpacing int) int {
+func NearestUsableTick(tick int32, tickSpacing int32) int32 {
 	if tickSpacing <= 0 {
 		panic("tickSpacing must be greater than 0")
 	}
@@ -19,14 +19,14 @@ func NearestUsableTick(tick int, tickSpacing int) int {
 		panic("tick exceeds bounds")
 	}
 
-	rounded := Round(float64(tick)/float64(tickSpacing)) * float64(tickSpacing)
+	rounded := int32(Round(float64(tick)/float64(tickSpacing)) * float64(tickSpacing))
 	if rounded < utils.MinTick {
-		return int(rounded) + tickSpacing
+		return rounded + tickSpacing
 	}
 	if rounded > utils.MaxTick {
-		return int(rounded) - tickSpacing
+		return rounded - tickSpacing
 	}
-	return int(rounded)
+	return rounded
 }
 
 // Round like javascript Math.round

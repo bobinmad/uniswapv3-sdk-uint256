@@ -16,7 +16,7 @@ import (
  * @param quoteToken the quote token of the price
  * @param tick the tick for which to return the price
  */
-func TickToPrice(baseToken *entities.Token, quoteToken *entities.Token, tick int) (*entities.Price, error) {
+func TickToPrice(baseToken *entities.Token, quoteToken *entities.Token, tick int32) (*entities.Price, error) {
 	sqrtRatioX96, err := GetSqrtRatioAtTick(tick)
 	if err != nil {
 		return nil, err
@@ -38,7 +38,7 @@ func TickToPrice(baseToken *entities.Token, quoteToken *entities.Token, tick int
  * @param price for which to return the closest tick that represents a price less than or equal to the input price,
  * i.e. the price of the returned tick is less than or equal to the input price
  */
-func PriceToClosestTick(price *entities.Price, baseToken, quoteToken *entities.Token) (int, error) {
+func PriceToClosestTick(price *entities.Price, baseToken, quoteToken *entities.Token) (int32, error) {
 	sorted, err := SortsBefore(baseToken, quoteToken)
 	if err != nil {
 		return 0, err

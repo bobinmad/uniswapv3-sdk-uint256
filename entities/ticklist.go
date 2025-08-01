@@ -35,7 +35,7 @@ func ValidateList(ticks []Tick, tickSpacing int) error {
 
 	// ensure ticks are spaced appropriately
 	for _, t := range ticks {
-		if t.Index%tickSpacing != 0 {
+		if t.Index%int32(tickSpacing) != 0 {
 			return ErrInvalidTickSpacing
 		}
 	}
@@ -56,7 +56,7 @@ func ValidateList(ticks []Tick, tickSpacing int) error {
 	return nil
 }
 
-func IsBelowSmallest(ticks []Tick, tick int) (bool, error) {
+func IsBelowSmallest(ticks []Tick, tick int32) (bool, error) {
 	if len(ticks) == 0 {
 		return true, ErrEmptyTickList
 	}
@@ -64,7 +64,7 @@ func IsBelowSmallest(ticks []Tick, tick int) (bool, error) {
 	return tick < ticks[0].Index, nil
 }
 
-func IsAtOrAboveLargest(ticks []Tick, tick int) (bool, error) {
+func IsAtOrAboveLargest(ticks []Tick, tick int32) (bool, error) {
 	if len(ticks) == 0 {
 		return true, ErrEmptyTickList
 	}
@@ -72,7 +72,7 @@ func IsAtOrAboveLargest(ticks []Tick, tick int) (bool, error) {
 	return tick >= ticks[len(ticks)-1].Index, nil
 }
 
-func GetTick(ticks []Tick, index int) (Tick, error) {
+func GetTick(ticks []Tick, index int32) (Tick, error) {
 	tickIndex, err := binarySearch(ticks, index)
 	if err != nil {
 		return EmptyTick, err
@@ -87,7 +87,7 @@ func GetTick(ticks []Tick, index int) (Tick, error) {
 	return tick, nil
 }
 
-func NextInitializedTick(ticks []Tick, tick int, lte bool) (Tick, error) {
+func NextInitializedTick(ticks []Tick, tick int32, lte bool) (Tick, error) {
 	if lte {
 		isBelowSmallest, err := IsBelowSmallest(ticks, tick)
 		if err != nil {
@@ -142,7 +142,7 @@ func NextInitializedTick(ticks []Tick, tick int, lte bool) (Tick, error) {
 	}
 }
 
-func NextInitializedTickWithinOneWord(ticks []Tick, tick int, lte bool, tickSpacing int) (int, bool, error) {
+func NextInitializedTickWithinOneWord(ticks []Tick, tick int32, lte bool, tickSpacing int) (int32, bool, error) {
 	compressed := math.Floor(float64(tick) / float64(tickSpacing)) // matches rounding in the code
 
 	if lte {
@@ -154,7 +154,7 @@ func NextInitializedTickWithinOneWord(ticks []Tick, tick int, lte bool, tickSpac
 		}
 
 		if isBelowSmallest {
-			return minimum, ZeroValueTickInitialized, ErrBelowSmallest
+			return int32(minimum), ZeroValueTickInitialized, ErrBelowSmallest
 		}
 
 		nextInitializedTick, err := NextInitializedTick(ticks, tick, lte)
@@ -164,7 +164,7 @@ func NextInitializedTickWithinOneWord(ticks []Tick, tick int, lte bool, tickSpac
 
 		index := nextInitializedTick.Index
 		nextInitializedTickIndex := math.Max(float64(minimum), float64(index))
-		return int(nextInitializedTickIndex), int(nextInitializedTickIndex) == index, nil
+		return int32(nextInitializedTickIndex), int32(nextInitializedTickIndex) == index, nil
 	} else {
 		wordPos := int(compressed+1) >> 8
 		maximum := ((wordPos+1)<<8)*tickSpacing - 1
@@ -174,7 +174,7 @@ func NextInitializedTickWithinOneWord(ticks []Tick, tick int, lte bool, tickSpac
 		}
 
 		if isAtOrAboveLargest {
-			return maximum, ZeroValueTickInitialized, ErrAtOrAboveLargest
+			return int32(maximum), ZeroValueTickInitialized, ErrAtOrAboveLargest
 		}
 
 		nextInitializedTick, err := NextInitializedTick(ticks, tick, lte)
@@ -184,11 +184,11 @@ func NextInitializedTickWithinOneWord(ticks []Tick, tick int, lte bool, tickSpac
 
 		index := nextInitializedTick.Index
 		nextInitializedTickIndex := math.Min(float64(maximum), float64(index))
-		return int(nextInitializedTickIndex), int(nextInitializedTickIndex) == index, nil
+		return int32(nextInitializedTickIndex), int32(nextInitializedTickIndex) == index, nil
 	}
 }
 
-func NextInitializedTickIndex(ticks []Tick, tick int, lte bool) (int, bool, error) {
+func NextInitializedTickIndex(ticks []Tick, tick int32, lte bool) (int32, bool, error) {
 	nextInitializedTick, err := NextInitializedTick(ticks, tick, lte)
 	if err != nil {
 		return ZeroValueTickIndex, ZeroValueTickInitialized, err
@@ -214,7 +214,7 @@ func isTicksSorted(ticks []Tick) bool {
  * @param tick tick to find the largest tick that is less than or equal to tick
  * @private
  */
-func binarySearch(ticks []Tick, tick int) (int, error) {
+func binarySearch(ticks []Tick, tick int32) (int, error) {
 	isBelowSmallest, err := IsBelowSmallest(ticks, tick)
 	if err != nil {
 		return ZeroValueTickIndex, err
