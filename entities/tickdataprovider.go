@@ -109,7 +109,7 @@ func (h *TicksHandler) NextInitializedTickIndex(tick int32, lte bool) (int32, bo
 		}
 
 		if h.isAtOrAboveLargest(tick) {
-			initializedTick = h.Ticks[len(h.Ticks)-1]
+			initializedTick = h.Ticks[h.TicksLen-1]
 		} else {
 			initializedTick = h.Ticks[h.binarySearch(tick)]
 		}
