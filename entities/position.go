@@ -45,10 +45,10 @@ func NewPosition(pool *Pool, liquidity *uint256.Int, tickLower, tickUpper int32)
 	if tickLower >= tickUpper {
 		return nil, ErrTickOrder
 	}
-	if tickLower < utils.MinTick || tickLower%pool.tickSpacing() != 0 {
+	if tickLower < utils.MinTick || tickLower%int32(pool.TickSpacing) != 0 {
 		return nil, ErrTickLower
 	}
-	if tickUpper > utils.MaxTick || tickUpper%pool.tickSpacing() != 0 {
+	if tickUpper > utils.MaxTick || tickUpper%int32(pool.TickSpacing) != 0 {
 		return nil, ErrTickUpper
 	}
 

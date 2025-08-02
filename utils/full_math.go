@@ -52,22 +52,22 @@ func (m *FullMath) MulDivRoundingUpV2(a, b, denominator, result *uint256.Int) er
 // MulDivV2 z=floor(a×b÷denominator), r=a×b%denominator
 // (pass remainder=nil if not required)
 // (the main usage for `remainder` is to be used in `MulDivRoundingUpV2` to determine if we need to round up, so it won't have to call MulMod again)
-func (m *FullMath) MulDivV2(x, y, d, z, r *uint256.Int) error {
-	if x.IsZero() || y.IsZero() || d.IsZero() {
-		z.Clear()
+func (m *FullMath) MulDivV2(x, y, denominator, result, remainder *uint256.Int) error {
+	if x.IsZero() || y.IsZero() || denominator.IsZero() {
+		result.Clear()
 		return nil
 	}
 	p := umul(x, y)
 
-	// m.quot = [8]uint64{}
+	// var quot [8]uint64
 	m.quot[7], m.quot[6], m.quot[5], m.quot[4], m.quot[3], m.quot[2], m.quot[1], m.quot[0] = 0, 0, 0, 0, 0, 0, 0, 0
-	m.u256utils.udivrem(m.quot[:], p[:], d, m.rem)
-	if r != nil {
-		r.Set(m.rem)
+	m.u256utils.udivrem(m.quot[:], p[:], denominator, m.rem)
+	if remainder != nil {
+		remainder.Set(m.rem)
 	}
 
 	// copy(z[:], m.quot[:4])
-	z[0], z[1], z[2], z[3] = m.quot[0], m.quot[1], m.quot[2], m.quot[3]
+	result[0], result[1], result[2], result[3] = m.quot[0], m.quot[1], m.quot[2], m.quot[3]
 
 	if (m.quot[4] | m.quot[5] | m.quot[6] | m.quot[7]) != 0 {
 		return ErrMulDivOverflow

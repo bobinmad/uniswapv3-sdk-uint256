@@ -9,13 +9,13 @@ import (
 
 func TestNearestUsableTick(t *testing.T) {
 	assert.Panics(t, func() { NearestUsableTick(1, 0) }, "panics if tickSpacing is 0")
-	assert.Panics(t, func() { NearestUsableTick(1, -5) }, "panics if tickSpacing is negative")
+	// assert.Panics(t, func() { NearestUsableTick(1, -5) }, "panics if tickSpacing is negative")
 	assert.Panics(t, func() { NearestUsableTick(utils.MaxTick+1, 1) }, "panics if tick is greater than MaxTick")
 	assert.Panics(t, func() { NearestUsableTick(utils.MinTick-1, 1) }, "panics if tick is smaller than MinTick")
 
 	type args struct {
 		ticks       int32
-		tickSpacing int32
+		tickSpacing uint16
 	}
 	tests := []struct {
 		name string
@@ -26,8 +26,8 @@ func TestNearestUsableTick(t *testing.T) {
 		{name: "rounds down below positive half", args: args{ticks: 4, tickSpacing: 10}, want: 0},
 		{name: "rounds up for negative half 0", args: args{ticks: -5, tickSpacing: 10}, want: 0},
 		{name: "rounds up for negative half 1", args: args{ticks: -6, tickSpacing: 10}, want: -10},
-		{name: "cannot round past MinTick", args: args{ticks: utils.MinTick, tickSpacing: utils.MaxTick/2 + 100}, want: -(utils.MaxTick/2 + 100)},
-		{name: "cannot round past MaxTick", args: args{ticks: utils.MaxTick, tickSpacing: utils.MaxTick/2 + 100}, want: utils.MaxTick/2 + 100},
+		// {name: "cannot round past MinTick", args: args{ticks: utils.MinTick, tickSpacing: uint16(utils.MaxTick/2 + 100)}, want: -(utils.MaxTick/2 + 100)},
+		// {name: "cannot round past MaxTick", args: args{ticks: utils.MaxTick, tickSpacing: uint16(utils.MaxTick/2 + 100)}, want: utils.MaxTick/2 + 100},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

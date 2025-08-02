@@ -21,7 +21,7 @@ var (
 	B100e18Uint256 = uint256.MustFromBig(B100e18)
 )
 
-func initPool() (*Pool, int32, int32) {
+func initPool() (*Pool, int32, uint16) {
 	USDC := entities.NewToken(1, common.HexToAddress("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"), 6, "USDC", "USD Coin")
 	DAI := entities.NewToken(1, common.HexToAddress("0x6B175474E89094C44Da98b954EedeAC495271d0F"), 18, "DAI", "DAI Stablecoin")
 	poolSqrtRatioStart := utils.EncodeSqrtRatioX96(B100e6, B100e18)
@@ -63,7 +63,7 @@ func TestPosition(t *testing.T) {
 	assert.ErrorIs(t, err, ErrTickLower)
 
 	// tick lower must be greater than MIN_TICK
-	_, err = NewPosition(DAIUSDCPool, uint256.NewInt(1), NearestUsableTick(utils.MinTick, tickSpacing)-tickSpacing, 10)
+	_, err = NewPosition(DAIUSDCPool, uint256.NewInt(1), NearestUsableTick(utils.MinTick, tickSpacing)-int32(tickSpacing), 10)
 	assert.ErrorIs(t, err, ErrTickLower)
 
 	// tick upper must be multiple of tick spacing
@@ -71,7 +71,7 @@ func TestPosition(t *testing.T) {
 	assert.ErrorIs(t, err, ErrTickUpper)
 
 	// tick upper must be less than MAX_TICK
-	_, err = NewPosition(DAIUSDCPool, uint256.NewInt(1), -10, NearestUsableTick(utils.MaxTick, tickSpacing)+tickSpacing)
+	_, err = NewPosition(DAIUSDCPool, uint256.NewInt(1), -10, NearestUsableTick(utils.MaxTick, tickSpacing)+int32(tickSpacing))
 	assert.ErrorIs(t, err, ErrTickUpper)
 }
 
@@ -79,21 +79,21 @@ func TestAmount0(t *testing.T) {
 	DAIUSDCPool, poolTickCurrent, tickSpacing := initPool()
 
 	// is correct for price above
-	p, err := NewPosition(DAIUSDCPool, B100e12Uint256, NearestUsableTick(poolTickCurrent, tickSpacing)+tickSpacing, NearestUsableTick(poolTickCurrent, tickSpacing)+tickSpacing*2)
+	p, err := NewPosition(DAIUSDCPool, B100e12Uint256, NearestUsableTick(poolTickCurrent, tickSpacing)+int32(tickSpacing), NearestUsableTick(poolTickCurrent, tickSpacing)+int32(tickSpacing)*2)
 	assert.NoError(t, err)
 	amount0 := p.CalcAmount0()
 	// assert.NoError(t, err)
 	assert.Equal(t, "49949961958869841", amount0.Dec())
 
 	// is correct for price below
-	p, err = NewPosition(DAIUSDCPool, B100e18Uint256, NearestUsableTick(poolTickCurrent, tickSpacing)-tickSpacing*2, NearestUsableTick(poolTickCurrent, tickSpacing)-tickSpacing)
+	p, err = NewPosition(DAIUSDCPool, B100e18Uint256, NearestUsableTick(poolTickCurrent, tickSpacing)-int32(tickSpacing)*2, NearestUsableTick(poolTickCurrent, tickSpacing)-int32(tickSpacing))
 	assert.NoError(t, err)
 	amount0 = p.CalcAmount0()
 	// assert.NoError(t, err)
 	assert.Equal(t, "0", amount0.Dec())
 
 	// is correct for in-range position
-	p, err = NewPosition(DAIUSDCPool, B100e18Uint256, NearestUsableTick(poolTickCurrent, tickSpacing)-tickSpacing*2, NearestUsableTick(poolTickCurrent, tickSpacing)+tickSpacing*2)
+	p, err = NewPosition(DAIUSDCPool, B100e18Uint256, NearestUsableTick(poolTickCurrent, tickSpacing)-int32(tickSpacing)*2, NearestUsableTick(poolTickCurrent, tickSpacing)+int32(tickSpacing)*2)
 	assert.NoError(t, err)
 	amount0 = p.CalcAmount0()
 	// assert.NoError(t, err)
@@ -106,21 +106,21 @@ func TestAmount1(t *testing.T) {
 	DAIUSDCPool, poolTickCurrent, tickSpacing := initPool()
 
 	// is correct for price above
-	p, err := NewPosition(DAIUSDCPool, B100e18Uint256, NearestUsableTick(poolTickCurrent, tickSpacing)+tickSpacing, NearestUsableTick(poolTickCurrent, tickSpacing)+tickSpacing*2)
+	p, err := NewPosition(DAIUSDCPool, B100e18Uint256, NearestUsableTick(poolTickCurrent, tickSpacing)+int32(tickSpacing), NearestUsableTick(poolTickCurrent, tickSpacing)+int32(tickSpacing)*2)
 	assert.NoError(t, err)
 	amount1 := p.CalcAmount1()
 	// assert.NoError(t, err)
 	assert.Equal(t, "0", amount1.Dec())
 
 	// is correct for price below
-	p, err = NewPosition(DAIUSDCPool, B100e18Uint256, NearestUsableTick(poolTickCurrent, tickSpacing)-tickSpacing*2, NearestUsableTick(poolTickCurrent, tickSpacing)-tickSpacing)
+	p, err = NewPosition(DAIUSDCPool, B100e18Uint256, NearestUsableTick(poolTickCurrent, tickSpacing)-int32(tickSpacing)*2, NearestUsableTick(poolTickCurrent, tickSpacing)-int32(tickSpacing))
 	assert.NoError(t, err)
 	amount1 = p.CalcAmount1()
 	// assert.NoError(t, err)
 	assert.Equal(t, "49970077052", amount1.Dec())
 
 	// is correct for in-range position
-	p, err = NewPosition(DAIUSDCPool, B100e18Uint256, NearestUsableTick(poolTickCurrent, tickSpacing)-tickSpacing*2, NearestUsableTick(poolTickCurrent, tickSpacing)+tickSpacing*2)
+	p, err = NewPosition(DAIUSDCPool, B100e18Uint256, NearestUsableTick(poolTickCurrent, tickSpacing)-int32(tickSpacing)*2, NearestUsableTick(poolTickCurrent, tickSpacing)+int32(tickSpacing)*2)
 	assert.NoError(t, err)
 	amount1 = p.CalcAmount1()
 	//assert.NoError(t, err)
@@ -134,8 +134,8 @@ func TestMintAmountsWithSlippage(t *testing.T) {
 
 	// is correct for positions below
 	p, err := NewPosition(DAIUSDCPool, B100e18Uint256,
-		NearestUsableTick(poolTickCurrent, tickSpacing)+tickSpacing,
-		NearestUsableTick(poolTickCurrent, tickSpacing)+tickSpacing*2)
+		NearestUsableTick(poolTickCurrent, tickSpacing)+int32(tickSpacing),
+		NearestUsableTick(poolTickCurrent, tickSpacing)+int32(tickSpacing)*2)
 	assert.NoError(t, err)
 	amount0, amount1, err := p.MintAmountsWithSlippage(slippageTolerance)
 	assert.NoError(t, err)
@@ -144,8 +144,8 @@ func TestMintAmountsWithSlippage(t *testing.T) {
 
 	// is correct for positions above
 	p, err = NewPosition(DAIUSDCPool, B100e18Uint256,
-		NearestUsableTick(poolTickCurrent, tickSpacing)-tickSpacing*2,
-		NearestUsableTick(poolTickCurrent, tickSpacing)-tickSpacing)
+		NearestUsableTick(poolTickCurrent, tickSpacing)-int32(tickSpacing)*2,
+		NearestUsableTick(poolTickCurrent, tickSpacing)-int32(tickSpacing))
 	assert.NoError(t, err)
 	amount0, amount1, err = p.MintAmountsWithSlippage(slippageTolerance)
 	assert.NoError(t, err)
@@ -154,8 +154,8 @@ func TestMintAmountsWithSlippage(t *testing.T) {
 
 	// is correct for positions within
 	p, err = NewPosition(DAIUSDCPool, B100e18Uint256,
-		NearestUsableTick(poolTickCurrent, tickSpacing)-tickSpacing*2,
-		NearestUsableTick(poolTickCurrent, tickSpacing)+tickSpacing*2)
+		NearestUsableTick(poolTickCurrent, tickSpacing)-int32(tickSpacing)*2,
+		NearestUsableTick(poolTickCurrent, tickSpacing)+int32(tickSpacing)*2)
 	assert.NoError(t, err)
 	amount0, amount1, err = p.MintAmountsWithSlippage(slippageTolerance)
 	assert.NoError(t, err)
@@ -167,8 +167,8 @@ func TestMintAmountsWithSlippage(t *testing.T) {
 
 	// is correct for positions below
 	p, err = NewPosition(DAIUSDCPool, B100e18Uint256,
-		NearestUsableTick(poolTickCurrent, tickSpacing)+tickSpacing,
-		NearestUsableTick(poolTickCurrent, tickSpacing)+tickSpacing*2)
+		NearestUsableTick(poolTickCurrent, tickSpacing)+int32(tickSpacing),
+		NearestUsableTick(poolTickCurrent, tickSpacing)+int32(tickSpacing)*2)
 	assert.NoError(t, err)
 	amount0, amount1, err = p.MintAmountsWithSlippage(slippageTolerance)
 	assert.NoError(t, err)
@@ -177,8 +177,8 @@ func TestMintAmountsWithSlippage(t *testing.T) {
 
 	// is correct for positions above
 	p, err = NewPosition(DAIUSDCPool, B100e18Uint256,
-		NearestUsableTick(poolTickCurrent, tickSpacing)-tickSpacing*2,
-		NearestUsableTick(poolTickCurrent, tickSpacing)-tickSpacing)
+		NearestUsableTick(poolTickCurrent, tickSpacing)-int32(tickSpacing)*2,
+		NearestUsableTick(poolTickCurrent, tickSpacing)-int32(tickSpacing))
 	assert.NoError(t, err)
 	amount0, amount1, err = p.MintAmountsWithSlippage(slippageTolerance)
 	assert.NoError(t, err)
@@ -187,8 +187,8 @@ func TestMintAmountsWithSlippage(t *testing.T) {
 
 	// is correct for positions within
 	p, err = NewPosition(DAIUSDCPool, B100e18Uint256,
-		NearestUsableTick(poolTickCurrent, tickSpacing)-tickSpacing*2,
-		NearestUsableTick(poolTickCurrent, tickSpacing)+tickSpacing*2)
+		NearestUsableTick(poolTickCurrent, tickSpacing)-int32(tickSpacing)*2,
+		NearestUsableTick(poolTickCurrent, tickSpacing)+int32(tickSpacing)*2)
 	assert.NoError(t, err)
 	amount0, amount1, err = p.MintAmountsWithSlippage(slippageTolerance)
 	assert.NoError(t, err)
@@ -204,8 +204,8 @@ func TestMintAmountsWithSlippage(t *testing.T) {
 
 	assert.NoError(t, err)
 	p, err = NewPosition(minPricePool, B100e18Uint256,
-		NearestUsableTick(poolTickCurrent, tickSpacing)+tickSpacing,
-		NearestUsableTick(poolTickCurrent, tickSpacing)+tickSpacing*2)
+		NearestUsableTick(poolTickCurrent, tickSpacing)+int32(tickSpacing),
+		NearestUsableTick(poolTickCurrent, tickSpacing)+int32(tickSpacing)*2)
 	assert.NoError(t, err)
 	amount0, amount1, err = p.BurnAmountsWithSlippage(slippageTolerance)
 	assert.NoError(t, err)
@@ -219,8 +219,8 @@ func TestMintAmountsWithSlippage(t *testing.T) {
 
 	//assert.NoError(t, err)
 	p, err = NewPosition(maxPricePool, B100e18Uint256,
-		NearestUsableTick(poolTickCurrent, tickSpacing)+tickSpacing,
-		NearestUsableTick(poolTickCurrent, tickSpacing)+tickSpacing*2)
+		NearestUsableTick(poolTickCurrent, tickSpacing)+int32(tickSpacing),
+		NearestUsableTick(poolTickCurrent, tickSpacing)+int32(tickSpacing)*2)
 	assert.NoError(t, err)
 	amount0, amount1, err = p.BurnAmountsWithSlippage(slippageTolerance)
 	assert.NoError(t, err)
@@ -236,8 +236,8 @@ func TestBurnAmountsWithSlippage(t *testing.T) {
 
 	// is correct for positions below
 	p, err := NewPosition(DAIUSDCPool, B100e18Uint256,
-		NearestUsableTick(poolTickCurrent, tickSpacing)+tickSpacing,
-		NearestUsableTick(poolTickCurrent, tickSpacing)+tickSpacing*2)
+		NearestUsableTick(poolTickCurrent, tickSpacing)+int32(tickSpacing),
+		NearestUsableTick(poolTickCurrent, tickSpacing)+int32(tickSpacing)*2)
 	assert.NoError(t, err)
 	amount0, amount1, err := p.BurnAmountsWithSlippage(slippageTolerance)
 	assert.NoError(t, err)
@@ -246,8 +246,8 @@ func TestBurnAmountsWithSlippage(t *testing.T) {
 
 	// is correct for positions above
 	p, err = NewPosition(DAIUSDCPool, B100e18Uint256,
-		NearestUsableTick(poolTickCurrent, tickSpacing)-tickSpacing*2,
-		NearestUsableTick(poolTickCurrent, tickSpacing)-tickSpacing)
+		NearestUsableTick(poolTickCurrent, tickSpacing)-int32(tickSpacing)*2,
+		NearestUsableTick(poolTickCurrent, tickSpacing)-int32(tickSpacing))
 	assert.NoError(t, err)
 	amount0, amount1, err = p.BurnAmountsWithSlippage(slippageTolerance)
 	assert.NoError(t, err)
@@ -256,8 +256,8 @@ func TestBurnAmountsWithSlippage(t *testing.T) {
 
 	// is correct for positions within
 	p, err = NewPosition(DAIUSDCPool, B100e18Uint256,
-		NearestUsableTick(poolTickCurrent, tickSpacing)-tickSpacing*2,
-		NearestUsableTick(poolTickCurrent, tickSpacing)+tickSpacing*2)
+		NearestUsableTick(poolTickCurrent, tickSpacing)-int32(tickSpacing)*2,
+		NearestUsableTick(poolTickCurrent, tickSpacing)+int32(tickSpacing)*2)
 	assert.NoError(t, err)
 	amount0, amount1, err = p.BurnAmountsWithSlippage(slippageTolerance)
 	assert.NoError(t, err)
@@ -271,8 +271,8 @@ func TestBurnAmountsWithSlippage(t *testing.T) {
 
 	// is correct for positions below
 	p, err = NewPosition(DAIUSDCPool, B100e18Uint256,
-		NearestUsableTick(poolTickCurrent, tickSpacing)+tickSpacing,
-		NearestUsableTick(poolTickCurrent, tickSpacing)+tickSpacing*2)
+		NearestUsableTick(poolTickCurrent, tickSpacing)+int32(tickSpacing),
+		NearestUsableTick(poolTickCurrent, tickSpacing)+int32(tickSpacing)*2)
 	assert.NoError(t, err)
 	amount0, amount1, err = p.BurnAmountsWithSlippage(slippageTolerance)
 	assert.NoError(t, err)
@@ -281,8 +281,8 @@ func TestBurnAmountsWithSlippage(t *testing.T) {
 
 	// is correct for positions above
 	p, err = NewPosition(DAIUSDCPool, B100e18Uint256,
-		NearestUsableTick(poolTickCurrent, tickSpacing)-tickSpacing*2,
-		NearestUsableTick(poolTickCurrent, tickSpacing)-tickSpacing)
+		NearestUsableTick(poolTickCurrent, tickSpacing)-int32(tickSpacing)*2,
+		NearestUsableTick(poolTickCurrent, tickSpacing)-int32(tickSpacing))
 	assert.NoError(t, err)
 	amount0, amount1, err = p.BurnAmountsWithSlippage(slippageTolerance)
 	assert.NoError(t, err)
@@ -291,8 +291,8 @@ func TestBurnAmountsWithSlippage(t *testing.T) {
 
 	// is correct for positions within
 	p, err = NewPosition(DAIUSDCPool, B100e18Uint256,
-		NearestUsableTick(poolTickCurrent, tickSpacing)-tickSpacing*2,
-		NearestUsableTick(poolTickCurrent, tickSpacing)+tickSpacing*2)
+		NearestUsableTick(poolTickCurrent, tickSpacing)-int32(tickSpacing)*2,
+		NearestUsableTick(poolTickCurrent, tickSpacing)+int32(tickSpacing)*2)
 	assert.NoError(t, err)
 	amount0, amount1, err = p.BurnAmountsWithSlippage(slippageTolerance)
 	assert.NoError(t, err)
@@ -310,8 +310,8 @@ func TestBurnAmountsWithSlippage(t *testing.T) {
 
 	assert.NoError(t, err)
 	p, err = NewPosition(minPricePool, B100e18Uint256,
-		NearestUsableTick(poolTickCurrent, tickSpacing)+tickSpacing,
-		NearestUsableTick(poolTickCurrent, tickSpacing)+tickSpacing*2)
+		NearestUsableTick(poolTickCurrent, tickSpacing)+int32(tickSpacing),
+		NearestUsableTick(poolTickCurrent, tickSpacing)+int32(tickSpacing)*2)
 	assert.NoError(t, err)
 	amount0, amount1, err = p.BurnAmountsWithSlippage(slippageTolerance)
 	assert.NoError(t, err)
@@ -326,8 +326,8 @@ func TestBurnAmountsWithSlippage(t *testing.T) {
 
 	assert.NoError(t, err)
 	p, err = NewPosition(maxPricePool, B100e18Uint256,
-		NearestUsableTick(poolTickCurrent, tickSpacing)+tickSpacing,
-		NearestUsableTick(poolTickCurrent, tickSpacing)+tickSpacing*2)
+		NearestUsableTick(poolTickCurrent, tickSpacing)+int32(tickSpacing),
+		NearestUsableTick(poolTickCurrent, tickSpacing)+int32(tickSpacing)*2)
 	assert.NoError(t, err)
 	amount0, amount1, err = p.BurnAmountsWithSlippage(slippageTolerance)
 	assert.NoError(t, err)
@@ -341,8 +341,8 @@ func TestMintAmounts(t *testing.T) {
 
 	// is correct for price above
 	p, err := NewPosition(DAIUSDCPool, B100e18Uint256,
-		NearestUsableTick(poolTickCurrent, tickSpacing)+tickSpacing,
-		NearestUsableTick(poolTickCurrent, tickSpacing)+tickSpacing*2)
+		NearestUsableTick(poolTickCurrent, tickSpacing)+int32(tickSpacing),
+		NearestUsableTick(poolTickCurrent, tickSpacing)+int32(tickSpacing)*2)
 	assert.NoError(t, err)
 	amount0, amount1, err := p.MintAmounts()
 	assert.NoError(t, err)
@@ -351,8 +351,8 @@ func TestMintAmounts(t *testing.T) {
 
 	// is correct for price below
 	p, err = NewPosition(DAIUSDCPool, B100e18Uint256,
-		NearestUsableTick(poolTickCurrent, tickSpacing)-tickSpacing*2,
-		NearestUsableTick(poolTickCurrent, tickSpacing)-tickSpacing)
+		NearestUsableTick(poolTickCurrent, tickSpacing)-int32(tickSpacing)*2,
+		NearestUsableTick(poolTickCurrent, tickSpacing)-int32(tickSpacing))
 	assert.NoError(t, err)
 	amount0, amount1, err = p.MintAmounts()
 	assert.NoError(t, err)
@@ -361,8 +361,8 @@ func TestMintAmounts(t *testing.T) {
 
 	// is correct for in-range position
 	p, err = NewPosition(DAIUSDCPool, B100e18Uint256,
-		NearestUsableTick(poolTickCurrent, tickSpacing)-tickSpacing*2,
-		NearestUsableTick(poolTickCurrent, tickSpacing)+tickSpacing*2)
+		NearestUsableTick(poolTickCurrent, tickSpacing)-int32(tickSpacing)*2,
+		NearestUsableTick(poolTickCurrent, tickSpacing)+int32(tickSpacing)*2)
 	assert.NoError(t, err)
 	amount0, amount1, err = p.MintAmounts()
 	assert.NoError(t, err)

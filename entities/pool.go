@@ -19,6 +19,9 @@ var (
 	ErrTokenNotInvolved         = errors.New("token not involved in pool")
 	ErrSqrtPriceLimitX96TooLow  = errors.New("SqrtPriceLimitX96 too low")
 	ErrSqrtPriceLimitX96TooHigh = errors.New("SqrtPriceLimitX96 too high")
+
+	sqrtPriceLimitX96Upper = new(uint256.Int).AddUint64(utils.MinSqrtRatioU256, 1)
+	sqrtPriceLimitX96Lower = new(uint256.Int).SubUint64(utils.MaxSqrtRatioU256, 1)
 )
 
 type StepComputations struct {
@@ -39,6 +42,7 @@ type Pool struct {
 	SqrtRatioX96     *utils.Uint160
 	Liquidity        *utils.Uint128
 	TickCurrent      int32
+	TickSpacing      uint16
 	TickDataProvider *TicksHandler
 
 	// calculators
@@ -168,6 +172,7 @@ func NewPoolV3(
 ) *Pool {
 	return &Pool{
 		Fee:              constants.FeeAmount(fee),
+		TickSpacing:      constants.TickSpacings[constants.FeeAmount(fee)],
 		TickDataProvider: ticksHandler,
 		TickCurrent:      initTick,
 		SqrtRatioX96:     initSqrtPriceX96.Clone(),
@@ -557,10 +562,6 @@ func (p *Pool) swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 	// }, nil
 }
 
-func (p *Pool) tickSpacing() int32 {
-	return constants.TickSpacings[p.Fee]
-}
-
 type StepFeeResult struct {
 	ZeroForOne bool
 	Tick       int32
@@ -578,11 +579,6 @@ type SwapResultV2 struct {
 	CrossInitTickLoops int
 	StepsFee           []StepFeeResult
 }
-
-var (
-	sqrtPriceLimitX96Upper = new(uint256.Int).AddUint64(utils.MinSqrtRatioU256, 1)
-	sqrtPriceLimitX96Lower = new(uint256.Int).SubUint64(utils.MaxSqrtRatioU256, 1)
-)
 
 type State struct {
 	amountSpecifiedRemaining *utils.Int256
