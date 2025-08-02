@@ -147,14 +147,14 @@ func NextInitializedTickWithinOneWord(ticks []Tick, tick int32, lte bool, tickSp
 
 	if lte {
 		wordPos := int(compressed) >> 8
-		minimum := (wordPos << 8) * tickSpacing
+		minimum := int32((wordPos << 8) * tickSpacing)
 		isBelowSmallest, err := IsBelowSmallest(ticks, tick)
 		if err != nil {
 			return ZeroValueTickIndex, ZeroValueTickInitialized, err
 		}
 
 		if isBelowSmallest {
-			return int32(minimum), ZeroValueTickInitialized, ErrBelowSmallest
+			return minimum, ZeroValueTickInitialized, ErrBelowSmallest
 		}
 
 		nextInitializedTick, err := NextInitializedTick(ticks, tick, lte)
@@ -163,18 +163,18 @@ func NextInitializedTickWithinOneWord(ticks []Tick, tick int32, lte bool, tickSp
 		}
 
 		index := nextInitializedTick.Index
-		nextInitializedTickIndex := math.Max(float64(minimum), float64(index))
-		return int32(nextInitializedTickIndex), int32(nextInitializedTickIndex) == index, nil
+		nextInitializedTickIndex := int32(math.Max(float64(minimum), float64(index)))
+		return nextInitializedTickIndex, nextInitializedTickIndex == index, nil
 	} else {
 		wordPos := int(compressed+1) >> 8
-		maximum := ((wordPos+1)<<8)*tickSpacing - 1
+		maximum := int32(((wordPos+1)<<8)*tickSpacing - 1)
 		isAtOrAboveLargest, err := IsAtOrAboveLargest(ticks, tick)
 		if err != nil {
 			return ZeroValueTickIndex, ZeroValueTickInitialized, err
 		}
 
 		if isAtOrAboveLargest {
-			return int32(maximum), ZeroValueTickInitialized, ErrAtOrAboveLargest
+			return maximum, ZeroValueTickInitialized, ErrAtOrAboveLargest
 		}
 
 		nextInitializedTick, err := NextInitializedTick(ticks, tick, lte)
@@ -183,8 +183,8 @@ func NextInitializedTickWithinOneWord(ticks []Tick, tick int32, lte bool, tickSp
 		}
 
 		index := nextInitializedTick.Index
-		nextInitializedTickIndex := math.Min(float64(maximum), float64(index))
-		return int32(nextInitializedTickIndex), int32(nextInitializedTickIndex) == index, nil
+		nextInitializedTickIndex := int32(math.Min(float64(maximum), float64(index)))
+		return nextInitializedTickIndex, nextInitializedTickIndex == index, nil
 	}
 }
 

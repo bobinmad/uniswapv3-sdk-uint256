@@ -131,8 +131,8 @@ func NewPoolV2(tokenA, tokenB *entities.Token, fee constants.FeeAmount, sqrtRati
 	tickCalculator := utils.NewTickCalculator()
 
 	var tickCurrentSqrtRatioX96, nextTickSqrtRatioX96 utils.Uint160
-	tickCalculator.GetSqrtRatioAtTickV2(int32(tickCurrent), &tickCurrentSqrtRatioX96)
-	tickCalculator.GetSqrtRatioAtTickV2(int32(tickCurrent+1), &nextTickSqrtRatioX96)
+	tickCalculator.GetSqrtRatioAtTickV2(tickCurrent, &tickCurrentSqrtRatioX96)
+	tickCalculator.GetSqrtRatioAtTickV2(tickCurrent+1, &nextTickSqrtRatioX96)
 
 	if sqrtRatioX96.Lt(&tickCurrentSqrtRatioX96) || sqrtRatioX96.Gt(&nextTickSqrtRatioX96) {
 		return nil, ErrInvalidSqrtRatioX96
@@ -154,7 +154,7 @@ func NewPoolV2(tokenA, tokenB *entities.Token, fee constants.FeeAmount, sqrtRati
 		Fee:              fee,
 		SqrtRatioX96:     sqrtRatioX96,
 		Liquidity:        liquidity,
-		TickCurrent:      int32(tickCurrent),
+		TickCurrent:      tickCurrent,
 		TickDataProvider: ticks,
 	}, nil
 }
