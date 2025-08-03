@@ -18,8 +18,8 @@ func EncodeSqrtRatioX96(amount1, amount0 *big.Int) *uint256.Int {
 	ratioX192 := new(big.Int).Div(new(big.Int).Lsh(amount1, 192), amount0)
 	return uint256.MustFromBig(new(big.Int).Sqrt(ratioX192))
 
-	// numerator := new(uint256.Int).Lsh(amount1, 192)
-	// denominator := amount0
+	// numerator := new(uint256.Int).Lsh(uint256.MustFromBig(amount1), 192)
+	// denominator := uint256.MustFromBig(amount0)
 	// ratioX192 := new(uint256.Int).Div(numerator, denominator)
 	// return new(uint256.Int).Sqrt(ratioX192)
 }

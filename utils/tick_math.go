@@ -3,6 +3,7 @@ package utils
 import (
 	"errors"
 	"math/big"
+	"math/bits"
 
 	"github.com/KyberNetwork/int256"
 	"github.com/holiman/uint256"
@@ -48,8 +49,8 @@ var (
 	ErrInvalidSqrtRatio = errors.New("invalid sqrt ratio")
 )
 
-func (c *TickCalculator) mulShift(val *Uint256, mulBy *Uint256) {
-	val.Rsh(c.tmp.Mul(val, mulBy), 128)
+func mulShift(val, mulBy *Uint256) {
+	val.Rsh(val.Mul(val, mulBy), 128)
 }
 
 var (
@@ -106,61 +107,61 @@ func (c *TickCalculator) GetSqrtRatioAtTickV2(tick int32, result *Uint160) {
 	}
 
 	if absTick&0x2 != 0 {
-		c.mulShift(result, sqrtConst3)
+		mulShift(result, sqrtConst3)
 	}
 	if absTick&0x4 != 0 {
-		c.mulShift(result, sqrtConst4)
+		mulShift(result, sqrtConst4)
 	}
 	if absTick&0x8 != 0 {
-		c.mulShift(result, sqrtConst5)
+		mulShift(result, sqrtConst5)
 	}
 	if absTick&0x10 != 0 {
-		c.mulShift(result, sqrtConst6)
+		mulShift(result, sqrtConst6)
 	}
 	if absTick&0x20 != 0 {
-		c.mulShift(result, sqrtConst7)
+		mulShift(result, sqrtConst7)
 	}
 	if absTick&0x40 != 0 {
-		c.mulShift(result, sqrtConst8)
+		mulShift(result, sqrtConst8)
 	}
 	if absTick&0x80 != 0 {
-		c.mulShift(result, sqrtConst9)
+		mulShift(result, sqrtConst9)
 	}
 	if absTick&0x100 != 0 {
-		c.mulShift(result, sqrtConst10)
+		mulShift(result, sqrtConst10)
 	}
 	if absTick&0x200 != 0 {
-		c.mulShift(result, sqrtConst11)
+		mulShift(result, sqrtConst11)
 	}
 	if absTick&0x400 != 0 {
-		c.mulShift(result, sqrtConst12)
+		mulShift(result, sqrtConst12)
 	}
 	if absTick&0x800 != 0 {
-		c.mulShift(result, sqrtConst13)
+		mulShift(result, sqrtConst13)
 	}
 	if absTick&0x1000 != 0 {
-		c.mulShift(result, sqrtConst14)
+		mulShift(result, sqrtConst14)
 	}
 	if absTick&0x2000 != 0 {
-		c.mulShift(result, sqrtConst15)
+		mulShift(result, sqrtConst15)
 	}
 	if absTick&0x4000 != 0 {
-		c.mulShift(result, sqrtConst16)
+		mulShift(result, sqrtConst16)
 	}
 	if absTick&0x8000 != 0 {
-		c.mulShift(result, sqrtConst17)
+		mulShift(result, sqrtConst17)
 	}
 	if absTick&0x10000 != 0 {
-		c.mulShift(result, sqrtConst18)
+		mulShift(result, sqrtConst18)
 	}
 	if absTick&0x20000 != 0 {
-		c.mulShift(result, sqrtConst19)
+		mulShift(result, sqrtConst19)
 	}
 	if absTick&0x40000 != 0 {
-		c.mulShift(result, sqrtConst20)
+		mulShift(result, sqrtConst20)
 	}
 	if absTick&0x80000 != 0 {
-		c.mulShift(result, sqrtConst21)
+		mulShift(result, sqrtConst21)
 	}
 
 	if tick > 0 {
@@ -170,7 +171,8 @@ func (c *TickCalculator) GetSqrtRatioAtTickV2(tick int32, result *Uint160) {
 	// back to Q96
 	result.DivMod(result, Q32U256, c.tmp)
 	if !c.tmp.IsZero() {
-		result.AddUint64(result, 1)
+		// result.AddUint64(result, 1)
+		result[0], _ = bits.Add64(result[0], 1, 0)
 	}
 }
 
