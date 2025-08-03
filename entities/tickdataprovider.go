@@ -54,11 +54,27 @@ func NewTicksHandler() *TicksHandler {
 func (h *TicksHandler) Clone() *TicksHandler {
 	ticksHandler := NewTicksHandler()
 
-	ticksHandler.SetTicks(h.Ticks)
+	ticksHandler.CloneTicks(h.Ticks)
 	return ticksHandler
 }
 
 func (h *TicksHandler) SetTicks(ticks []Tick) {
+	h.TicksLen = len(ticks)
+	h.Ticks = make([]Tick, h.TicksLen)
+
+	for idx, tick := range ticks {
+		h.Ticks[idx] = Tick{
+			Index:          tick.Index,
+			LiquidityGross: tick.LiquidityGross,
+			LiquidityNet:   tick.LiquidityNet,
+		}
+	}
+
+	h.SmallestTickIdx = h.Ticks[0].Index
+	h.LargestTickIdx = h.Ticks[h.TicksLen-1].Index
+}
+
+func (h *TicksHandler) CloneTicks(ticks []Tick) {
 	h.TicksLen = len(ticks)
 	h.Ticks = make([]Tick, h.TicksLen)
 
@@ -93,11 +109,6 @@ func (h *TicksHandler) GetTick(tick int32) (Tick, error) {
 		return ft, nil
 	}
 	return ft, ErrTickNotFound
-}
-
-// по факту метод не используется
-func (h *TicksHandler) NextInitializedTickWithinOneWord(tick int32, lte bool, tickSpacing int) (int32, bool, error) {
-	return NextInitializedTickWithinOneWord(h.Ticks, tick, lte, tickSpacing)
 }
 
 func (h *TicksHandler) NextInitializedTickIndex(tick int32, lte bool) (int32, bool, error) {
