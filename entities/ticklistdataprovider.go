@@ -16,10 +16,6 @@ func (p *TickListDataProvider) GetTick(tick int32) (Tick, error) {
 	return GetTick(p.ticks, tick)
 }
 
-func (p *TickListDataProvider) NextInitializedTickWithinOneWord(tick int32, lte bool, tickSpacing int) (int32, bool, error) {
-	return NextInitializedTickWithinOneWord(p.ticks, tick, lte, tickSpacing)
-}
-
 func (p *TickListDataProvider) NextInitializedTickIndex(tick int32, lte bool) (int32, bool, error) {
 	return NextInitializedTickIndex(p.ticks, tick, lte)
 }
