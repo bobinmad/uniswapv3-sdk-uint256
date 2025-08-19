@@ -36,6 +36,7 @@ type StepComputations struct {
 
 // Represents a V3 pool
 type Pool struct {
+	Address          common.Address
 	Token0           *entities.Token
 	Token1           *entities.Token
 	Fee              constants.FeeAmount
@@ -164,6 +165,7 @@ func NewPoolV2(tokenA, tokenB *entities.Token, fee constants.FeeAmount, sqrtRati
 }
 
 func NewPoolV3(
+	address common.Address,
 	fee uint16,
 	initTick int32,
 	initSqrtPriceX96 *utils.Uint160,
@@ -171,6 +173,7 @@ func NewPoolV3(
 	ticksHandler *TicksHandler,
 ) *Pool {
 	return &Pool{
+		Address:          address,
 		Fee:              constants.FeeAmount(fee),
 		TickSpacing:      constants.TickSpacings[constants.FeeAmount(fee)],
 		TickDataProvider: ticksHandler,
@@ -302,6 +305,7 @@ func (p *Pool) GetOutputAmount(inputAmount *entities.CurrencyAmount,
 	// )
 
 	pool := NewPoolV3(
+		p.Address,
 		uint16(p.Fee),
 		p.TickCurrent,
 		p.SqrtRatioX96,
@@ -377,6 +381,7 @@ func (p *Pool) GetInputAmount(outputAmount *entities.CurrencyAmount,
 	// )
 
 	pool := NewPoolV3(
+		p.Address,
 		uint16(p.Fee),
 		p.TickCurrent,
 		p.SqrtRatioX96,
