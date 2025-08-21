@@ -139,7 +139,7 @@ func newTestPool() *Pool {
 	// 	panic(err)
 	// }
 
-	pool := NewPoolV3(uint16(constants.FeeLow), 0, utils.EncodeSqrtRatioX96(constants.One, constants.One), USDC, DAI, p)
+	pool := NewPoolV3(common.Address{}, uint16(constants.FeeLow), 0, utils.EncodeSqrtRatioX96(constants.One, constants.One), USDC, DAI, p)
 	pool.Liquidity = uint256.MustFromBig(OneEther)
 
 	return pool

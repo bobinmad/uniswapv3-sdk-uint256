@@ -7,26 +7,31 @@ import (
 	"github.com/KyberNetwork/uniswapv3-sdk-uint256/constants"
 	"github.com/KyberNetwork/uniswapv3-sdk-uint256/utils"
 	"github.com/daoleno/uniswap-sdk-core/entities"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/holiman/uint256"
 )
 
 var (
-	ErrTickOrder = errors.New("tick order error")
-	ErrTickLower = errors.New("tick lower error")
-	ErrTickUpper = errors.New("tick upper error")
-	Zero         = uint256.NewInt(0)
-	MaxUint256U  = uint256.MustFromBig(entities.MaxUint256)
+	ErrTickOrder            = errors.New("tick order error: lower is greater than upper")
+	ErrTickLowerToLow       = errors.New("tick lower is too low")
+	ErrTickLowerTickSpacing = errors.New("tick lower tick spacing error")
+	ErrTickUpperToHigh      = errors.New("tick upper is too high")
+	ErrTickUpperTickSpacing = errors.New("tick upper tick spacing error")
+
+	Zero        = uint256.NewInt(0)
+	MaxUint256U = uint256.MustFromBig(entities.MaxUint256)
 )
 
 // Position Represents a position on a Uniswap V3 Pool
 type Position struct {
-	NftId      uint64
-	Pool       *Pool
-	TickLower  int32
-	TickUpper  int32
-	PriceLower *utils.Uint160
-	PriceUpper *utils.Uint160
-	Liquidity  *utils.Uint128
+	NftId       uint64
+	PoolAddress common.Address
+	Pool        *Pool
+	TickLower   int32
+	TickUpper   int32
+	PriceLower  *utils.Uint160
+	PriceUpper  *utils.Uint160
+	Liquidity   *utils.Uint128
 
 	// static cache
 	token0Amount           *entities.CurrencyAmount
@@ -46,22 +51,29 @@ func NewPosition(pool *Pool, liquidity *uint256.Int, tickLower, tickUpper int32)
 	if tickLower >= tickUpper {
 		return nil, ErrTickOrder
 	}
-	if tickLower < utils.MinTick || tickLower%int32(pool.TickSpacing) != 0 {
-		return nil, ErrTickLower
+	if tickLower < utils.MinTick {
+		return nil, ErrTickLowerToLow
 	}
-	if tickUpper > utils.MaxTick || tickUpper%int32(pool.TickSpacing) != 0 {
-		return nil, ErrTickUpper
+	if tickLower%int32(pool.TickSpacing) != 0 {
+		return nil, ErrTickLowerTickSpacing
+	}
+	if tickUpper > utils.MaxTick {
+		return nil, ErrTickUpperToHigh
+	}
+	if tickUpper%int32(pool.TickSpacing) != 0 {
+		return nil, ErrTickUpperTickSpacing
 	}
 
 	position := Position{
-		Pool:       pool,
-		Liquidity:  liquidity,
-		TickLower:  tickLower,
-		TickUpper:  tickUpper,
-		PriceLower: new(utils.Uint160),
-		PriceUpper: new(utils.Uint160),
-		amount1Tmp: new(utils.Uint256),
-		amount2Tmp: new(utils.Uint256),
+		PoolAddress: pool.Address,
+		Pool:        pool,
+		Liquidity:   liquidity,
+		TickLower:   tickLower,
+		TickUpper:   tickUpper,
+		PriceLower:  new(utils.Uint160),
+		PriceUpper:  new(utils.Uint160),
+		amount1Tmp:  new(utils.Uint256),
+		amount2Tmp:  new(utils.Uint256),
 	}
 
 	// сразу посчитаем цены границ позиции, они часто бывают необходимы
