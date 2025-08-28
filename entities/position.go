@@ -24,7 +24,7 @@ var (
 
 // Position Represents a position on a Uniswap V3 Pool
 type Position struct {
-	NftId       uint64
+	NftId       int
 	PoolAddress common.Address
 	Pool        *Pool
 	TickLower   int32
