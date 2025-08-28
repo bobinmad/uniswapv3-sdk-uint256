@@ -164,8 +164,7 @@ func (h *TicksHandler) NextInitializedTickIndex(tick int32, lte bool) (int32, bo
 
 // актуализирует состояние тиков пула после историчекого события mint
 func (h *TicksHandler) UpdateTicksAfterMint(tickLower, tickUpper int32, liquidity *uint256.Int) {
-	if key, exist := h.binarySearchSimple(tickLower); exist {
-		tick := h.Ticks[key]
+	if tick, key, exist := h.binarySearchSimple(tickLower); exist {
 		tick.LiquidityGross.Add(tick.LiquidityGross, liquidity)
 		tick.LiquidityNet.Add(tick.LiquidityNet, (*int256.Int)(liquidity))
 	} else {
@@ -177,8 +176,7 @@ func (h *TicksHandler) UpdateTicksAfterMint(tickLower, tickUpper int32, liquidit
 		}
 	}
 
-	if key, exist := h.binarySearchSimple(tickUpper); exist {
-		tick := h.Ticks[key]
+	if tick, key, exist := h.binarySearchSimple(tickUpper); exist {
 		tick.LiquidityGross.Add(tick.LiquidityGross, liquidity)
 		tick.LiquidityNet.Sub(tick.LiquidityNet, (*int256.Int)(liquidity))
 	} else {
@@ -193,14 +191,12 @@ func (h *TicksHandler) UpdateTicksAfterMint(tickLower, tickUpper int32, liquidit
 
 // актуализирует состояние тиков пула после историчекого события burn
 func (h *TicksHandler) UpdateTicksAfterBurn(tickLower, tickUpper int32, liquidity *uint256.Int) {
-	key, _ := h.binarySearchSimple(tickLower)
-	tick := h.Ticks[key]
+	tick, key, _ := h.binarySearchSimple(tickLower)
 	tick.LiquidityGross.Sub(tick.LiquidityGross, liquidity)
 	tick.LiquidityNet.Sub(tick.LiquidityNet, (*int256.Int)(liquidity))
 	h.removeTickIfEmpty(tick, key)
 
-	key, _ = h.binarySearchSimple(tickUpper)
-	tick = h.Ticks[key]
+	tick, key, _ = h.binarySearchSimple(tickUpper)
 	tick.LiquidityGross.Sub(tick.LiquidityGross, liquidity)
 	tick.LiquidityNet.Add(tick.LiquidityNet, (*int256.Int)(liquidity))
 	h.removeTickIfEmpty(tick, key)
@@ -219,14 +215,16 @@ func (h *TicksHandler) removeTickIfEmpty(tick Tick, key int) {
 	}
 }
 
-func (h *TicksHandler) binarySearchSimple(tick int32) (int, bool) {
+func (h *TicksHandler) binarySearchSimple(tick int32) (Tick, int, bool) {
 	idx := sort.Search(h.TicksLen, func(i int) bool {
 		return h.Ticks[i].Index >= tick
 	})
+
 	if idx < h.TicksLen && h.Ticks[idx].Index == tick {
-		return idx, true
+		return h.Ticks[idx], idx, true
 	}
-	return idx, false
+
+	return EmptyTick, idx, false
 }
 
 func (h *TicksHandler) binarySearch(tick int32) int {

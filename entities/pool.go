@@ -573,6 +573,8 @@ type StepFeeResult struct {
 	FeeAmount  utils.Uint256
 	// AmountIn   utils.Uint256
 	Liquidity utils.Uint128
+
+	OurLiquidityInTick utils.Uint128
 }
 
 type SwapResultV2 struct {
