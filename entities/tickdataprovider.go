@@ -116,7 +116,7 @@ func (h *TicksHandler) NextInitializedTickIndex(tick int32, lte bool) (int32, bo
 
 	if lte {
 		if h.isBelowSmallest(tick) {
-			return ZeroValueTickIndex, false, nil
+			return ZeroValueTickIndex, false, ErrBelowSmallest
 		}
 
 		if h.isAtOrAboveLargest(tick) {
@@ -126,7 +126,7 @@ func (h *TicksHandler) NextInitializedTickIndex(tick int32, lte bool) (int32, bo
 		}
 	} else {
 		if h.isAtOrAboveLargest(tick) {
-			return ZeroValueTickIndex, false, nil
+			return ZeroValueTickIndex, false, ErrAtOrAboveLargest
 		}
 
 		if h.isBelowSmallest(tick) {
@@ -138,9 +138,9 @@ func (h *TicksHandler) NextInitializedTickIndex(tick int32, lte bool) (int32, bo
 
 	return initializedTick.Index, !initializedTick.LiquidityGross.IsZero(), nil
 
-	// nextInitializedTick, err := v3entities.NextInitializedTick(h.Ticks, tick, lte)
+	// nextInitializedTick, err := NextInitializedTick(h.Ticks, tick, lte)
 	// if err != nil {
-	// 	return v3entities.ZeroValueTickIndex, v3entities.ZeroValueTickInitialized, err
+	// 	return ZeroValueTickIndex, ZeroValueTickInitialized, err
 	// }
 
 	// return nextInitializedTick.Index, !nextInitializedTick.LiquidityGross.IsZero(), nil
