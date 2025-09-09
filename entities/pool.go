@@ -2,6 +2,7 @@ package entities
 
 import (
 	"errors"
+	"fmt"
 	"math/big"
 
 	"github.com/KyberNetwork/int256"
@@ -12,6 +13,8 @@ import (
 	"github.com/KyberNetwork/uniswapv3-sdk-uint256/constants"
 	"github.com/KyberNetwork/uniswapv3-sdk-uint256/utils"
 )
+
+const MAX_CROSS_INIT_TICK_LOOPS = 10000
 
 var (
 	ErrFeeTooHigh               = errors.New("fee too high")
@@ -622,6 +625,7 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 	} else {
 		swapResult.StepsFee = swapResult.StepsFee[:0] // обнуляем без аллокации
 	}
+	swapResult.CrossInitTickLoops = 0
 
 	// crossInitTickLoops is the number of loops that cross an initialized tick.
 	// We only count when tick passes an initialized tick, since gas only significant in this case.
@@ -713,6 +717,10 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 			if p.lastState.tick, err = p.TickCalculator.GetTickAtSqrtRatioV2(p.lastState.sqrtPriceX96); err != nil {
 				return err
 			}
+		}
+
+		if swapResult.CrossInitTickLoops > MAX_CROSS_INIT_TICK_LOOPS {
+			return fmt.Errorf("max cross init tick loops %d reached", MAX_CROSS_INIT_TICK_LOOPS)
 		}
 	}
 
