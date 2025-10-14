@@ -5,12 +5,12 @@ import (
 	"math/big"
 
 	"github.com/KyberNetwork/int256"
-	"github.com/KyberNetwork/uniswapv3-sdk-uint256/examples/contract"
+	"github.com/bobinmad/uniswapv3-sdk-uint256/examples/contract"
 	"github.com/holiman/uint256"
 
-	"github.com/KyberNetwork/uniswapv3-sdk-uint256/constants"
-	"github.com/KyberNetwork/uniswapv3-sdk-uint256/entities"
-	sdkutils "github.com/KyberNetwork/uniswapv3-sdk-uint256/utils"
+	"github.com/bobinmad/uniswapv3-sdk-uint256/constants"
+	"github.com/bobinmad/uniswapv3-sdk-uint256/entities"
+	sdkutils "github.com/bobinmad/uniswapv3-sdk-uint256/utils"
 	coreEntities "github.com/daoleno/uniswap-sdk-core/entities"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"

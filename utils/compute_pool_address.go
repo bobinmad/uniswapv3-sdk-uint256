@@ -8,7 +8,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 
-	"github.com/KyberNetwork/uniswapv3-sdk-uint256/constants"
+	"github.com/bobinmad/uniswapv3-sdk-uint256/constants"
 )
 
 /**

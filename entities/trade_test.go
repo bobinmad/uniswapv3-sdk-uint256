@@ -5,8 +5,8 @@ package entities
 // 	"testing"
 
 // 	"github.com/KyberNetwork/int256"
-// 	"github.com/KyberNetwork/uniswapv3-sdk-uint256/constants"
-// 	"github.com/KyberNetwork/uniswapv3-sdk-uint256/utils"
+// 	"github.com/bobinmad/uniswapv3-sdk-uint256/constants"
+// 	"github.com/bobinmad/uniswapv3-sdk-uint256/utils"
 // 	"github.com/daoleno/uniswap-sdk-core/entities"
 // 	"github.com/ethereum/go-ethereum/common"
 // 	"github.com/holiman/uint256"

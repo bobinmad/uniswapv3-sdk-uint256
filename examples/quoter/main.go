@@ -6,8 +6,8 @@ import (
 
 	"log"
 
-	"github.com/KyberNetwork/uniswapv3-sdk-uint256/examples/contract"
-	"github.com/KyberNetwork/uniswapv3-sdk-uint256/examples/helper"
+	"github.com/bobinmad/uniswapv3-sdk-uint256/examples/contract"
+	"github.com/bobinmad/uniswapv3-sdk-uint256/examples/helper"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 )

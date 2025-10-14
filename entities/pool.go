@@ -10,8 +10,8 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/holiman/uint256"
 
-	"github.com/KyberNetwork/uniswapv3-sdk-uint256/constants"
-	"github.com/KyberNetwork/uniswapv3-sdk-uint256/utils"
+	"github.com/bobinmad/uniswapv3-sdk-uint256/constants"
+	"github.com/bobinmad/uniswapv3-sdk-uint256/utils"
 )
 
 const MAX_CROSS_INIT_TICK_LOOPS = 10000

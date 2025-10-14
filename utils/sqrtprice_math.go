@@ -4,7 +4,7 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/KyberNetwork/uniswapv3-sdk-uint256/constants"
+	"github.com/bobinmad/uniswapv3-sdk-uint256/constants"
 	"github.com/holiman/uint256"
 )
 

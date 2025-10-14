@@ -3,7 +3,7 @@ package entities
 import (
 	"math"
 
-	"github.com/KyberNetwork/uniswapv3-sdk-uint256/utils"
+	"github.com/bobinmad/uniswapv3-sdk-uint256/utils"
 )
 
 /**
