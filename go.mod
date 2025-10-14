@@ -1,4 +1,4 @@
-module github.com/KyberNetwork/uniswapv3-sdk-uint256
+module github.com/bobinmad/uniswapv3-sdk-uint256
 
 go 1.21
 
