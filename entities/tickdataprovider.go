@@ -191,21 +191,21 @@ func (h *TicksHandler) UpdateTicksAfterMint(tickLower, tickUpper int32, liquidit
 
 // актуализирует состояние тиков пула после историчекого события burn
 func (h *TicksHandler) UpdateTicksAfterBurn(tickLower, tickUpper int32, liquidity *uint256.Int) {
-	tick, key, _ := h.binarySearchSimple(tickLower)
+	tick, sliceKey, _ := h.binarySearchSimple(tickLower)
 	tick.LiquidityGross.Sub(tick.LiquidityGross, liquidity)
 	tick.LiquidityNet.Sub(tick.LiquidityNet, (*int256.Int)(liquidity))
-	h.removeTickIfEmpty(tick, key)
+	h.removeTickIfEmpty(tick, sliceKey)
 
-	tick, key, _ = h.binarySearchSimple(tickUpper)
+	tick, sliceKey, _ = h.binarySearchSimple(tickUpper)
 	tick.LiquidityGross.Sub(tick.LiquidityGross, liquidity)
 	tick.LiquidityNet.Add(tick.LiquidityNet, (*int256.Int)(liquidity))
-	h.removeTickIfEmpty(tick, key)
+	h.removeTickIfEmpty(tick, sliceKey)
 }
 
 // проверяет тик на пустую ликвидность и удаляет в таком случае
-func (h *TicksHandler) removeTickIfEmpty(tick Tick, key int) {
+func (h *TicksHandler) removeTickIfEmpty(tick Tick, sliceKey int) {
 	if tick.LiquidityGross.IsZero() && tick.LiquidityNet.IsZero() {
-		h.Ticks = slices.Delete(h.Ticks, key, key+1)
+		h.Ticks = slices.Delete(h.Ticks, sliceKey, sliceKey+1)
 		h.TicksLen--
 
 		if h.TicksLen > 0 {
