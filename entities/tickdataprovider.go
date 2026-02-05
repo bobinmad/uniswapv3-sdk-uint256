@@ -164,7 +164,7 @@ func (h *TicksHandler) NextInitializedTickIndex(tick int32, lte bool) (int32, bo
 
 // актуализирует состояние тиков пула после историчекого события mint
 func (h *TicksHandler) UpdateTicksAfterMint(tickLower, tickUpper int32, liquidity *uint256.Int) {
-	if tick, key, exist := h.binarySearchSimple(tickLower); exist {
+	if tick, key, exist := h.BinarySearchSimple(tickLower); exist {
 		tick.LiquidityGross.Add(tick.LiquidityGross, liquidity)
 		tick.LiquidityNet.Add(tick.LiquidityNet, (*int256.Int)(liquidity))
 	} else {
@@ -176,7 +176,7 @@ func (h *TicksHandler) UpdateTicksAfterMint(tickLower, tickUpper int32, liquidit
 		}
 	}
 
-	if tick, key, exist := h.binarySearchSimple(tickUpper); exist {
+	if tick, key, exist := h.BinarySearchSimple(tickUpper); exist {
 		tick.LiquidityGross.Add(tick.LiquidityGross, liquidity)
 		tick.LiquidityNet.Sub(tick.LiquidityNet, (*int256.Int)(liquidity))
 	} else {
@@ -191,12 +191,12 @@ func (h *TicksHandler) UpdateTicksAfterMint(tickLower, tickUpper int32, liquidit
 
 // актуализирует состояние тиков пула после историчекого события burn
 func (h *TicksHandler) UpdateTicksAfterBurn(tickLower, tickUpper int32, liquidity *uint256.Int) {
-	tick, sliceKey, _ := h.binarySearchSimple(tickLower)
+	tick, sliceKey, _ := h.BinarySearchSimple(tickLower)
 	tick.LiquidityGross.Sub(tick.LiquidityGross, liquidity)
 	tick.LiquidityNet.Sub(tick.LiquidityNet, (*int256.Int)(liquidity))
 	h.removeTickIfEmpty(tick, sliceKey)
 
-	tick, sliceKey, _ = h.binarySearchSimple(tickUpper)
+	tick, sliceKey, _ = h.BinarySearchSimple(tickUpper)
 	tick.LiquidityGross.Sub(tick.LiquidityGross, liquidity)
 	tick.LiquidityNet.Add(tick.LiquidityNet, (*int256.Int)(liquidity))
 	h.removeTickIfEmpty(tick, sliceKey)
@@ -215,7 +215,7 @@ func (h *TicksHandler) removeTickIfEmpty(tick Tick, sliceKey int) {
 	}
 }
 
-func (h *TicksHandler) binarySearchSimple(tick int32) (Tick, int, bool) {
+func (h *TicksHandler) BinarySearchSimple(tick int32) (Tick, int, bool) {
 	idx := sort.Search(h.TicksLen, func(i int) bool {
 		return h.Ticks[i].Index >= tick
 	})
