@@ -172,13 +172,12 @@ func (c *SqrtPriceCalculator) getNextSqrtPriceFromAmount0RoundingUp(sqrtPX96 *Ui
 }
 
 func (c *SqrtPriceCalculator) getNextSqrtPriceFromAmount1RoundingDown(sqrtPX96 *Uint160, liquidity *Uint128, amount *uint256.Int, add bool, result *Uint160) error {
-	var err error
-
 	if add {
 		// <=
 		// if amount.Cmp(MaxUint160) <= 0 {
 		if !amount.Gt(MaxUint160) {
-			result.Div(c.tmp.Lsh(amount, 96), liquidity)
+			result.Lsh(amount, 96)
+			result.Div(result, liquidity)
 		} else {
 			result.Div(c.tmp.Mul(amount, constants.Q96U256), liquidity)
 		}
@@ -195,7 +194,7 @@ func (c *SqrtPriceCalculator) getNextSqrtPriceFromAmount1RoundingDown(sqrtPX96 *
 		return nil
 	}
 
-	if err = c.fullMath.MulDivRoundingUpV2(amount, constants.Q96U256, liquidity, result); err != nil {
+	if err := c.fullMath.MulDivRoundingUpV2(amount, constants.Q96U256, liquidity, result); err != nil {
 		return err
 	}
 
