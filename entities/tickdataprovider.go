@@ -101,14 +101,11 @@ func (h *TicksHandler) CloneTicks(ticks []Tick) {
 // }
 
 func (h *TicksHandler) GetTick(tick int32) (Tick, error) {
-	// tickIndex, _ := h.binarySearchSimple(tick)
-	// return h.Ticks[tickIndex], nil
-
-	ft := h.Ticks[sort.Search(h.TicksLen, func(i int) bool { return h.Ticks[i].Index >= tick })]
-	if ft.Index == tick {
-		return ft, nil
+	i := h.binarySearch(tick)
+	if h.Ticks[i].Index == tick {
+		return h.Ticks[i], nil
 	}
-	return ft, ErrTickNotFound
+	return EmptyTick, ErrTickNotFound
 }
 
 func (h *TicksHandler) NextInitializedTickIndex(tick int32, lte bool) (int32, bool, error) {
@@ -230,18 +227,21 @@ func (h *TicksHandler) binarySearch(tick int32) int {
 	end := h.TicksLen - 1
 
 	for start < end {
-		mid := (start + end) >> 1
+		mid := start + (end-start)>>1
 		if h.Ticks[mid].Index <= tick {
 			start = mid + 1
 		} else {
 			end = mid
 		}
 	}
-
-	if start > 0 && h.Ticks[start-1].Index <= tick {
+	// start == end: rightmost index with Ticks[i].Index <= tick
+	if h.Ticks[start].Index <= tick {
+		return start
+	}
+	if start > 0 {
 		return start - 1
 	}
-	return start
+	return 0
 }
 
 func (h *TicksHandler) isBelowSmallest(tick int32) bool {
