@@ -137,13 +137,18 @@ func (ut *Uint256Utils) udivremV1(quot, u []uint64, d *uint256.Int, rem *uint256
 	}
 	un[0] = u[0] << shift
 
-	// TODO: Skip the highest word of numerator if not significant.
-
+	// Skip the highest word of numerator if not significant (saves one word in udivremBy1 only).
+	// For dLen==1 safe when un[uLen]==0 && un[uLen-1]<dn[0] (top quotient digit is 0). For dLen>1 cannot skip: Knuth first iteration modifies u for the next.
+	if dLen == 1 && un[uLen] == 0 && un[uLen-1] < dn[0] && uLen >= 2 {
+		un = un[:uLen]
+		rem.SetUint64(udivremBy1(quot, un, dn[0]) >> shift)
+		quot[uLen-1] = 0
+		return
+	}
 	if dLen == 1 {
 		rem.SetUint64(udivremBy1(quot, un, dn[0]) >> shift)
 		return
 	}
-
 	udivremKnuth(quot, un, dn)
 
 	for i := 0; i < dLen-1; i++ {
@@ -213,13 +218,18 @@ func (ut *Uint256Utils) udivrem(quot, u []uint64, d *uint256.Int, rem *uint256.I
 	}
 	un[0] = u[0] << shift
 
-	// TODO: Skip the highest word of numerator if not significant.
-
+	// Skip the highest word of numerator if not significant (saves one word in udivremBy1 only).
+	// For dLen==1 safe when un[uLen]==0 && un[uLen-1]<dn[0] (top quotient digit is 0). For dLen>1 cannot skip: Knuth first iteration modifies u for the next.
+	if dLen == 1 && un[uLen] == 0 && un[uLen-1] < dn[0] && uLen >= 2 {
+		un = un[:uLen]
+		rem.SetUint64(udivremBy1(quot, un, dn[0]) >> shift)
+		quot[uLen-1] = 0
+		return
+	}
 	if dLen == 1 {
 		rem.SetUint64(udivremBy1(quot, un, dn[0]) >> shift)
 		return
 	}
-
 	udivremKnuth(quot, un, dn)
 
 	switch dLen {
