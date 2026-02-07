@@ -125,7 +125,9 @@ func (p *Position) CalcAmount0() *utils.Uint256 {
 	if p.Pool.TickCurrent < p.TickLower {
 		p.Pool.SqrtPriceCalculator.GetAmount0DeltaV2(p.PriceLower, p.PriceUpper, p.Liquidity, false, p.amount2Tmp)
 		return p.amount2Tmp
-	} else if p.Pool.TickCurrent < p.TickUpper {
+	}
+
+	if p.Pool.TickCurrent < p.TickUpper {
 		p.Pool.SqrtPriceCalculator.GetAmount0DeltaV2(p.Pool.SqrtRatioX96, p.PriceUpper, p.Liquidity, false, p.amount2Tmp)
 		return p.amount2Tmp
 	}
@@ -136,39 +138,37 @@ func (p *Position) CalcAmount0() *utils.Uint256 {
 func (p *Position) CalcAmount1() *utils.Uint256 {
 	if p.Pool.TickCurrent < p.TickLower {
 		return Zero
-	} else if p.Pool.TickCurrent < p.TickUpper {
+	}
+
+	if p.Pool.TickCurrent < p.TickUpper {
 		p.Pool.SqrtPriceCalculator.GetAmount1DeltaV2(p.PriceLower, p.Pool.SqrtRatioX96, p.Liquidity, false, p.amount2Tmp)
-
-		return p.amount2Tmp
-	} else {
-		p.Pool.SqrtPriceCalculator.GetAmount1DeltaV2(p.PriceLower, p.PriceUpper, p.Liquidity, false, p.amount2Tmp)
-
 		return p.amount2Tmp
 	}
+
+	p.Pool.SqrtPriceCalculator.GetAmount1DeltaV2(p.PriceLower, p.PriceUpper, p.Liquidity, false, p.amount2Tmp)
+	return p.amount2Tmp
 }
 
 func (p *Position) CalcAmounts() (*utils.Uint256, *utils.Uint256) {
 	if p.Pool.TickCurrent < p.TickLower {
 		// calc amount0
 		p.Pool.SqrtPriceCalculator.GetAmount0DeltaV2(p.PriceLower, p.PriceUpper, p.Liquidity, true, p.amount1Tmp)
-
 		// amount1 is zero
 		return p.amount1Tmp, Zero
-	} else if p.Pool.TickCurrent < p.TickUpper {
+	}
+
+	if p.Pool.TickCurrent < p.TickUpper {
 		// calc amount0
 		p.Pool.SqrtPriceCalculator.GetAmount0DeltaV2(p.Pool.SqrtRatioX96, p.PriceUpper, p.Liquidity, true, p.amount1Tmp)
-
 		// calc amount1
 		p.Pool.SqrtPriceCalculator.GetAmount1DeltaV2(p.PriceLower, p.Pool.SqrtRatioX96, p.Liquidity, true, p.amount2Tmp)
-
 		return p.amount1Tmp, p.amount2Tmp
-	} else {
-		// calc amount1
-		p.Pool.SqrtPriceCalculator.GetAmount1DeltaV2(p.PriceLower, p.PriceUpper, p.Liquidity, true, p.amount2Tmp)
-
-		// amount0 is zero
-		return Zero, p.amount2Tmp
 	}
+
+	// calc amount1
+	p.Pool.SqrtPriceCalculator.GetAmount1DeltaV2(p.PriceLower, p.PriceUpper, p.Liquidity, true, p.amount2Tmp)
+	// amount0 is zero
+	return Zero, p.amount2Tmp
 }
 
 /**
