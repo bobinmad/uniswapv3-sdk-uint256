@@ -14,26 +14,6 @@ type Tick struct {
 	LiquidityNet   *utils.Int128
 }
 
-// // Provides information about ticks
-// type TickDataProvider interface {
-// 	/**
-// 	 * Return information corresponding to a specific tick
-// 	 * @param tick the tick to load
-// 	 */
-// 	GetTick(tick int) (Tick, error)
-
-// 	/**
-// 	 * Return the next tick that is initialized within a single word
-// 	 * @param tick The current tick
-// 	 * @param lte Whether the next tick should be lte the current tick
-// 	 * @param tickSpacing The tick spacing of the pool
-// 	 */
-// 	// NextInitializedTickWithinOneWord(tick int, lte bool, tickSpacing int) (int, bool, error)
-
-// 	// NextInitializedTickIndex return the next tick that is initialized
-// 	NextInitializedTickIndex(tick int, lte bool) (int, bool, error)
-// }
-
 // наш собственный расширенный TickListDataProvider с блэкджеком и шлюхами
 type TicksHandler struct {
 	Ticks []Tick
@@ -90,15 +70,6 @@ func (h *TicksHandler) CloneTicks(ticks []Tick) {
 	h.LargestTickIdx = h.Ticks[h.TicksLen-1].Index
 }
 
-// exports ticks as csv string, debug purpose
-// func (h *TicksHandler) ExportTicksAsCSV() string {
-// 	var csvString string
-// 	for _, tick := range h.Ticks {
-// 		csvString += fmt.Sprintf("%d;%s;%s\n", tick.Index, tick.LiquidityGross.Dec(), tick.LiquidityNet.Dec())
-// 	}
-// 	return csvString
-// }
-
 func (h *TicksHandler) GetTick(tick int32) (Tick, error) {
 	i := h.binarySearch(tick)
 	if h.Ticks[i].Index == tick {
@@ -116,67 +87,51 @@ func (h *TicksHandler) NextInitializedTickIndex(tick int32, lte bool) (int32, bo
 			return ZeroValueTickIndex, false, ErrBelowSmallest
 		}
 		if h.isAtOrAboveLargest(tick) {
-			t := &h.Ticks[h.TicksLen-1]
-			idx, init = t.Index, !t.LiquidityGross.IsZero()
+			tick := &h.Ticks[h.TicksLen-1]
+			idx, init = tick.Index, !tick.LiquidityGross.IsZero()
 		} else {
 			i := h.binarySearch(tick)
-			t := &h.Ticks[i]
-			idx, init = t.Index, !t.LiquidityGross.IsZero()
+			tick := &h.Ticks[i]
+			idx, init = tick.Index, !tick.LiquidityGross.IsZero()
 		}
 	} else {
 		if h.isAtOrAboveLargest(tick) {
 			return ZeroValueTickIndex, false, ErrAtOrAboveLargest
 		}
 		if h.isBelowSmallest(tick) {
-			t := &h.Ticks[0]
-			idx, init = t.Index, !t.LiquidityGross.IsZero()
+			tick := &h.Ticks[0]
+			idx, init = tick.Index, !tick.LiquidityGross.IsZero()
 		} else {
 			i := h.binarySearch(tick) + 1
-			t := &h.Ticks[i]
-			idx, init = t.Index, !t.LiquidityGross.IsZero()
+			tick := &h.Ticks[i]
+			idx, init = tick.Index, !tick.LiquidityGross.IsZero()
 		}
 	}
 
 	return idx, init, nil
 }
 
-// func (h *TicksHandler) nextInitializedTick(tick int, lte bool) v3entities.Tick {
-// 	if lte {
-// 		if h.isAtOrAboveLargest(tick) {
-// 			return h.Ticks[h.ticksLen-1]
-// 		}
-
-// 		return h.Ticks[h.binarySearch(tick)]
-// 	} else {
-// 		if h.isBelowSmallest(tick) {
-// 			return h.Ticks[0]
-// 		}
-
-// 		return h.Ticks[h.binarySearch(tick)+1]
-// 	}
-// }
-
 // актуализирует состояние тиков пула после историчекого события mint
 func (h *TicksHandler) UpdateTicksAfterMint(tickLower, tickUpper int32, liquidity *uint256.Int) {
-	if tick, key, exist := h.BinarySearchSimple(tickLower); exist {
-		tick.LiquidityGross.Add(tick.LiquidityGross, liquidity)
-		tick.LiquidityNet.Add(tick.LiquidityNet, (*int256.Int)(liquidity))
-	} else {
-		h.Ticks = slices.Insert(h.Ticks, key, Tick{Index: tickLower, LiquidityGross: liquidity.Clone(), LiquidityNet: (*int256.Int)(liquidity).Clone()})
-		h.TicksLen++
+	liquidityI256 := (*int256.Int)(liquidity)
 
+	if tick, sliceKey, exist := h.tickWithSliceKey(tickLower); exist {
+		tick.LiquidityGross.Add(tick.LiquidityGross, liquidity)
+		tick.LiquidityNet.Add(tick.LiquidityNet, liquidityI256)
+	} else {
+		h.Ticks = slices.Insert(h.Ticks, sliceKey, Tick{Index: tickLower, LiquidityGross: liquidity.Clone(), LiquidityNet: liquidityI256.Clone()})
+		h.TicksLen++
 		if tickLower < h.SmallestTickIdx {
 			h.SmallestTickIdx = tickLower
 		}
 	}
 
-	if tick, key, exist := h.BinarySearchSimple(tickUpper); exist {
+	if tick, sliceKey, exist := h.tickWithSliceKey(tickUpper); exist {
 		tick.LiquidityGross.Add(tick.LiquidityGross, liquidity)
-		tick.LiquidityNet.Sub(tick.LiquidityNet, (*int256.Int)(liquidity))
+		tick.LiquidityNet.Sub(tick.LiquidityNet, liquidityI256)
 	} else {
-		h.Ticks = slices.Insert(h.Ticks, key, Tick{Index: tickUpper, LiquidityGross: liquidity.Clone(), LiquidityNet: new(int256.Int).Neg((*int256.Int)(liquidity))})
+		h.Ticks = slices.Insert(h.Ticks, sliceKey, Tick{Index: tickUpper, LiquidityGross: liquidity.Clone(), LiquidityNet: new(int256.Int).Neg(liquidityI256)})
 		h.TicksLen++
-
 		if tickUpper > h.LargestTickIdx {
 			h.LargestTickIdx = tickUpper
 		}
@@ -185,19 +140,21 @@ func (h *TicksHandler) UpdateTicksAfterMint(tickLower, tickUpper int32, liquidit
 
 // актуализирует состояние тиков пула после историчекого события burn
 func (h *TicksHandler) UpdateTicksAfterBurn(tickLower, tickUpper int32, liquidity *uint256.Int) {
-	tick, sliceKey, _ := h.BinarySearchSimple(tickLower)
+	liquidityI256 := (*int256.Int)(liquidity)
+
+	tick, sliceKey, _ := h.tickWithSliceKey(tickLower)
 	tick.LiquidityGross.Sub(tick.LiquidityGross, liquidity)
-	tick.LiquidityNet.Sub(tick.LiquidityNet, (*int256.Int)(liquidity))
+	tick.LiquidityNet.Sub(tick.LiquidityNet, liquidityI256)
 	h.removeTickIfEmpty(tick, sliceKey)
 
-	tick, sliceKey, _ = h.BinarySearchSimple(tickUpper)
+	tick, sliceKey, _ = h.tickWithSliceKey(tickUpper)
 	tick.LiquidityGross.Sub(tick.LiquidityGross, liquidity)
-	tick.LiquidityNet.Add(tick.LiquidityNet, (*int256.Int)(liquidity))
+	tick.LiquidityNet.Add(tick.LiquidityNet, liquidityI256)
 	h.removeTickIfEmpty(tick, sliceKey)
 }
 
 // проверяет тик на пустую ликвидность и удаляет в таком случае
-func (h *TicksHandler) removeTickIfEmpty(tick Tick, sliceKey int) {
+func (h *TicksHandler) removeTickIfEmpty(tick *Tick, sliceKey int) {
 	if tick.LiquidityGross.IsZero() && tick.LiquidityNet.IsZero() {
 		h.Ticks = slices.Delete(h.Ticks, sliceKey, sliceKey+1)
 		h.TicksLen--
@@ -209,9 +166,10 @@ func (h *TicksHandler) removeTickIfEmpty(tick Tick, sliceKey int) {
 	}
 }
 
-func (h *TicksHandler) BinarySearchSimple(tick int32) (Tick, int, bool) {
+// tickWithSliceKey возвращает указатель на тик и индекс при найденном, иначе (nil, insertionIdx, false).
+func (h *TicksHandler) tickWithSliceKey(tick int32) (*Tick, int, bool) {
 	if h.TicksLen == 0 {
-		return EmptyTick, 0, false
+		return nil, 0, false
 	}
 	i := h.binarySearch(tick)
 	idx := i
@@ -219,15 +177,12 @@ func (h *TicksHandler) BinarySearchSimple(tick int32) (Tick, int, bool) {
 		idx = i + 1
 	}
 	if idx < h.TicksLen && h.Ticks[idx].Index == tick {
-		return h.Ticks[idx], idx, true
+		return &h.Ticks[idx], idx, true
 	}
-	return EmptyTick, idx, false
+	return nil, idx, false
 }
 
 func (h *TicksHandler) binarySearch(tick int32) int {
-	if h.TicksLen == 0 {
-		return 0
-	}
 	start := 0
 	end := h.TicksLen - 1
 
