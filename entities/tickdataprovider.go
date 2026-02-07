@@ -112,38 +112,36 @@ func (h *TicksHandler) GetTick(tick int32) (Tick, error) {
 }
 
 func (h *TicksHandler) NextInitializedTickIndex(tick int32, lte bool) (int32, bool, error) {
-	var initializedTick Tick
+	var idx int32
+	var init bool
 
 	if lte {
 		if h.isBelowSmallest(tick) {
 			return ZeroValueTickIndex, false, ErrBelowSmallest
 		}
-
 		if h.isAtOrAboveLargest(tick) {
-			initializedTick = h.Ticks[h.TicksLen-1]
+			t := &h.Ticks[h.TicksLen-1]
+			idx, init = t.Index, !t.LiquidityGross.IsZero()
 		} else {
-			initializedTick = h.Ticks[h.binarySearch(tick)]
+			i := h.binarySearch(tick)
+			t := &h.Ticks[i]
+			idx, init = t.Index, !t.LiquidityGross.IsZero()
 		}
 	} else {
 		if h.isAtOrAboveLargest(tick) {
 			return ZeroValueTickIndex, false, ErrAtOrAboveLargest
 		}
-
 		if h.isBelowSmallest(tick) {
-			initializedTick = h.Ticks[0]
+			t := &h.Ticks[0]
+			idx, init = t.Index, !t.LiquidityGross.IsZero()
 		} else {
-			initializedTick = h.Ticks[h.binarySearch(tick)+1]
+			i := h.binarySearch(tick) + 1
+			t := &h.Ticks[i]
+			idx, init = t.Index, !t.LiquidityGross.IsZero()
 		}
 	}
 
-	return initializedTick.Index, !initializedTick.LiquidityGross.IsZero(), nil
-
-	// nextInitializedTick, err := NextInitializedTick(h.Ticks, tick, lte)
-	// if err != nil {
-	// 	return ZeroValueTickIndex, ZeroValueTickInitialized, err
-	// }
-
-	// return nextInitializedTick.Index, !nextInitializedTick.LiquidityGross.IsZero(), nil
+	return idx, init, nil
 }
 
 // func (h *TicksHandler) nextInitializedTick(tick int, lte bool) v3entities.Tick {
