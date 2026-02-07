@@ -645,24 +645,17 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 
 		if p.step.tickNext < utils.MinTick {
 			p.step.tickNext = utils.MinTick
-		} else if p.step.tickNext > utils.MaxTick {
+		}
+		if p.step.tickNext > utils.MaxTick {
 			p.step.tickNext = utils.MaxTick
 		}
 
 		p.TickCalculator.GetSqrtRatioAtTickV2(p.step.tickNext, &p.step.sqrtPriceNextX96)
 
-		if zeroForOne {
-			if p.step.sqrtPriceNextX96.Lt(sqrtPriceLimitX96) {
-				*p.targetValue = *sqrtPriceLimitX96
-			} else {
-				*p.targetValue = p.step.sqrtPriceNextX96
-			}
+		if (zeroForOne && p.step.sqrtPriceNextX96.Lt(sqrtPriceLimitX96)) || (!zeroForOne && p.step.sqrtPriceNextX96.Gt(sqrtPriceLimitX96)) {
+			*p.targetValue = *sqrtPriceLimitX96
 		} else {
-			if p.step.sqrtPriceNextX96.Gt(sqrtPriceLimitX96) {
-				*p.targetValue = *sqrtPriceLimitX96
-			} else {
-				*p.targetValue = p.step.sqrtPriceNextX96
-			}
+			*p.targetValue = p.step.sqrtPriceNextX96
 		}
 
 		p.swapStepCalculator.ComputeSwapStep(p.lastState.sqrtPriceX96, p.targetValue, p.lastState.liquidity, p.lastState.amountSpecifiedRemaining, uint64(p.Fee), p.nxtSqrtPriceX96, &p.step.amountIn, &p.step.amountOut, &p.step.feeAmount, zeroForOne, exactInput)
@@ -708,9 +701,10 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 				swapResult.CrossInitTickLoops++
 			}
 
-			p.lastState.tick = p.step.tickNext
 			if zeroForOne {
-				p.lastState.tick--
+				p.lastState.tick = p.step.tickNext - 1
+			} else {
+				p.lastState.tick = p.step.tickNext
 			}
 		} else if !p.lastState.sqrtPriceX96.Eq(&p.step.sqrtPriceStartX96) {
 			// recompute unless we're on a lower tick boundary (i.e. already transitioned ticks), and haven't moved
