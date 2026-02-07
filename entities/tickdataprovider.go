@@ -2,7 +2,6 @@ package entities
 
 import (
 	"slices"
-	"sort"
 
 	"github.com/KyberNetwork/int256"
 	"github.com/bobinmad/uniswapv3-sdk-uint256/utils"
@@ -211,18 +210,24 @@ func (h *TicksHandler) removeTickIfEmpty(tick Tick, sliceKey int) {
 }
 
 func (h *TicksHandler) BinarySearchSimple(tick int32) (Tick, int, bool) {
-	idx := sort.Search(h.TicksLen, func(i int) bool {
-		return h.Ticks[i].Index >= tick
-	})
-
+	if h.TicksLen == 0 {
+		return EmptyTick, 0, false
+	}
+	i := h.binarySearch(tick)
+	idx := i
+	if h.Ticks[i].Index < tick {
+		idx = i + 1
+	}
 	if idx < h.TicksLen && h.Ticks[idx].Index == tick {
 		return h.Ticks[idx], idx, true
 	}
-
 	return EmptyTick, idx, false
 }
 
 func (h *TicksHandler) binarySearch(tick int32) int {
+	if h.TicksLen == 0 {
+		return 0
+	}
 	start := 0
 	end := h.TicksLen - 1
 
