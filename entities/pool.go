@@ -638,17 +638,16 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 		// because each iteration of the while loop rounds, we can't optimize this code (relative to the smart contract)
 		// by simply traversing to the next available tick, we instead need to exactly replicate
 		// tickBitmap.nextInitializedTickWithinOneWord
-		p.step.tickNext, p.step.initialized, err = p.TickDataProvider.NextInitializedTickIndex(p.lastState.tick, zeroForOne)
-		if err != nil {
+		if p.step.tickNext, p.step.initialized, err = p.TickDataProvider.NextInitializedTickIndex(p.lastState.tick, zeroForOne); err != nil {
 			return err
 		}
 
-		if p.step.tickNext < utils.MinTick {
-			p.step.tickNext = utils.MinTick
-		}
-		if p.step.tickNext > utils.MaxTick {
-			p.step.tickNext = utils.MaxTick
-		}
+		// if p.step.tickNext < utils.MinTick {
+		// 	p.step.tickNext = utils.MinTick
+		// }
+		// if p.step.tickNext > utils.MaxTick {
+		// 	p.step.tickNext = utils.MaxTick
+		// }
 
 		p.TickCalculator.GetSqrtRatioAtTickV2(p.step.tickNext, &p.step.sqrtPriceNextX96)
 
