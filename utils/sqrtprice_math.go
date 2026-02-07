@@ -154,21 +154,21 @@ func (c *SqrtPriceCalculator) getNextSqrtPriceFromAmount0RoundingUp(sqrtPX96 *Ui
 			}
 		}
 
-		c.fullMath.DivRoundingUp(c.numerator1, c.tmp.Add(c.tmp.Div(c.numerator1, sqrtPX96), amount), result)
-
+		c.deno.Div(c.numerator1, sqrtPX96)
+		c.deno.Add(c.deno, amount)
+		c.fullMath.DivRoundingUp(c.numerator1, c.deno, result)
 		return nil
-	} else {
-		if !c.tmp.Div(c.product, amount).Eq(sqrtPX96) {
-			return ErrInvariant
-		}
-
-		// if c.numerator1.Cmp(c.product) <= 0 {
-		if !c.numerator1.Gt(c.product) {
-			return ErrInvariant
-		}
-
-		return c.fullMath.MulDivRoundingUpV2(c.numerator1, sqrtPX96, c.deno.Sub(c.numerator1, c.product), result)
 	}
+	if !c.tmp.Div(c.product, amount).Eq(sqrtPX96) {
+		return ErrInvariant
+	}
+
+	// if c.numerator1.Cmp(c.product) <= 0 {
+	if !c.numerator1.Gt(c.product) {
+		return ErrInvariant
+	}
+
+	return c.fullMath.MulDivRoundingUpV2(c.numerator1, sqrtPX96, c.deno.Sub(c.numerator1, c.product), result)
 }
 
 func (c *SqrtPriceCalculator) getNextSqrtPriceFromAmount1RoundingDown(sqrtPX96 *Uint160, liquidity *Uint128, amount *uint256.Int, add bool, result *Uint160) error {
