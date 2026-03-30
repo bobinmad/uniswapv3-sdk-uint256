@@ -50,7 +50,10 @@ func (c *SwapStepCalculator) ComputeSwapStep(
 	if exactIn {
 		c.amountRemainingU = (*uint256.Int)(amountRemaining)
 
-		c.tmpUint256.Div(c.tmpUint256.Mul(c.amountRemainingU, c.maxFeeMinusFeePips), MaxFeeUint256)
+		// Заменяем holiman.Div на divByMaxFeeInto: пропускает Gt-проверку и использует
+		// предвычисленный реципрокал вместо hardware DIV в reciprocal2by1 (~30 цикл.).
+		c.tmpUint256.Mul(c.amountRemainingU, c.maxFeeMinusFeePips)
+		divByMaxFeeInto(c.tmpUint256, c.tmpUint256)
 
 		if zeroForOne {
 			c.sqrtPriceCalculator.GetAmount0DeltaV2(sqrtRatioTargetX96, sqrtRatioCurrentX96, liquidity, true, amountIn)

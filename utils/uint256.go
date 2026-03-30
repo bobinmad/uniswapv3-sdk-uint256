@@ -504,6 +504,82 @@ func mulRsh96_2x3(a, b, result *uint256.Int) bool {
 	return l00 != 0 || (p1&0xFFFFFFFF) != 0
 }
 
+// Предвычисленные константы для деления на MaxFee = 1_000_000 (20-битная константа).
+// Нормализованный делитель (сдвиг на 44 бита) и его реципрокал позволяют заменить
+// hardware DIV (~30 цикл.) в reciprocal2by1 на 5 умножений bits.Mul64 (~5 цикл.) за вызов.
+var (
+	maxFeeShift = uint(bits.LeadingZeros64(1_000_000)) // = 44
+	maxFeeNorm  = uint64(1_000_000) << uint(bits.LeadingZeros64(1_000_000))
+	maxFeeRecip = func() uint64 {
+		r, _ := bits.Div64(^(uint64(1_000_000) << uint(bits.LeadingZeros64(1_000_000))),
+			^uint64(0),
+			uint64(1_000_000)<<uint(bits.LeadingZeros64(1_000_000)))
+		return r
+	}()
+)
+
+// divByMaxFeeInto вычисляет result = floor(a / 1_000_000) без вычисления реципрокала.
+// Использует предвычисленные maxFeeNorm и maxFeeRecip: заменяет hardware DIV (~30 цикл.)
+// в reciprocal2by1 на 5 умножений bits.Mul64 (~5 цикл.).
+// Адаптирует число итераций под реальный размер a (1-4 слова) — так же, как udivremBy1.
+func divByMaxFeeInto(a, result *uint256.Int) {
+	shift := maxFeeShift
+	rshift := 64 - shift
+	d, recip := maxFeeNorm, maxFeeRecip
+	var rem uint64
+
+	switch {
+	case a[3] != 0:
+		// 4-слова: uLen=4, нормализованный дивиденд имеет 5 слов
+		un4 := a[3] >> rshift
+		un3 := (a[3] << shift) | (a[2] >> rshift)
+		un2 := (a[2] << shift) | (a[1] >> rshift)
+		un1 := (a[1] << shift) | (a[0] >> rshift)
+		un0 := a[0] << shift
+		rem = un4
+		var q3, q2, q1, q0 uint64
+		q3, rem = udivrem2by1(rem, un3, d, recip)
+		q2, rem = udivrem2by1(rem, un2, d, recip)
+		q1, rem = udivrem2by1(rem, un1, d, recip)
+		q0, rem = udivrem2by1(rem, un0, d, recip)
+		result[0], result[1], result[2], result[3] = q0, q1, q2, q3
+
+	case a[2] != 0:
+		// 3-слова: uLen=3, 4 нормализованных слова
+		un3 := a[2] >> rshift
+		un2 := (a[2] << shift) | (a[1] >> rshift)
+		un1 := (a[1] << shift) | (a[0] >> rshift)
+		un0 := a[0] << shift
+		rem = un3
+		var q2, q1, q0 uint64
+		q2, rem = udivrem2by1(rem, un2, d, recip)
+		q1, rem = udivrem2by1(rem, un1, d, recip)
+		q0, rem = udivrem2by1(rem, un0, d, recip)
+		result[0], result[1], result[2], result[3] = q0, q1, q2, 0
+
+	case a[1] != 0:
+		// 2-слова: uLen=2, 3 нормализованных слова
+		un2 := a[1] >> rshift
+		un1 := (a[1] << shift) | (a[0] >> rshift)
+		un0 := a[0] << shift
+		rem = un2
+		var q1, q0 uint64
+		q1, rem = udivrem2by1(rem, un1, d, recip)
+		q0, rem = udivrem2by1(rem, un0, d, recip)
+		result[0], result[1], result[2], result[3] = q0, q1, 0, 0
+
+	default:
+		// 1-слово: uLen=1, 2 нормализованных слова
+		un1 := a[0] >> rshift
+		un0 := a[0] << shift
+		rem = un1
+		var q0 uint64
+		q0, rem = udivrem2by1(rem, un0, d, recip)
+		result[0], result[1], result[2], result[3] = q0, 0, 0, 0
+	}
+	_ = rem // remainder не нужен
+}
+
 // addTo computes x += y.
 // Requires len(x) >= len(y).
 func addTo(x, y []uint64) uint64 {

@@ -92,9 +92,23 @@ func (m *FullMath) MulDiv(a, b, denominator *uint256.Int) (*uint256.Int, error) 
 	return m.result, nil
 }
 
+// DivInto вычисляет result = floor(a / denominator) через наш pre-allocated udivrem.
+// Заменяет holiman.Div/DivMod, избегая wrapper-оверхеда:
+//   - проверок Gt/Lt (≈0.5s + 0.55s в профиле на всех вызовах)
+//   - стек-аллокации var quot, rem Int (64 байта)
+//   - двух Set-копий (8 слов каждая)
+//
+// Остаток сохраняется в m.rem.
+// Пресловажно: denominator != 0; a < d обрабатывается корректно (result = 0, rem = a).
+func (m *FullMath) DivInto(a, denominator, result *uint256.Int) {
+	m.quot[0], m.quot[1], m.quot[2], m.quot[3] = 0, 0, 0, 0
+	m.u256utils.udivrem(m.quot[:4], a[:], denominator, m.rem)
+	result[0], result[1], result[2], result[3] = m.quot[0], m.quot[1], m.quot[2], m.quot[3]
+}
+
 // DivRoundingUp Returns ceil(x / y)
 func (m *FullMath) DivRoundingUp(a, denominator, result *uint256.Int) {
-	result.DivMod(a, denominator, m.rem)
+	m.DivInto(a, denominator, result)
 	if !m.rem.IsZero() {
 		result.AddUint64(result, 1)
 	}
