@@ -57,9 +57,15 @@ func (m *FullMath) MulDivV2(x, y, denominator, result, remainder *uint256.Int) e
 		result.Clear()
 		return nil
 	}
-	p := umul(x, y)
+	// Быстрый путь: x[0]=0 (числитель = liquidity<<96) и y[3]=0 (160-битный операнд).
+	// 9 Mul64 вместо 16 для полного умножения.
+	var p [8]uint64
+	if x[0] == 0 && y[3] == 0 {
+		p = umul_lo3(x, y)
+	} else {
+		p = umul(x, y)
+	}
 
-	// var quot [8]uint64
 	m.quot[7], m.quot[6], m.quot[5], m.quot[4], m.quot[3], m.quot[2], m.quot[1], m.quot[0] = 0, 0, 0, 0, 0, 0, 0, 0
 	m.u256utils.udivrem(m.quot[:], p[:], denominator, m.rem)
 	if remainder != nil {

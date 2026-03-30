@@ -2,8 +2,11 @@ package utils
 
 import (
 	"errors"
+	"math"
 	"math/big"
 	"math/bits"
+	"runtime"
+	"sync"
 
 	"github.com/KyberNetwork/int256"
 	"github.com/holiman/uint256"
@@ -79,20 +82,131 @@ var (
 	MaxUint256 = uint256.MustFromHex("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
 )
 
+// ─── Lookup table ─────────────────────────────────────────────────────────────
+//
+// sqrtRatioTable[i] = GetSqrtRatioAtTick(MinTick + i) for i in [0, MaxTick-MinTick].
+// Размер: 1_774_545 × 32 байт = ~56 МБ. Инициализируется параллельно в init() за ~40 мс.
+//
+// Позволяет:
+//   - GetSqrtRatioAtTickV2: O(1) копирование из таблицы (вместо 20 операций 256-бит умножения)
+//   - GetTickAtSqrtRatioV2: оценка через log2 + 1-2 сравнения (вместо 14 итераций + проверки)
+var sqrtRatioTable []uint256.Int // индекс: (tick - MinTick)
+
+func init() {
+	buildSqrtRatioTable()
+}
+
+func buildSqrtRatioTable() {
+	n := int(MaxTick-MinTick) + 1 // 1_774_545
+	sqrtRatioTable = make([]uint256.Int, n)
+
+	numWorkers := runtime.GOMAXPROCS(0)
+	if numWorkers < 1 {
+		numWorkers = 1
+	}
+	chunkSize := (n + numWorkers - 1) / numWorkers
+
+	var wg sync.WaitGroup
+	for w := 0; w < numWorkers; w++ {
+		start := w * chunkSize
+		end := start + chunkSize
+		if end > n {
+			end = n
+		}
+		if start >= n {
+			break
+		}
+		wg.Add(1)
+		go func(s, e int) {
+			defer wg.Done()
+			calc := NewTickCalculator()
+			for i := s; i < e; i++ {
+				calc.getSqrtRatioAtTickSlow(int32(i)+MinTick, &sqrtRatioTable[i])
+			}
+		}(start, end)
+	}
+	wg.Wait()
+}
+
+// ─── Fast public API (table-based) ───────────────────────────────────────────
+
 // deprecated
 func GetSqrtRatioAtTick(tick int32) (*big.Int, error) {
-	// panic("GetSqrtRatioAtTick() is deprecated")
-
 	result := new(Uint160)
 	NewTickCalculator().GetSqrtRatioAtTickV2(tick, result)
 	return result.ToBig(), nil
 }
 
-/**
- * Returns the sqrt ratio as a Q64.96 for the given tick. The sqrt ratio is computed as sqrt(1.0001)^tick
- * @param tick the tick for which to compute the sqrt ratio
- */
+// GetSqrtRatioAtTickV2 returns the sqrt ratio as Q64.96 for the given tick.
+// O(1): copies from precomputed table.
 func (c *TickCalculator) GetSqrtRatioAtTickV2(tick int32, result *Uint160) {
+	*result = sqrtRatioTable[int(tick-MinTick)]
+}
+
+// invLog2_1_0001 = 2 / log2(1.0001) — коэффициент перевода log2(sqrtRatioX96) в тик.
+const invLog2_1_0001 = 2.0 / 0.00014426950408889634 // ≈ 13862.94
+
+// deprecated
+func GetTickAtSqrtRatio(sqrtRatioX96 *big.Int) (int32, error) {
+	return NewTickCalculator().GetTickAtSqrtRatioV2(uint256.MustFromBig(sqrtRatioX96))
+}
+
+// GetTickAtSqrtRatioV2 returns the tick t such that sqrtRatioAtTick(t) <= sqrtRatioX96 < sqrtRatioAtTick(t+1).
+//
+// Алгоритм:
+//  1. Приближаем log2(sqrtRatioX96) через float64 (точность ≈ 10^-9 тиков).
+//  2. Переводим в тик-оценку (ошибка < 1 тика).
+//  3. Корректируем на ±1 сравнением с соседями в таблице.
+func (c *TickCalculator) GetTickAtSqrtRatioV2(sqrtRatioX96 *Uint160) (int32, error) {
+	// Шаг 1: log2(sqrtRatioX96) через верхние два активных слова.
+	// Погрешность < 10^-9 тиков для любого допустимого sqrtRatioX96.
+	const inv2_64 = 1.0 / 18446744073709551616.0 // 1 / 2^64
+	var logApprox float64
+	if sqrtRatioX96[2] != 0 {
+		logApprox = math.Log2(float64(sqrtRatioX96[2])+float64(sqrtRatioX96[1])*inv2_64) + 128
+	} else if sqrtRatioX96[1] != 0 {
+		logApprox = math.Log2(float64(sqrtRatioX96[1])+float64(sqrtRatioX96[0])*inv2_64) + 64
+	} else {
+		logApprox = math.Log2(float64(sqrtRatioX96[0]))
+	}
+
+	// Шаг 2: перевод в тик. tick ≈ (log2(sqrtRatioX96) - 96) * invLog2_1_0001.
+	tickF := (logApprox - 96) * invLog2_1_0001
+	tick := int32(tickF)
+	if tick < MinTick {
+		tick = MinTick
+	} else if tick > MaxTick-1 {
+		tick = MaxTick - 1
+	}
+
+	// Шаг 3: точная коррекция — ищем floor(tick) в таблице.
+	// В типичном случае итераций нет; в крайнем — не более 2.
+	idx := int(tick - MinTick)
+	n := len(sqrtRatioTable) - 1
+
+	// Если оценка завышена: опускаемся вниз.
+	for idx > 0 && sqrtRatioTable[idx].Gt(sqrtRatioX96) {
+		idx--
+	}
+	// Если оценка занижена: поднимаемся вверх.
+	for idx < n && !sqrtRatioTable[idx+1].Gt(sqrtRatioX96) {
+		idx++
+	}
+
+	return int32(idx) + MinTick, nil
+}
+
+// ─── Slow implementations (used only during table initialization) ─────────────
+
+var (
+	magicSqrt10001 = int256.MustFromDec("255738958999603826347141")
+	magicTickLow   = int256.MustFromDec("3402992956809132418596140100660247210")
+	magicTickHigh  = int256.MustFromDec("291339464771989622907027621153398088495")
+)
+
+// getSqrtRatioAtTickSlow — оригинальная реализация через 256-битную арифметику.
+// Используется только в buildSqrtRatioTable; в runtime заменена O(1)-lookup.
+func (c *TickCalculator) getSqrtRatioAtTickSlow(tick int32, result *Uint160) {
 	absTick := tick
 	if tick < 0 {
 		absTick = -tick
@@ -169,33 +283,13 @@ func (c *TickCalculator) GetSqrtRatioAtTickV2(tick int32, result *Uint160) {
 	// back to Q96
 	result.DivMod(result, Q32U256, c.tmp)
 	if !c.tmp.IsZero() {
-		// result.AddUint64(result, 1)
 		result[0], _ = bits.Add64(result[0], 1, 0)
 	}
 }
 
-var (
-	magicSqrt10001 = int256.MustFromDec("255738958999603826347141")
-	magicTickLow   = int256.MustFromDec("3402992956809132418596140100660247210")
-	magicTickHigh  = int256.MustFromDec("291339464771989622907027621153398088495")
-)
-
-// deprecated
-func GetTickAtSqrtRatio(sqrtRatioX96 *big.Int) (int32, error) {
-	// panic("GetTickAtSqrtRatio() is deprecated")
-	return NewTickCalculator().GetTickAtSqrtRatioV2(uint256.MustFromBig(sqrtRatioX96))
-}
-
-/**
- * Returns the tick corresponding to a given sqrt ratio, s.t. #getSqrtRatioAtTick(tick) <= sqrtRatioX96
- * and #getSqrtRatioAtTick(tick + 1) > sqrtRatioX96
- * @param sqrtRatioX96 the sqrt ratio as a Q64.96 for which to compute the tick
- */
-func (c *TickCalculator) GetTickAtSqrtRatioV2(sqrtRatioX96 *Uint160) (int32, error) {
-	// if sqrtRatioX96.Lt(MinSqrtRatioU256) || !sqrtRatioX96.Lt(MaxSqrtRatioU256) {
-	// 	return 0, ErrInvalidSqrtRatio
-	// }
-
+// getTickAtSqrtRatioSlow — оригинальная реализация (не используется в runtime,
+// сохранена для документации и отладки).
+func (c *TickCalculator) getTickAtSqrtRatioSlow(sqrtRatioX96 *Uint160) (int32, error) {
 	c.tmp.Lsh(sqrtRatioX96, 32)
 	msb := MostSignificantBit(c.tmp)
 
@@ -227,7 +321,7 @@ func (c *TickCalculator) GetTickAtSqrtRatioV2(sqrtRatioX96 *Uint160) (int32, err
 		return tickLow, nil
 	}
 
-	c.GetSqrtRatioAtTickV2(tickHigh, c.sqrtRatio)
+	c.getSqrtRatioAtTickSlow(tickHigh, c.sqrtRatio)
 	if !c.sqrtRatio.Gt(sqrtRatioX96) {
 		return tickHigh, nil
 	}

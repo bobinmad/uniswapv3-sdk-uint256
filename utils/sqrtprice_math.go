@@ -97,17 +97,21 @@ func (c *SqrtPriceCalculator) GetAmount1DeltaV2(sqrtRatioAX96, sqrtRatioBX96 *Ui
 	// 	sqrtRatioAX96, sqrtRatioBX96 = sqrtRatioBX96, sqrtRatioAX96
 	// }
 
+	// Оптимизированный путь: denominator = Q96 = 2^96 (константа, степень двойки).
+	// Вместо umul (16 ops) + Knuth-div (удалением): 6 ops Mul64 + сдвиг вправо на 96 бит.
+	// Требования гарантированы типами: liquidity ≤ 2^128, diff ≤ 2^160.
 	c.tmp.Sub(sqrtRatioBX96, sqrtRatioAX96)
 	if roundUp {
-		if err := c.fullMath.MulDivRoundingUpV2(liquidity, c.tmp, constants.Q96U256, result); err != nil {
-			return err
+		if mulRsh96_2x3(liquidity, c.tmp, result) {
+			if result.Eq(MaxUint256) {
+				return ErrInvariant
+			}
+			result.AddUint64(result, 1)
 		}
-
 		return nil
 	}
-
-	// : FullMath.mulDiv(liquidity, sqrtRatioBX96 - sqrtRatioAX96, FixedPoint96.Q96);
-	return c.fullMath.MulDivV2(liquidity, c.tmp, constants.Q96U256, result, nil)
+	mulRsh96_2x3(liquidity, c.tmp, result)
+	return nil
 }
 
 func (c *SqrtPriceCalculator) GetNextSqrtPriceFromInput(sqrtPX96 *Uint160, liquidity *Uint128, amountIn *uint256.Int, zeroForOne bool, result *Uint160) error {

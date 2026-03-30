@@ -417,6 +417,93 @@ func subMulTo(x, y []uint64, multiplier uint64) uint64 {
 	return borrow
 }
 
+// umul_lo3 вычисляет полное 256×256→512-битное произведение для частного случая:
+// x[0]=0 (числитель = liquidity<<96) и y[3]=0 (160-битный операнд).
+// Выполняет 9 Mul64 вместо 16 (пропускает нулевые строку x[0] и столбец y[3]).
+func umul_lo3(x, y *uint256.Int) [8]uint64 {
+	var (
+		res                        [8]uint64
+		carry, carry4, carry5, carry6 uint64
+		res2, res3, res4, res5     uint64
+	)
+	// Строка y[0]: x[0]=0 → p[0]=0; начинаем с x[1]
+	var res1 uint64
+	carry, res1 = bits.Mul64(x[1], y[0])
+	carry, res2 = umulHop(carry, x[2], y[0])
+	carry4, res3 = umulHop(carry, x[3], y[0])
+
+	// Строка y[1]: x[0]*y[1]=0 → res[1]=res1
+	res[1] = res1
+	carry, res2 = umulStep(res2, x[1], y[1], 0)
+	carry, res3 = umulStep(res3, x[2], y[1], carry)
+	carry5, res4 = umulStep(carry4, x[3], y[1], carry)
+
+	// Строка y[2]: x[0]*y[2]=0 → res[2]=res2
+	res[2] = res2
+	carry, res3 = umulStep(res3, x[1], y[2], 0)
+	carry, res4 = umulStep(res4, x[2], y[2], carry)
+	carry6, res5 = umulStep(carry5, x[3], y[2], carry)
+
+	// Строка y[3]=0: все слагаемые нулевые
+	res[3] = res3
+	res[4] = res4
+	res[5] = res5
+	res[6] = carry6
+	// res[7] = 0
+
+	return res
+}
+
+// mulRsh96_2x3 computes floor(a*b / 2^96) into result and returns whether (a*b % 2^96) != 0.
+//
+// Требования: a ≤ 2^128 (a[2]=a[3]=0), b ≤ 2^160 (b[3]=0).
+// Выполняет 6 ops Mul64 вместо 16 для общего umul и полностью избегает деления Кнута:
+// для знаменателя 2^96 деление — это просто сдвиг вправо на 96 бит.
+func mulRsh96_2x3(a, b, result *uint256.Int) bool {
+	// 6 частичных произведений:
+	h00, l00 := bits.Mul64(a[0], b[0]) //   → биты   0-127
+	h01, l01 := bits.Mul64(a[0], b[1]) //   → биты  64-191
+	h02, l02 := bits.Mul64(a[0], b[2]) //   → биты 128-255
+	h10, l10 := bits.Mul64(a[1], b[0]) //   → биты  64-191
+	h11, l11 := bits.Mul64(a[1], b[1]) //   → биты 128-255
+	h12, l12 := bits.Mul64(a[1], b[2]) //   → биты 192-319
+
+	// p[1]: h00 + l01 + l10  (биты 64-127 произведения)
+	var c0, c1 uint64
+	p1, c0 := bits.Add64(h00, l01, 0)
+	p1, c1 = bits.Add64(p1, l10, 0)
+
+	// p[2]: c0+c1 + h01 + h10 + l02 + l11  (биты 128-191)
+	var c2, c3, c4, c5, c6 uint64
+	p2, c2 := bits.Add64(h01, h10, 0)
+	p2, c3 = bits.Add64(p2, l02, 0)
+	p2, c4 = bits.Add64(p2, l11, 0)
+	p2, c5 = bits.Add64(p2, c0, 0)
+	p2, c6 = bits.Add64(p2, c1, 0)
+	carry2 := c2 + c3 + c4 + c5 + c6 // ≤ 5
+
+	// p[3]: carry2 + h02 + h11 + l12  (биты 192-255)
+	var c7, c8, c9 uint64
+	p3, c7 := bits.Add64(h02, h11, 0)
+	p3, c8 = bits.Add64(p3, l12, 0)
+	p3, c9 = bits.Add64(p3, carry2, 0)
+	carry3 := c7 + c8 + c9 // ≤ 3
+
+	// p[4]: carry3 + h12  (биты 256-287; ≤ 2^32-1 для a≤2^128, b≤2^160)
+	p4 := h12 + carry3
+
+	// Сдвиг вправо на 96 бит = вычитаем 1 полное слово (64 бита) + ещё 32 бита:
+	//   result[i] = (p[i+1] >> 32) | (p[i+2] << 32)
+	result[0] = (p1 >> 32) | (p2 << 32)
+	result[1] = (p2 >> 32) | (p3 << 32)
+	result[2] = (p3 >> 32) | (p4 << 32)
+	result[3] = p4 >> 32 // должен быть 0 при корректных входных данных
+
+	// Остаток ненулевой ↔ хотя бы один из младших 96 бит произведения ненулевой:
+	// биты 0-63 = l00, биты 64-95 = нижние 32 бита p1.
+	return l00 != 0 || (p1&0xFFFFFFFF) != 0
+}
+
 // addTo computes x += y.
 // Requires len(x) >= len(y).
 func addTo(x, y []uint64) uint64 {
