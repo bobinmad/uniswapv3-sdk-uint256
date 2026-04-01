@@ -347,26 +347,26 @@ func subMulTo(x, y []uint64, multiplier uint64) uint64 {
 	// 	borrow = ph + carry1 + carry2
 
 	case 2:
-		s, carry1 := bits.Sub64(x[0], borrow, 0)
+		// borrow == 0 at entry: skip Sub64(x[0], 0, 0)
 		ph, pl := bits.Mul64(y[0], multiplier)
-		t, carry2 := bits.Sub64(s, pl, 0)
+		t, carry2 := bits.Sub64(x[0], pl, 0)
 		x[0] = t
-		borrow = ph + carry1 + carry2
+		borrow = ph + carry2
 
-		s, carry1 = bits.Sub64(x[1], borrow, 0)
+		s, carry1 := bits.Sub64(x[1], borrow, 0)
 		ph, pl = bits.Mul64(y[1], multiplier)
 		t, carry2 = bits.Sub64(s, pl, 0)
 		x[1] = t
 		borrow = ph + carry1 + carry2
 
 	case 3:
-		s, carry1 := bits.Sub64(x[0], borrow, 0)
+		// borrow == 0 at entry: skip Sub64(x[0], 0, 0)
 		ph, pl := bits.Mul64(y[0], multiplier)
-		t, carry2 := bits.Sub64(s, pl, 0)
+		t, carry2 := bits.Sub64(x[0], pl, 0)
 		x[0] = t
-		borrow = ph + carry1 + carry2
+		borrow = ph + carry2
 
-		s, carry1 = bits.Sub64(x[1], borrow, 0)
+		s, carry1 := bits.Sub64(x[1], borrow, 0)
 		ph, pl = bits.Mul64(y[1], multiplier)
 		t, carry2 = bits.Sub64(s, pl, 0)
 		x[1] = t
@@ -379,13 +379,13 @@ func subMulTo(x, y []uint64, multiplier uint64) uint64 {
 		borrow = ph + carry1 + carry2
 
 	case 4:
-		s, carry1 := bits.Sub64(x[0], borrow, 0)
+		// borrow == 0 at entry: skip Sub64(x[0], 0, 0)
 		ph, pl := bits.Mul64(y[0], multiplier)
-		t, carry2 := bits.Sub64(s, pl, 0)
+		t, carry2 := bits.Sub64(x[0], pl, 0)
 		x[0] = t
-		borrow = ph + carry1 + carry2
+		borrow = ph + carry2
 
-		s, carry1 = bits.Sub64(x[1], borrow, 0)
+		s, carry1 := bits.Sub64(x[1], borrow, 0)
 		ph, pl = bits.Mul64(y[1], multiplier)
 		t, carry2 = bits.Sub64(s, pl, 0)
 		x[1] = t
@@ -421,9 +421,9 @@ func subMulTo(x, y []uint64, multiplier uint64) uint64 {
 // Выполняет 9 Mul64 вместо 16 (пропускает нулевые строку x[0] и столбец y[3]).
 func umul_lo3(x, y *uint256.Int) [8]uint64 {
 	var (
-		res                        [8]uint64
+		res                           [8]uint64
 		carry, carry4, carry5, carry6 uint64
-		res2, res3, res4, res5     uint64
+		res2, res3, res4, res5        uint64
 	)
 	// Строка y[0]: x[0]=0 → p[0]=0; начинаем с x[1]
 	var res1 uint64
@@ -433,13 +433,13 @@ func umul_lo3(x, y *uint256.Int) [8]uint64 {
 
 	// Строка y[1]: x[0]*y[1]=0 → res[1]=res1
 	res[1] = res1
-	carry, res2 = umulStep(res2, x[1], y[1], 0)
+	carry, res2 = umulHop(res2, x[1], y[1])
 	carry, res3 = umulStep(res3, x[2], y[1], carry)
 	carry5, res4 = umulStep(carry4, x[3], y[1], carry)
 
 	// Строка y[2]: x[0]*y[2]=0 → res[2]=res2
 	res[2] = res2
-	carry, res3 = umulStep(res3, x[1], y[2], 0)
+	carry, res3 = umulHop(res3, x[1], y[2])
 	carry, res4 = umulStep(res4, x[2], y[2], carry)
 	carry6, res5 = umulStep(carry5, x[3], y[2], carry)
 
