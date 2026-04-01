@@ -621,7 +621,7 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 	p.lastState.liquidity.Set(p.Liquidity)
 
 	if swapResult.StepsFee == nil {
-		swapResult.StepsFee = make([]StepFeeResult, 0, 16) // заранее выделяем
+		swapResult.StepsFee = make([]StepFeeResult, 0, 64) // заранее выделяем с запасом
 	} else {
 		swapResult.StepsFee = swapResult.StepsFee[:0] // обнуляем без аллокации
 	}
