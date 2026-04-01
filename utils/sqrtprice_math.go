@@ -78,7 +78,7 @@ func (c *SqrtPriceCalculator) GetAmount0DeltaV2(sqrtRatioAX96, sqrtRatioBX96 *Ui
 		return err
 	}
 
-	result.Div(c.tmp, sqrtRatioAX96)
+	c.fullMath.DivInto(c.tmp, sqrtRatioAX96, result)
 	return nil
 }
 

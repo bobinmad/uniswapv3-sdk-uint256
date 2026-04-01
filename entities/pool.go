@@ -22,6 +22,7 @@ var (
 	ErrTokenNotInvolved         = errors.New("token not involved in pool")
 	ErrSqrtPriceLimitX96TooLow  = errors.New("SqrtPriceLimitX96 too low")
 	ErrSqrtPriceLimitX96TooHigh = errors.New("SqrtPriceLimitX96 too high")
+	ErrMaxCrossInitTickLoops    = fmt.Errorf("max cross init tick loops %d reached", MAX_CROSS_INIT_TICK_LOOPS)
 
 	sqrtPriceLimitX96Upper = new(uint256.Int).AddUint64(utils.MinSqrtRatioU256, 1)
 	sqrtPriceLimitX96Lower = new(uint256.Int).SubUint64(utils.MaxSqrtRatioU256, 1)
@@ -571,12 +572,10 @@ func (p *Pool) swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 }
 
 type StepFeeResult struct {
-	ZeroForOne bool
-	Tick       int32
-	FeeAmount  utils.Uint256
-	// AmountIn   utils.Uint256
-	Liquidity utils.Uint128
-
+	ZeroForOne         bool
+	Tick               int32
+	FeeAmount          utils.Uint256
+	Liquidity          utils.Uint128
 	OurLiquidityInTick utils.Uint128
 }
 
@@ -621,15 +620,11 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 	p.lastState.liquidity.Set(p.Liquidity)
 
 	if swapResult.StepsFee == nil {
-		swapResult.StepsFee = make([]StepFeeResult, 0, 64) // заранее выделяем с запасом
+		swapResult.StepsFee = make([]StepFeeResult, 0, 64)
 	} else {
-		swapResult.StepsFee = swapResult.StepsFee[:0] // обнуляем без аллокации
+		swapResult.StepsFee = swapResult.StepsFee[:0]
 	}
 	swapResult.CrossInitTickLoops = 0
-
-	// crossInitTickLoops is the number of loops that cross an initialized tick.
-	// We only count when tick passes an initialized tick, since gas only significant in this case.
-	// swapResult.CrossInitTickLoops = 0
 
 	// start swap while loop
 	for !p.lastState.amountSpecifiedRemaining.IsZero() && !p.lastState.sqrtPriceX96.Eq(sqrtPriceLimitX96) {
@@ -671,9 +666,8 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 		}
 
 		swapResult.StepsFee = append(swapResult.StepsFee, StepFeeResult{
-			Tick:      p.lastState.tick,
-			FeeAmount: p.step.feeAmount,
-			// AmountIn:   p.step.amountIn,
+			Tick:       p.lastState.tick,
+			FeeAmount:  p.step.feeAmount,
 			ZeroForOne: zeroForOne,
 			Liquidity:  *p.lastState.liquidity,
 		})
@@ -698,6 +692,9 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 				}
 
 				swapResult.CrossInitTickLoops++
+				if swapResult.CrossInitTickLoops > MAX_CROSS_INIT_TICK_LOOPS {
+					return ErrMaxCrossInitTickLoops
+				}
 			}
 
 			if zeroForOne {
@@ -710,10 +707,6 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 			if p.lastState.tick, err = p.TickCalculator.GetTickAtSqrtRatioV2(p.lastState.sqrtPriceX96); err != nil {
 				return err
 			}
-		}
-
-		if swapResult.CrossInitTickLoops > MAX_CROSS_INIT_TICK_LOOPS {
-			return fmt.Errorf("max cross init tick loops %d reached", MAX_CROSS_INIT_TICK_LOOPS)
 		}
 	}
 

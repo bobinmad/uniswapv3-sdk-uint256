@@ -34,7 +34,7 @@ func (m *FullMath) MulDivRoundingUp(a, b, denominator *uint256.Int) (*uint256.In
 }
 
 func (m *FullMath) MulDivRoundingUpV2(a, b, denominator, result *uint256.Int) error {
-	if err := m.MulDivV2(a, b, denominator, result, m.remainder.Clear()); err != nil {
+	if err := m.MulDivV2(a, b, denominator, result, m.remainder); err != nil {
 		return err
 	}
 
@@ -55,6 +55,9 @@ func (m *FullMath) MulDivRoundingUpV2(a, b, denominator, result *uint256.Int) er
 func (m *FullMath) MulDivV2(x, y, denominator, result, remainder *uint256.Int) error {
 	if x.IsZero() || y.IsZero() || denominator.IsZero() {
 		result.Clear()
+		if remainder != nil {
+			remainder.Clear()
+		}
 		return nil
 	}
 	// Быстрый путь: x[0]=0 (числитель = liquidity<<96) и y[3]=0 (160-битный операнд).

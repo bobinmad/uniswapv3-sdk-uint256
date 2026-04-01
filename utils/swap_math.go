@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"math"
+
 	"github.com/holiman/uint256"
 )
 
@@ -16,9 +18,8 @@ type SwapStepCalculator struct {
 	tmpUint256         *uint256.Int
 	amountRemainingU   *uint256.Int
 	maxFeeMinusFeePips *uint256.Int
-	tmpUint256_2       *uint256.Int
-	tmpUint256_3       *uint256.Int
-	tmpUint256_4       *uint256.Int
+	feePipsU256        *uint256.Int
+	cachedFeePips      uint64
 }
 
 func NewSwapStepCalculator() *SwapStepCalculator {
@@ -30,9 +31,8 @@ func NewSwapStepCalculator() *SwapStepCalculator {
 		tmpUint256:         new(uint256.Int),
 		amountRemainingU:   new(uint256.Int),
 		maxFeeMinusFeePips: new(uint256.Int),
-		tmpUint256_2:       new(uint256.Int),
-		tmpUint256_3:       new(uint256.Int),
-		tmpUint256_4:       new(uint256.Int),
+		feePipsU256:        new(uint256.Int),
+		cachedFeePips:      math.MaxUint64, // sentinel: not yet initialized
 	}
 }
 
@@ -45,7 +45,12 @@ func (c *SwapStepCalculator) ComputeSwapStep(
 	sqrtRatioNextX96 *Uint160, amountIn, amountOut, feeAmount *Uint256,
 	zeroForOne, exactIn bool,
 ) {
-	c.maxFeeMinusFeePips.SetUint64(MaxFeeInt - feePips)
+	// cache fee constants: typically constant across all steps of one swap
+	if c.cachedFeePips != feePips {
+		c.cachedFeePips = feePips
+		c.maxFeeMinusFeePips.SetUint64(MaxFeeInt - feePips)
+		c.feePipsU256.SetUint64(feePips)
+	}
 
 	if exactIn {
 		c.amountRemainingU = (*uint256.Int)(amountRemaining)
@@ -85,30 +90,19 @@ func (c *SwapStepCalculator) ComputeSwapStep(
 
 	max := sqrtRatioTargetX96.Eq(sqrtRatioNextX96)
 
-	var useAmount0In, useAmount0Out bool
 	if zeroForOne {
-		c.tmpUint256_3, c.tmpUint256_2 = sqrtRatioNextX96, sqrtRatioCurrentX96
-		useAmount0In, useAmount0Out = true, false
-	} else {
-		c.tmpUint256_3, c.tmpUint256_2 = sqrtRatioCurrentX96, sqrtRatioNextX96
-		useAmount0In, useAmount0Out = false, true
-	}
-
-	isNotExactMax := !(max && exactIn)
-	isNotOutMax := !(max && !exactIn)
-
-	if isNotExactMax {
-		if useAmount0In {
-			c.sqrtPriceCalculator.GetAmount0DeltaV2(c.tmpUint256_3, c.tmpUint256_2, liquidity, true, amountIn)
-		} else {
-			c.sqrtPriceCalculator.GetAmount1DeltaV2(c.tmpUint256_3, c.tmpUint256_2, liquidity, true, amountIn)
+		if !(max && exactIn) {
+			c.sqrtPriceCalculator.GetAmount0DeltaV2(sqrtRatioNextX96, sqrtRatioCurrentX96, liquidity, true, amountIn)
 		}
-	}
-	if isNotOutMax {
-		if useAmount0Out {
-			c.sqrtPriceCalculator.GetAmount0DeltaV2(c.tmpUint256_3, c.tmpUint256_2, liquidity, false, amountOut)
-		} else {
-			c.sqrtPriceCalculator.GetAmount1DeltaV2(c.tmpUint256_3, c.tmpUint256_2, liquidity, false, amountOut)
+		if !(max && !exactIn) {
+			c.sqrtPriceCalculator.GetAmount1DeltaV2(sqrtRatioNextX96, sqrtRatioCurrentX96, liquidity, false, amountOut)
+		}
+	} else {
+		if !(max && exactIn) {
+			c.sqrtPriceCalculator.GetAmount1DeltaV2(sqrtRatioCurrentX96, sqrtRatioNextX96, liquidity, true, amountIn)
+		}
+		if !(max && !exactIn) {
+			c.sqrtPriceCalculator.GetAmount0DeltaV2(sqrtRatioCurrentX96, sqrtRatioNextX96, liquidity, false, amountOut)
 		}
 	}
 
@@ -120,6 +114,6 @@ func (c *SwapStepCalculator) ComputeSwapStep(
 		// we didn't reach the target, so take the remainder of the maximum input as fee
 		feeAmount.Sub(c.amountRemainingU, amountIn)
 	} else {
-		c.fullMath.MulDivRoundingUpV2(amountIn, c.tmpUint256.SetUint64(feePips), c.maxFeeMinusFeePips, feeAmount)
+		c.fullMath.MulDivRoundingUpV2(amountIn, c.feePipsU256, c.maxFeeMinusFeePips, feeAmount)
 	}
 }

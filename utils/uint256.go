@@ -194,7 +194,6 @@ func (ut *Uint256Utils) udivrem(quot, u []uint64, d *uint256.Int, rem *uint256.I
 		// обработка ошибки — деление на 0, например panic
 	}
 	dn = dn[:dLen]
-	dn[0] = d[0] << shift
 
 	var uLen int
 	for i := len(u) - 1; i >= 0; i-- {
