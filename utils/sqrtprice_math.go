@@ -61,7 +61,10 @@ func (c *SqrtPriceCalculator) GetAmount0DeltaV2(sqrtRatioAX96, sqrtRatioBX96 *Ui
 	// 	sqrtRatioAX96, sqrtRatioBX96 = sqrtRatioBX96, sqrtRatioAX96
 	// }
 
-	c.numerator1.Lsh(liquidity, 96)
+	c.numerator1[0] = 0
+	c.numerator1[1] = liquidity[0] << 32
+	c.numerator1[2] = liquidity[1]<<32 | liquidity[0]>>32
+	c.numerator1[3] = liquidity[1] >> 32
 	c.numerator2.Sub(sqrtRatioBX96, sqrtRatioAX96)
 
 	if roundUp {
@@ -144,30 +147,35 @@ func (c *SqrtPriceCalculator) getNextSqrtPriceFromAmount0RoundingUp(sqrtPX96 *Ui
 		return nil
 	}
 
-	c.numerator1.Lsh(liquidity, 96)
-	// multiplyIn256(amount, sqrtPX96, c.product)
+	// liquidity is always ≤ 128-bit: manual Lsh(96) = word-shift(1) + bit-shift(32),
+	// avoids generic Lsh branches (liquidity[2]=liquidity[3]=0 guaranteed by Uint128).
+	c.numerator1[0] = 0
+	c.numerator1[1] = liquidity[0] << 32
+	c.numerator1[2] = liquidity[1]<<32 | liquidity[0]>>32
+	c.numerator1[3] = liquidity[1] >> 32
+
 	c.product.Mul(amount, sqrtPX96)
 
 	if add {
-		if c.tmp.Div(c.product, amount).Eq(sqrtPX96) {
-			// addIn256(c.numerator1, c.product, c.deno)
-
-			// >=
-			if !c.deno.Add(c.numerator1, c.product).Lt(c.numerator1) {
+		c.fullMath.DivInto(c.product, amount, c.tmp)
+		if c.tmp.Eq(sqrtPX96) {
+			_, overflow := c.deno.AddOverflow(c.numerator1, c.product)
+			if !overflow {
 				return c.fullMath.MulDivRoundingUpV2(c.numerator1, sqrtPX96, c.deno, result)
 			}
 		}
 
-		c.deno.Div(c.numerator1, sqrtPX96)
+		c.fullMath.DivInto(c.numerator1, sqrtPX96, c.deno)
 		c.deno.Add(c.deno, amount)
 		c.fullMath.DivRoundingUp(c.numerator1, c.deno, result)
 		return nil
 	}
-	if !c.tmp.Div(c.product, amount).Eq(sqrtPX96) {
+
+	c.fullMath.DivInto(c.product, amount, c.tmp)
+	if !c.tmp.Eq(sqrtPX96) {
 		return ErrInvariant
 	}
 
-	// if c.numerator1.Cmp(c.product) <= 0 {
 	if !c.numerator1.Gt(c.product) {
 		return ErrInvariant
 	}
@@ -177,24 +185,18 @@ func (c *SqrtPriceCalculator) getNextSqrtPriceFromAmount0RoundingUp(sqrtPX96 *Ui
 
 func (c *SqrtPriceCalculator) getNextSqrtPriceFromAmount1RoundingDown(sqrtPX96 *Uint160, liquidity *Uint128, amount *uint256.Int, add bool, result *Uint160) error {
 	if add {
-		// <=
-		// if amount.Cmp(MaxUint160) <= 0 {
-		if !amount.Gt(MaxUint160) {
-			result.Lsh(amount, 96)
-			result.Div(result, liquidity)
-		} else {
-			result.Div(c.tmp.Mul(amount, constants.Q96U256), liquidity)
-		}
+		// amount * Q96 == amount << 96 (mod 2^256) in both branches of the original code,
+		// so the MaxUint160 check and branch are eliminated.
+		// Manual Lsh(96) replaces Lsh/Mul wrappers; DivInto replaces holiman Div.
+		c.tmp[0] = 0
+		c.tmp[1] = amount[0] << 32
+		c.tmp[2] = amount[1]<<32 | amount[0]>>32
+		c.tmp[3] = amount[2]<<32 | amount[1]>>32
+		c.fullMath.DivInto(c.tmp, liquidity, result)
 
 		if _, overflow := result.AddOverflow(result, sqrtPX96); overflow {
 			return ErrAddOverflow
 		}
-
-		// if err = CheckToUint160(c.quotient); err != nil {
-		// 	return err
-		// }
-
-		// result.Set(c.quotient)
 		return nil
 	}
 
@@ -202,15 +204,10 @@ func (c *SqrtPriceCalculator) getNextSqrtPriceFromAmount1RoundingDown(sqrtPX96 *
 		return err
 	}
 
-	// <=
-	// if sqrtPX96.Cmp(c.quotient) <= 0 {
 	if !sqrtPX96.Gt(result) {
 		return ErrInvariant
 	}
 
-	// always fits 160 bits
-	// result.Set(c.quotient.Sub(sqrtPX96, c.quotient))
 	result.Sub(sqrtPX96, result)
-
 	return nil
 }
