@@ -8,7 +8,7 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/KyberNetwork/int256"
+	"github.com/vuquang23/int256"
 	"github.com/holiman/uint256"
 )
 

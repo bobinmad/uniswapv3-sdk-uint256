@@ -4,7 +4,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/KyberNetwork/int256"
+	"github.com/vuquang23/int256"
 	"github.com/bobinmad/uniswapv3-sdk-uint256/constants"
 	"github.com/bobinmad/uniswapv3-sdk-uint256/utils"
 	"github.com/daoleno/uniswap-sdk-core/entities"

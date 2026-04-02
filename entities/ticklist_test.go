@@ -3,7 +3,7 @@ package entities
 import (
 	"testing"
 
-	"github.com/KyberNetwork/int256"
+	"github.com/vuquang23/int256"
 	"github.com/bobinmad/uniswapv3-sdk-uint256/utils"
 	"github.com/holiman/uint256"
 	"github.com/stretchr/testify/assert"

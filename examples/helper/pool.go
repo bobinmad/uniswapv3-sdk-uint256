@@ -4,7 +4,7 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/KyberNetwork/int256"
+	"github.com/vuquang23/int256"
 	"github.com/bobinmad/uniswapv3-sdk-uint256/examples/contract"
 	"github.com/holiman/uint256"
 

@@ -3,7 +3,7 @@ package periphery
 import (
 	"math/big"
 
-	"github.com/KyberNetwork/int256"
+	"github.com/vuquang23/int256"
 	"github.com/bobinmad/uniswapv3-sdk-uint256/constants"
 	"github.com/bobinmad/uniswapv3-sdk-uint256/entities"
 	"github.com/bobinmad/uniswapv3-sdk-uint256/utils"

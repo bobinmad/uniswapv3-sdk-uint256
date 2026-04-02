@@ -4,7 +4,7 @@ package entities
 // 	"errors"
 // 	"fmt"
 
-// 	"github.com/KyberNetwork/int256"
+// 	"github.com/vuquang23/int256"
 // 	kyberEntities "github.com/KyberNetwork/uniswapv3-sdk-uint256/entities"
 // 	"github.com/holiman/uint256"
 

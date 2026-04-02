@@ -3,7 +3,7 @@ package entities
 import (
 	"errors"
 
-	"github.com/KyberNetwork/int256"
+	"github.com/vuquang23/int256"
 )
 
 const (
