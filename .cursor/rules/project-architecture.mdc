@@ -1,0 +1,160 @@
+---
+description: Comprehensive project architecture and conventions for uniswapv3-sdk-uint256
+alwaysApply: true
+---
+
+# uniswapv3-sdk-uint256 — Project Architecture
+
+## Overview
+
+Go port of the [Uniswap V3 SDK](https://github.com/Uniswap/v3-sdk) (TypeScript), forked from [daoleno/uniswapv3-sdk](https://github.com/daoleno/uniswapv3-sdk) and **rewritten for performance** with `holiman/uint256` instead of `math/big`.
+
+- **Module:** `github.com/bobinmad/uniswapv3-sdk-uint256`
+- **Go version:** 1.24
+- **License:** MIT (upstream daoleno)
+
+The project is used as a library by an external **simulator** (`irq/common/simulator/unimath`) — API changes (especially `SwapResultV2`, `StepFeeResult`, `Pool.Swap`) can break downstream consumers.
+
+---
+
+## Package Layout
+
+```
+constants/    — Factory address, fee tiers, tick spacings, Q96/Q192, ZeroU256/OneU256
+entities/     — Pool, Route, Trade, Position, Tick, TicksHandler
+utils/        — All V3 math: FullMath, SqrtPriceMath, TickMath, SwapMath, uint256 ops
+periphery/    — Calldata encoders: SwapRouter, Quoter, NFT PM, Staker, Permit, Payments
+examples/     — Runnable demos (quoter, swap, liquidity) + generated contract bindings
+```
+
+---
+
+## Core Dependencies
+
+| Package | Purpose |
+|---------|---------|
+| `github.com/holiman/uint256` | Primary unsigned 256-bit integer (`Uint256`, `Uint160`, `Uint128` are type aliases) |
+| `github.com/vuquang23/int256` | Signed 256-bit (`Int256`, `Int128` aliases) for `LiquidityNet`, swap amounts |
+| `github.com/daoleno/uniswap-sdk-core` | `Token`, `CurrencyAmount`, `Price`, `Percent`, `Fraction` |
+| `github.com/ethereum/go-ethereum` | `common.Address`, ABI encoding, `crypto` |
+
+---
+
+## Key Design Principles
+
+### 1. Performance-First Math
+
+All hot-path math avoids `math/big`. Custom implementations in `utils/`:
+
+- **`Uint256Utils`** (`uint256.go`) — 256×256→512 multiply (`umul`), Knuth division (`udivrem`), specialized `mulRsh96_2x3`, `divByMaxFeeInto` (fee denominator 1e6 fast path), `umul_lo3`
+- **`FullMath`** — `MulDiv`, `MulDivV2`, `MulDivRoundingUp(V2)`, `DivInto`, `DivRoundingUp`; uses `Uint256Utils.udivrem` for 512×256 division
+- **`SqrtPriceCalculator`** — `GetAmount0DeltaV2`, `GetAmount1DeltaV2`, `GetNextSqrtPriceFromInput/Output`; manual 96-bit shifts, `AddOverflow` instead of `Add`+`Lt`, `DivInto` instead of holiman `Div`
+- **`TickCalculator`** — `GetSqrtRatioAtTickV2` (O(1) table lookup), `GetTickAtSqrtRatioV2` (fast log2 + table/slow fallback)
+- **`SwapStepCalculator`** — `ComputeSwapStep`; caches `feePips`/`maxFeeMinusFeePips` across steps
+
+### 2. Precomputed Sqrt Table
+
+`tick_math.go` builds a `sqrtRatioTable` (~1.77M entries, ~56 MB) in `init()` for O(1) `GetSqrtRatioAtTickV2` — trades memory for speed.
+
+### 3. Calculator Structs (Not Free Functions)
+
+Math logic is encapsulated in stateful calculator structs (`FullMath`, `SqrtPriceCalculator`, `TickCalculator`, `SwapStepCalculator`, `MaxLiquidityForAmountsCalculator`) that own preallocated scratch buffers to minimize allocations during swaps.
+
+### 4. Pool as Façade
+
+`entities.Pool` embeds all calculators and temporary `uint256.Int` buffers (`tmpUint256`, `tmpUint256_1`, etc.) to reduce GC pressure during swap simulation. Key methods: `GetOutputAmount(V2)`, `GetInputAmount`, `Swap`.
+
+### 5. TicksHandler — Extended Tick Provider
+
+`TicksHandler` replaces simple `TickListDataProvider` with:
+- **Sequential hint** (`lastResultIdx`) — during swap, ticks are crossed one-by-one; checks neighbor before binary search → O(1) vs O(log N)
+- **Mint/Burn support** — `UpdateTicksAfterMint`, `UpdateTicksAfterBurn` for historical replay simulation
+- **Deep clone** — `Clone()` / `CloneTicks()` for multithreaded strategy use
+
+### 6. Periphery = Pure Encoders
+
+`//go:embed` JSON ABIs + `abi.Pack` + optional `EncodeMulticall` batching. No on-chain calls — only calldata generation.
+
+---
+
+## Type Aliases (`utils/int_types.go`)
+
+```go
+type Uint256 = uint256.Int   // full 256-bit
+type Uint160 = uint256.Int   // logically ≤160 bits, same underlying type
+type Uint128 = uint256.Int   // logically ≤128 bits
+type Int256  = int256.Int    // signed 256-bit
+type Int128  = int256.Int    // signed 128-bit (same underlying)
+```
+
+Boundary checks (`CheckToUint160`, `Uint128Max`, `Uint160Max`) are manual — Go type system does not enforce bit widths.
+
+---
+
+## Key Entities
+
+### Pool (`entities/pool.go`)
+
+```go
+type Pool struct {
+    Address, Token0, Token1, Fee, SqrtRatioX96, Liquidity, TickCurrent, TickSpacing
+    TickDataProvider *TicksHandler
+    // embedded calculators + scratch buffers
+}
+```
+
+Constructors: `NewPoolV2` (standard), `NewPoolV3` (simulation-style with `Address`, `initTick`). `NewPool` is deprecated (`big.Int` API).
+
+### Trade / Route (`entities/trade.go`, `entities/route.go`)
+
+Multi-route trades with `ExactIn`/`ExactOut`, `BestTradeExactIn`/`Out`, `PriceImpact`.
+
+### Position (`entities/position.go`)
+
+Liquidity position with `CalcAmount0`/`CalcAmount1`, mint/burn amounts with slippage.
+
+---
+
+## Critical Invariants & Pitfalls
+
+1. **`SwapResultV2.StepsFee`** — `nil` means "don't collect fee steps", empty slice means "collect but none yet". External simulators depend on this semantics. Never "optimize" by removing the slice when it was passed as non-nil.
+
+2. **`MulDivV2` remainder lifecycle** — on early return (denominator == 1, a == 0, b == 0), `remainder` must be explicitly cleared. Stale remainder breaks `MulDivRoundingUpV2` → corrupts `GetAmount0DeltaV2`.
+
+3. **`DivInto` vs holiman `Div`** — `DivInto` skips holiman's wrapper checks and extra copies; use in hot paths but ensure denominator is non-zero.
+
+4. **Liquidity is ≤128 bits** — several optimized paths in `SqrtPriceCalculator` assume `liquidity[2]` and `liquidity[3]` are zero. This is guaranteed by Uniswap V3 protocol.
+
+5. **Comments are often in Russian** — project documentation and inline comments mix Russian and English.
+
+---
+
+## Testing Patterns
+
+- **Framework:** `testify/assert`
+- **Math tests:** table-driven with hex golden values
+- **Periphery tests:** compare `hexutil.Encode(params.Calldata)` against known hex strings
+- **Benchmarks:** `sqrtprice_bench_test.go` and others; measure ns/op for hot-path optimizations
+- **Shared calculators:** tests use package-level `var tickCalculator = NewTickCalculator()` etc.
+
+Run all tests: `go test ./...`
+
+---
+
+## Constants (`constants/constants.go`)
+
+- `FactoryAddress`: `0x1F98431c8aD98523631AE4a59f267346ea31F984`
+- `PoolInitCodeHash`: `0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54`
+- Fee tiers: `100` (lowest), `500` (low), `3000` (medium), `10000` (high), plus `80`, `450`, `2500` for other DEXes
+- `FeeMax = 1000000` (denominator for fee math)
+- `Q96U256`, `Q96`, `Q192` — fixed-point scaling constants
+
+---
+
+## Optimization History (from past sessions)
+
+- **SqrtPriceMath:** replaced generic `Lsh(liquidity, 96)` with fixed layout for ≤128-bit liquidity; `AddOverflow` instead of `Add`+`Lt`; manual 96-bit shifts; **11–56% faster** on various paths
+- **SwapStepCalculator:** cached `feePips`/`maxFeeMinusFeePips` across steps; removed pointer indirection at end of `ComputeSwapStep`
+- **uint256.go:** removed debug paths (`cnt`, `fmt.Println`); `umulHop` instead of `umulStep(..., 0)`; dropped redundant `Sub64` in `subMulTo`
+- **Pool.Swap:** `CrossInitTickLoops` check placement; package-level max-loop error; fee step collection semantics preserved for downstream compatibility
+- **holiman `Lt`:** evaluated MSB-first early exit vs branchless borrow chain; decided higher-level reduction of `Lt` calls matters more than micro-optimizing the comparison itself
