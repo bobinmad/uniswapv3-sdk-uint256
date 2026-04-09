@@ -579,6 +579,10 @@ type StepFeeResult struct {
 	OurLiquidityInTick utils.Uint128
 }
 
+// FeeStepFunc — callback для обработки fee-шагов inline во время Swap.
+// Если задан в SwapResultV2.FeeStepCallback, вызывается вместо append в StepsFee.
+type FeeStepFunc func(tick int32, feeAmount *utils.Uint256, zeroForOne bool, liquidity *utils.Uint128)
+
 type SwapResultV2 struct {
 	AmountCalculated   *utils.Int256
 	SqrtRatioX96       *utils.Uint160
@@ -587,6 +591,7 @@ type SwapResultV2 struct {
 	CurrentTick        int32
 	CrossInitTickLoops int
 	StepsFee           []StepFeeResult
+	FeeStepCallback    FeeStepFunc
 }
 
 type State struct {
@@ -665,12 +670,16 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 			p.lastState.amountCalculated.Add(p.lastState.amountCalculated, (*utils.Int256)(p.amountInPlusFee))
 		}
 
-		swapResult.StepsFee = append(swapResult.StepsFee, StepFeeResult{
-			Tick:       p.lastState.tick,
-			FeeAmount:  p.step.feeAmount,
-			ZeroForOne: zeroForOne,
-			Liquidity:  *p.lastState.liquidity,
-		})
+		if swapResult.FeeStepCallback != nil {
+			swapResult.FeeStepCallback(p.lastState.tick, &p.step.feeAmount, zeroForOne, p.lastState.liquidity)
+		} else if swapResult.StepsFee != nil {
+			swapResult.StepsFee = append(swapResult.StepsFee, StepFeeResult{
+				Tick:       p.lastState.tick,
+				FeeAmount:  p.step.feeAmount,
+				ZeroForOne: zeroForOne,
+				Liquidity:  *p.lastState.liquidity,
+			})
+		}
 
 		// TODO
 		if p.lastState.sqrtPriceX96.Eq(&p.step.sqrtPriceNextX96) {

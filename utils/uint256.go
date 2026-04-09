@@ -229,7 +229,14 @@ func (ut *Uint256Utils) udivrem(quot, u []uint64, d *uint256.Int, rem *uint256.I
 		rem.SetUint64(udivremBy1(quot, un, dn[0]) >> shift)
 		return
 	}
-	udivremKnuth(quot, un, dn)
+	switch dLen {
+	case 2:
+		udivremKnuth2(quot, un, dn[0], dn[1])
+	case 3:
+		udivremKnuth3(quot, un, dn[0], dn[1], dn[2])
+	default:
+		udivremKnuth(quot, un, dn)
+	}
 
 	switch dLen {
 	case 4:
@@ -325,6 +332,108 @@ func udivremKnuth(quot, u, d []uint64) {
 		if old < borrow {
 			qhat--
 			*ujd += addTo(u[j:], d)
+		}
+
+		quot[j] = qhat
+	}
+}
+
+// udivremKnuth3 — специализация udivremKnuth для dLen=3.
+// Инлайнит subMulTo(case 3) и addTo(case 3), устраняя оверхед вызовов и switch-диспетчеризации.
+func udivremKnuth3(quot, u []uint64, d0, d1, d2 uint64) {
+	reciprocal := reciprocal2by1(d2)
+
+	for j := len(u) - 4; j >= 0; j-- {
+		u2 := u[j+3]
+		u1 := u[j+2]
+		u0 := u[j+1]
+
+		var qhat uint64
+		if u2 < d2 {
+			var rhat uint64
+			qhat, rhat = udivrem2by1(u2, u1, d2, reciprocal)
+			ph, pl := bits.Mul64(qhat, d1)
+			if ph > rhat || (ph == rhat && pl > u0) {
+				qhat--
+			}
+		} else {
+			qhat = ^uint64(0)
+		}
+
+		// inlined subMulTo for 3 words
+		ph, pl := bits.Mul64(d0, qhat)
+		t, carry2 := bits.Sub64(u[j], pl, 0)
+		u[j] = t
+		borrow := ph + carry2
+
+		s, carry1 := bits.Sub64(u[j+1], borrow, 0)
+		ph, pl = bits.Mul64(d1, qhat)
+		t, carry2 = bits.Sub64(s, pl, 0)
+		u[j+1] = t
+		borrow = ph + carry1 + carry2
+
+		s, carry1 = bits.Sub64(u[j+2], borrow, 0)
+		ph, pl = bits.Mul64(d2, qhat)
+		t, carry2 = bits.Sub64(s, pl, 0)
+		u[j+2] = t
+		borrow = ph + carry1 + carry2
+
+		old := u[j+3]
+		u[j+3] = old - borrow
+		if old < borrow {
+			qhat--
+			var c uint64
+			u[j], c = bits.Add64(u[j], d0, 0)
+			u[j+1], c = bits.Add64(u[j+1], d1, c)
+			u[j+2], c = bits.Add64(u[j+2], d2, c)
+			u[j+3] += c
+		}
+
+		quot[j] = qhat
+	}
+}
+
+// udivremKnuth2 — специализация udivremKnuth для dLen=2.
+func udivremKnuth2(quot, u []uint64, d0, d1 uint64) {
+	reciprocal := reciprocal2by1(d1)
+
+	for j := len(u) - 3; j >= 0; j-- {
+		u2 := u[j+2]
+		u1 := u[j+1]
+		u0 := u[j]
+
+		var qhat uint64
+		if u2 < d1 {
+			var rhat uint64
+			qhat, rhat = udivrem2by1(u2, u1, d1, reciprocal)
+			ph, pl := bits.Mul64(qhat, d0)
+			if ph > rhat || (ph == rhat && pl > u0) {
+				qhat--
+			}
+		} else {
+			qhat = ^uint64(0)
+		}
+
+		// inlined subMulTo for 2 words
+		ph, pl := bits.Mul64(d0, qhat)
+		t, carry2 := bits.Sub64(u[j], pl, 0)
+		u[j] = t
+		borrow := ph + carry2
+
+		s, carry1 := bits.Sub64(u[j+1], borrow, 0)
+		ph, pl = bits.Mul64(d1, qhat)
+		t, carry2 = bits.Sub64(s, pl, 0)
+		u[j+1] = t
+		borrow = ph + carry1 + carry2
+
+		old := u[j+2]
+		u[j+2] = old - borrow
+		if old < borrow {
+			qhat--
+			var c uint64
+			u[j], c = bits.Add64(u[j], d0, 0)
+			u[j+1], c = bits.Add64(u[j+1], d1, c)
+			u[j+2] += c
 		}
 
 		quot[j] = qhat
