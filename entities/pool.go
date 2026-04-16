@@ -639,15 +639,19 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 		// by simply traversing to the next available tick, we instead need to exactly replicate
 		// tickBitmap.nextInitializedTickWithinOneWord
 		if p.step.tickNext, p.step.initialized, err = p.TickDataProvider.NextInitializedTickIndex(p.lastState.tick, zeroForOne); err != nil {
-			return err
+			// Свап вышел за крайний инициализированный тик — моделируем поведение
+			// реального bitmap-а: шаг до границы (Min/MaxTick) в пустой зоне.
+			// Если амаунт ещё не доел, цикл добьёт цену до sqrtPriceLimitX96 и выйдет.
+			if errors.Is(err, ErrAtOrAboveLargest) {
+				p.step.tickNext = utils.MaxTick
+				p.step.initialized = false
+			} else if errors.Is(err, ErrBelowSmallest) {
+				p.step.tickNext = utils.MinTick
+				p.step.initialized = false
+			} else {
+				return err
+			}
 		}
-
-		// if p.step.tickNext < utils.MinTick {
-		// 	p.step.tickNext = utils.MinTick
-		// }
-		// if p.step.tickNext > utils.MaxTick {
-		// 	p.step.tickNext = utils.MaxTick
-		// }
 
 		p.TickCalculator.GetSqrtRatioAtTickV2(p.step.tickNext, &p.step.sqrtPriceNextX96)
 
