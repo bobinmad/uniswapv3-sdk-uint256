@@ -30,6 +30,16 @@ type TicksHandler struct {
 	// Хранится как int (не pointer) — нет GC write barrier при каждом присваивании.
 	// -1 означает «кэш невалиден» (после Mint/Burn и при инициализации).
 	lastResultIdx int
+
+	// P11: 4-way LRU-кэш для tickWithSliceKey.
+	// В DeFi-стратегиях типичен паттерн "Mint(L,U)" + "Burn(L,U)" в тех же тиках (rebalance, fee-collect),
+	// и Mint/Burn handler делает 2 lookup'а на одно событие. 4 ячеек хватает на 2 пары tickLower/tickUpper.
+	// При insert/delete индексы автоматически смещаются (смещение в рамках invalidation).
+	// 0 — sentinel "ячейка не валидна" (т.к. tick=0 редок, проверяем по cacheValidMask).
+	cacheTicks     [4]int32 // искомый tick
+	cacheIdx       [4]int32 // sliceKey в Ticks
+	cacheValidMask uint8    // битмаска: 1<<i = ячейка i валидна
+	cacheNext      uint8    // next slot для round-robin replacement
 }
 
 func NewTicksHandler() *TicksHandler {
@@ -60,6 +70,7 @@ func (h *TicksHandler) SetTicks(ticks []Tick) {
 	h.SmallestTickIdx = h.Ticks[0].Index
 	h.LargestTickIdx = h.Ticks[h.TicksLen-1].Index
 	h.lastResultIdx = -1
+	h.cacheValidMask = 0
 }
 
 func (h *TicksHandler) CloneTicks(ticks []Tick) {
@@ -77,6 +88,7 @@ func (h *TicksHandler) CloneTicks(ticks []Tick) {
 	h.SmallestTickIdx = h.Ticks[0].Index
 	h.LargestTickIdx = h.Ticks[h.TicksLen-1].Index
 	h.lastResultIdx = -1
+	h.cacheValidMask = 0
 }
 
 func (h *TicksHandler) GetTick(tick int32) (Tick, error) {
@@ -146,6 +158,7 @@ func (h *TicksHandler) UpdateTicksAfterMint(tickLower, tickUpper int32, liquidit
 	} else {
 		h.Ticks = slices.Insert(h.Ticks, sliceKey, Tick{Index: tickLower, LiquidityGross: liquidity.Clone(), LiquidityNet: liquidityI256.Clone()})
 		h.TicksLen++
+		h.shiftIndicesAfterInsert(int32(sliceKey))
 		if tickLower < h.SmallestTickIdx {
 			h.SmallestTickIdx = tickLower
 		}
@@ -157,6 +170,7 @@ func (h *TicksHandler) UpdateTicksAfterMint(tickLower, tickUpper int32, liquidit
 	} else {
 		h.Ticks = slices.Insert(h.Ticks, sliceKey, Tick{Index: tickUpper, LiquidityGross: liquidity.Clone(), LiquidityNet: new(int256.Int).Neg(liquidityI256)})
 		h.TicksLen++
+		h.shiftIndicesAfterInsert(int32(sliceKey))
 		if tickUpper > h.LargestTickIdx {
 			h.LargestTickIdx = tickUpper
 		}
@@ -183,7 +197,7 @@ func (h *TicksHandler) removeTickIfEmpty(tick *Tick, sliceKey int) {
 	if tick.LiquidityGross.IsZero() && tick.LiquidityNet.IsZero() {
 		h.Ticks = slices.Delete(h.Ticks, sliceKey, sliceKey+1)
 		h.TicksLen--
-		h.lastResultIdx = -1 // индексы сдвинулись
+		h.shiftIndicesAfterDelete(int32(sliceKey))
 
 		if h.TicksLen > 0 {
 			h.SmallestTickIdx = h.Ticks[0].Index
@@ -192,45 +206,124 @@ func (h *TicksHandler) removeTickIfEmpty(tick *Tick, sliceKey int) {
 	}
 }
 
+// shiftIndicesAfterInsert корректирует кэшированные индексы после slices.Insert(at).
+// Все индексы >= at сдвигаются на +1; sequential-hint lastResultIdx тоже обновляется.
+//
+//go:nosplit
+func (h *TicksHandler) shiftIndicesAfterInsert(at int32) {
+	mask := h.cacheValidMask
+	for i := uint8(0); i < 4; i++ {
+		if mask&(1<<i) != 0 && h.cacheIdx[i] >= at {
+			h.cacheIdx[i]++
+		}
+	}
+	if h.lastResultIdx >= int(at) {
+		h.lastResultIdx++
+	}
+}
+
+// shiftIndicesAfterDelete корректирует кэшированные индексы после slices.Delete(at).
+// Удалённая ячейка инвалидируется; индексы > at сдвигаются на -1.
+//
+//go:nosplit
+func (h *TicksHandler) shiftIndicesAfterDelete(at int32) {
+	mask := h.cacheValidMask
+	for i := uint8(0); i < 4; i++ {
+		if mask&(1<<i) != 0 {
+			if h.cacheIdx[i] == at {
+				mask &^= 1 << i // удалённая ячейка — инвалидируем
+			} else if h.cacheIdx[i] > at {
+				h.cacheIdx[i]--
+			}
+		}
+	}
+	h.cacheValidMask = mask
+	if h.lastResultIdx == int(at) {
+		h.lastResultIdx = -1
+	} else if h.lastResultIdx > int(at) {
+		h.lastResultIdx--
+	}
+}
+
 // tickWithSliceKey возвращает указатель на тик и индекс при найденном, иначе (nil, insertionIdx, false).
-// Инвалидирует кэш lastResultPtr, так как последующий insert/delete смещает указатели.
+//
+// 4-way LRU-кэш для типичного rebalance-паттерна Mint(L,U) → Burn(L,U) с одинаковыми тиками.
+// Инвалидирует sequential-hint lastResultIdx (insert/delete смещает layout).
+//
+//go:nosplit
 func (h *TicksHandler) tickWithSliceKey(tick int32) (*Tick, int, bool) {
 	if h.TicksLen == 0 {
 		return nil, 0, false
 	}
-	h.lastResultIdx = -1 // insert/delete изменят layout — кэш не актуален
+
+	// fast path: проверяем 4-way кэш
+	if mask := h.cacheValidMask; mask != 0 {
+		for i := uint8(0); i < 4; i++ {
+			if mask&(1<<i) != 0 && h.cacheTicks[i] == tick {
+				idx := int(h.cacheIdx[i])
+				if idx < h.TicksLen && h.Ticks[idx].Index == tick {
+					return &h.Ticks[idx], idx, true
+				}
+				// stale entry (защита от рассогласования) — инвалидируем
+				h.cacheValidMask &^= 1 << i
+				break
+			}
+		}
+	}
+
+	// ВАЖНО: lastResultIdx больше не сбрасываем здесь.
+	// shiftIndicesAfterInsert/Delete сами корректно поддерживают индекс при insert/delete.
+	// Если Mint попал в exist'ующий тик (без insert) — sequential hint следующего swap'а валиден.
 	i := h.binarySearch(tick)
 	idx := i
 	if h.Ticks[i].Index < tick {
 		idx = i + 1
 	}
 	if idx < h.TicksLen && h.Ticks[idx].Index == tick {
+		// записываем в кэш round-robin replacement
+		slot := h.cacheNext & 3
+		h.cacheTicks[slot] = tick
+		h.cacheIdx[slot] = int32(idx)
+		h.cacheValidMask |= 1 << slot
+		h.cacheNext = slot + 1
 		return &h.Ticks[idx], idx, true
 	}
 	return nil, idx, false
 }
 
 // binarySearch возвращает наибольший индекс i, при котором Ticks[i].Index <= tick.
+// Если все Ticks[i].Index > tick, возвращает 0 (для совместимости со старой семантикой).
+//
+// Реализация — branchless upper_bound (std::upper_bound из C++ STL):
+// на каждой итерации шаг гарантированно уменьшается, цикл заканчивается через ~log2(N) итераций
+// без непредсказуемых ветвей, которые в random-like binary search дают
+// ~15-20 цикл. mispredict penalty.
+//
+//go:nosplit
 func (h *TicksHandler) binarySearch(tick int32) int {
 	ticks := h.Ticks
-	start := 0
-	end := h.TicksLen - 1
+	n := h.TicksLen
+	if n <= 1 {
+		return 0
+	}
 
-	for start < end {
-		mid := start + (end-start)>>1
-		if ticks[mid].Index <= tick {
-			start = mid + 1
+	// upper_bound: ищем наименьший pos, где ticks[pos].Index > tick (или pos=n если такого нет).
+	pos := 0
+	step := n
+	for step > 0 {
+		half := step >> 1
+		mid := pos + half
+		if mid < n && ticks[mid].Index <= tick {
+			pos = mid + 1
+			step = step - half - 1
 		} else {
-			end = mid
+			step = half
 		}
 	}
-	if ticks[start].Index <= tick {
-		return start
+	if pos == 0 {
+		return 0
 	}
-	if start > 0 {
-		return start - 1
-	}
-	return 0
+	return pos - 1
 }
 
 func (h *TicksHandler) isBelowSmallest(tick int32) bool {

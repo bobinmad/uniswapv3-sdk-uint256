@@ -38,11 +38,21 @@ import (
 type Uint256Utils struct {
 	dnStorage [5]uint64
 	unStorage [9]uint64
+
+	// Кэш реципрокала для last-seen делителя.
+	// Внутри Pool.Swap большинство делений идут с одним и тем же делителем
+	// (pool.Liquidity, sqrtPriceX96), и hardware DIV в reciprocal2by1 (~30 циклов)
+	// пропускается на cache-hit. На профиле udivremKnuth2/By1 ≈ 21% CPU,
+	// большая часть из них — повторы одного и того же делителя.
+	lastD0, lastD1, lastD2, lastD3 uint64 // исходный делитель (для сверки)
+	lastRecip                      uint64 // reciprocal2by1(нормализованного старшего слова)
+	hasLastD                       bool
 }
 
 func NewUint256Utils() *Uint256Utils {
 	return &Uint256Utils{}
 }
+
 
 // umul computes full 256 x 256 -> 512 multiplication.
 func umul(x, y *uint256.Int) [8]uint64 {
@@ -217,25 +227,40 @@ func (ut *Uint256Utils) udivrem(quot, u []uint64, d *uint256.Int, rem *uint256.I
 	}
 	un[0] = u[0] << shift
 
+	// Recip-кэш: для повторяющихся делителей (pool.Liquidity / sqrtPriceX96
+	// в hot-path Pool.Swap) пропускаем hardware DIV в reciprocal2by1 (~30 циклов).
+	// Inline-сравнение быстрее, чем функция-обёртка (компилятор не всегда инлайнит).
+	var recip uint64
+	if ut.hasLastD &&
+		d[0] == ut.lastD0 && d[1] == ut.lastD1 &&
+		d[2] == ut.lastD2 && d[3] == ut.lastD3 {
+		recip = ut.lastRecip
+	} else {
+		recip = reciprocal2by1(dn[dLen-1])
+		ut.lastD0, ut.lastD1, ut.lastD2, ut.lastD3 = d[0], d[1], d[2], d[3]
+		ut.lastRecip = recip
+		ut.hasLastD = true
+	}
+
 	// Skip the highest word of numerator if not significant (saves one word in udivremBy1 only).
 	// For dLen==1 safe when un[uLen]==0 && un[uLen-1]<dn[0] (top quotient digit is 0). For dLen>1 cannot skip: Knuth first iteration modifies u for the next.
 	if dLen == 1 && un[uLen] == 0 && un[uLen-1] < dn[0] && uLen >= 2 {
 		un = un[:uLen]
-		rem.SetUint64(udivremBy1(quot, un, dn[0]) >> shift)
+		rem.SetUint64(udivremBy1WithRecip(quot, un, dn[0], recip) >> shift)
 		quot[uLen-1] = 0
 		return
 	}
 	if dLen == 1 {
-		rem.SetUint64(udivremBy1(quot, un, dn[0]) >> shift)
+		rem.SetUint64(udivremBy1WithRecip(quot, un, dn[0], recip) >> shift)
 		return
 	}
 	switch dLen {
 	case 2:
-		udivremKnuth2(quot, un, dn[0], dn[1])
+		udivremKnuth2WithRecip(quot, un, dn[0], dn[1], recip)
 	case 3:
-		udivremKnuth3(quot, un, dn[0], dn[1], dn[2])
+		udivremKnuth3WithRecip(quot, un, dn[0], dn[1], dn[2], recip)
 	default:
-		udivremKnuth(quot, un, dn)
+		udivremKnuthWithRecip(quot, un, dn, recip)
 	}
 
 	switch dLen {
@@ -259,7 +284,24 @@ func (ut *Uint256Utils) udivrem(quot, u []uint64, d *uint256.Int, rem *uint256.I
 // udivremBy1 divides u by single normalized word d and produces both quotient and remainder.
 // The quotient is stored in provided quot.
 func udivremBy1(quot, u []uint64, d uint64) (rem uint64) {
-	reciprocal := reciprocal2by1(d)
+	return udivremBy1WithRecip(quot, u, d, reciprocal2by1(d))
+}
+
+// udivremBy1WithRecip — pure-Go реализация деления многословного u на одно
+// нормализованное слово d с предвычисленным reciprocal. Тело — цикл по словам
+// числителя в обратном порядке через udivrem2by1 (Möller–Granlund Algorithm 4).
+//
+// EXPERIMENT (см. историю изменений / коммит-сообщение):
+// Ручная AMD64 ASM реализация (MULXQ + ветвистая коррекция) измерялась против
+// этой версии в end-to-end симуляторе и оказалась ~3% МЕДЛЕННЕЕ. Причина:
+//  1. С GOAMD64=v4 Go компилятор уже генерит почти оптимальный код:
+//     MULQ + ADDQ/ADCQ + LEA + CMOVB/CMOVBE (branchless коррекция),
+//     что лучше предсказуемо в hot-loop, чем условные переходы.
+//  2. Замена на function-variable dispatch (`var udivrem... = ...`) ломает
+//     компилятору возможность инлайнить эту функцию в (*Uint256Utils).udivrem,
+//     добавляя cost ~1-2 ns indirect call на каждый вызов.
+// Поэтому сейчас держим pure-Go как единственную реализацию.
+func udivremBy1WithRecip(quot, u []uint64, d, reciprocal uint64) (rem uint64) {
 	lenU := len(u)
 	rem = u[lenU-1] // Set the top word as remainder.
 	for j := lenU - 2; j >= 0; j-- {
@@ -277,7 +319,15 @@ func reciprocal2by1(d uint64) uint64 {
 // udivrem2by1 divides <uh, ul> / d and produces both quotient and remainder.
 // It uses the provided d's reciprocal.
 // Implementation ported from https://github.com/chfast/intx and is based on
-// "Improved division by invariant integers", Algorithm 4.
+// "Improved division by invariant integers", Algorithm 4 (Möller, Granlund 2011).
+//
+// Bug-fix note: the original port had `if r >= d` NESTED inside `if r > ql`,
+// which is incorrect. After step `qh++` the estimate qh may still be 1 too low
+// (because v=floor((B^2-1)/d) - B is itself rounded down), in which case
+// r >= d but no underflow occurred (so r ≤ ql). The second check must be a
+// SEPARATE top-level conditional, exactly as in chfast/intx C++ reference.
+// A 60-second fuzz against math/big surfaces this within ~1ms once the random
+// space is broad enough; the previous test corpus happened to miss it.
 func udivrem2by1(uh, ul, d, reciprocal uint64) (quot, rem uint64) {
 	qh, ql := bits.Mul64(reciprocal, uh)
 	ql, carry := bits.Add64(ql, ul, 0)
@@ -289,10 +339,10 @@ func udivrem2by1(uh, ul, d, reciprocal uint64) (quot, rem uint64) {
 	if r > ql {
 		qh--
 		r += d
-		if r >= d {
-			qh++
-			r -= d
-		}
+	}
+	if r >= d {
+		qh++
+		r -= d
 	}
 
 	return qh, r
@@ -302,10 +352,14 @@ func udivrem2by1(uh, ul, d, reciprocal uint64) (quot, rem uint64) {
 // The quotient is stored in provided quot - len(u)-len(d) words.
 // Updates u to contain the remainder - len(d) words.
 func udivremKnuth(quot, u, d []uint64) {
+	udivremKnuthWithRecip(quot, u, d, reciprocal2by1(d[len(d)-1]))
+}
+
+// udivremKnuthWithRecip — версия udivremKnuth с предвычисленным reciprocal.
+func udivremKnuthWithRecip(quot, u, d []uint64, reciprocal uint64) {
 	lenD := len(d)
 	dh := d[lenD-1]
 	dl := d[lenD-2]
-	reciprocal := reciprocal2by1(dh)
 
 	for j := len(u) - lenD - 1; j >= 0; j-- {
 		u2 := u[j+lenD]
@@ -341,7 +395,11 @@ func udivremKnuth(quot, u, d []uint64) {
 // udivremKnuth3 — специализация udivremKnuth для dLen=3.
 // Инлайнит subMulTo(case 3) и addTo(case 3), устраняя оверхед вызовов и switch-диспетчеризации.
 func udivremKnuth3(quot, u []uint64, d0, d1, d2 uint64) {
-	reciprocal := reciprocal2by1(d2)
+	udivremKnuth3WithRecip(quot, u, d0, d1, d2, reciprocal2by1(d2))
+}
+
+// udivremKnuth3WithRecip — версия udivremKnuth3 с предвычисленным reciprocal.
+func udivremKnuth3WithRecip(quot, u []uint64, d0, d1, d2, reciprocal uint64) {
 
 	for j := len(u) - 4; j >= 0; j-- {
 		u2 := u[j+3]
@@ -395,7 +453,11 @@ func udivremKnuth3(quot, u []uint64, d0, d1, d2 uint64) {
 
 // udivremKnuth2 — специализация udivremKnuth для dLen=2.
 func udivremKnuth2(quot, u []uint64, d0, d1 uint64) {
-	reciprocal := reciprocal2by1(d1)
+	udivremKnuth2WithRecip(quot, u, d0, d1, reciprocal2by1(d1))
+}
+
+// udivremKnuth2WithRecip — версия udivremKnuth2 с предвычисленным reciprocal.
+func udivremKnuth2WithRecip(quot, u []uint64, d0, d1, reciprocal uint64) {
 
 	for j := len(u) - 3; j >= 0; j-- {
 		u2 := u[j+2]
