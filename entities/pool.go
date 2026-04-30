@@ -624,9 +624,19 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 	p.lastState.tick = p.TickCurrent
 	p.lastState.liquidity.Set(p.Liquidity)
 
-	if swapResult.StepsFee == nil {
-		swapResult.StepsFee = make([]StepFeeResult, 0, 64)
-	} else {
+	// StepsFee buffer: семантика по правилу "nil = не собирать, slice = собирать".
+	// Когда задан FeeStepCallback, потребитель обрабатывает шаги inline и StepsFee
+	// аллоцировать НЕ надо (раньше тут было `make([]StepFeeResult, 0, 64)` ≈ 7.7 KB
+	// на каждый Swap впустую — defisimulator всегда использует callback).
+	hasCallback := swapResult.FeeStepCallback != nil
+	if !hasCallback {
+		if swapResult.StepsFee == nil {
+			swapResult.StepsFee = make([]StepFeeResult, 0, 64)
+		} else {
+			swapResult.StepsFee = swapResult.StepsFee[:0]
+		}
+	} else if swapResult.StepsFee != nil {
+		// callback + ненулевой буфер: пользователь хочет и callback, и буфер
 		swapResult.StepsFee = swapResult.StepsFee[:0]
 	}
 	swapResult.CrossInitTickLoops = 0
@@ -655,13 +665,16 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 
 		p.TickCalculator.GetSqrtRatioAtTickV2(p.step.tickNext, &p.step.sqrtPriceNextX96)
 
+		// targetValue передаём указателем вместо 32-байтового memcopy:
+		// ComputeSwapStep читает sqrtRatioTargetX96 read-only.
+		var targetValue *utils.Uint160
 		if (zeroForOne && p.step.sqrtPriceNextX96.Lt(sqrtPriceLimitX96)) || (!zeroForOne && p.step.sqrtPriceNextX96.Gt(sqrtPriceLimitX96)) {
-			*p.targetValue = *sqrtPriceLimitX96
+			targetValue = sqrtPriceLimitX96
 		} else {
-			*p.targetValue = p.step.sqrtPriceNextX96
+			targetValue = &p.step.sqrtPriceNextX96
 		}
 
-		p.swapStepCalculator.ComputeSwapStep(p.lastState.sqrtPriceX96, p.targetValue, p.lastState.liquidity, p.lastState.amountSpecifiedRemaining, uint64(p.Fee), p.nxtSqrtPriceX96, &p.step.amountIn, &p.step.amountOut, &p.step.feeAmount, zeroForOne, exactInput)
+		p.swapStepCalculator.ComputeSwapStep(p.lastState.sqrtPriceX96, targetValue, p.lastState.liquidity, p.lastState.amountSpecifiedRemaining, uint64(p.Fee), p.nxtSqrtPriceX96, &p.step.amountIn, &p.step.amountOut, &p.step.feeAmount, zeroForOne, exactInput)
 		*p.lastState.sqrtPriceX96 = *p.nxtSqrtPriceX96
 
 		p.amountInPlusFee.Add(&p.step.amountIn, &p.step.feeAmount)
@@ -674,7 +687,9 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 			p.lastState.amountCalculated.Add(p.lastState.amountCalculated, (*utils.Int256)(p.amountInPlusFee))
 		}
 
-		if swapResult.FeeStepCallback != nil {
+		// hasCallback закэширован выше — избегаем повторной проверки nil-функции
+		// в hot-loop (interface/func compare медленнее обычного bool).
+		if hasCallback {
 			swapResult.FeeStepCallback(p.lastState.tick, &p.step.feeAmount, zeroForOne, p.lastState.liquidity)
 		} else if swapResult.StepsFee != nil {
 			swapResult.StepsFee = append(swapResult.StepsFee, StepFeeResult{

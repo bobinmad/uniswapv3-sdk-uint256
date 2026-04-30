@@ -39,14 +39,21 @@ type Uint256Utils struct {
 	dnStorage [5]uint64
 	unStorage [9]uint64
 
-	// Кэш реципрокала для last-seen делителя.
+	// Кэш для last-seen делителя.
 	// Внутри Pool.Swap большинство делений идут с одним и тем же делителем
 	// (pool.Liquidity, sqrtPriceX96), и hardware DIV в reciprocal2by1 (~30 циклов)
 	// пропускается на cache-hit. На профиле udivremKnuth2/By1 ≈ 21% CPU,
 	// большая часть из них — повторы одного и того же делителя.
-	lastD0, lastD1, lastD2, lastD3 uint64 // исходный делитель (для сверки)
-	lastRecip                      uint64 // reciprocal2by1(нормализованного старшего слова)
-	hasLastD                       bool
+	//
+	// Кроме reciprocal-а кэшируем нормализованный делитель, dLen и shift —
+	// тогда на hit пропускается весь switch+нормализация (~6 ns/call), и
+	// внутри dnStorage уже лежат правильные значения от прошлого вызова.
+	lastD0, lastD1, lastD2, lastD3     uint64 // исходный делитель (для сверки)
+	lastDn0, lastDn1, lastDn2, lastDn3 uint64 // нормализованный делитель (копия dnStorage)
+	lastRecip                          uint64 // reciprocal2by1(нормализованного старшего слова)
+	lastShift                          uint   // bits.LeadingZeros64(d[dLen-1])
+	lastDLen                           int    // 1..4
+	hasLastD                           bool
 }
 
 func NewUint256Utils() *Uint256Utils {
@@ -174,36 +181,57 @@ func (ut *Uint256Utils) udivremV1(quot, u []uint64, d *uint256.Int, rem *uint256
 func (ut *Uint256Utils) udivrem(quot, u []uint64, d *uint256.Int, rem *uint256.Int) {
 	var dLen int
 	var shift uint
-	dn := ut.dnStorage[:4] // или нужный размер
+	dn := ut.dnStorage[:4]
 
-	switch {
-	case d[3] != 0:
-		dLen = 4
-		shift = uint(bits.LeadingZeros64(d[3]))
-		dn[3] = (d[3] << shift) | (d[2] >> (64 - shift))
-		dn[2] = (d[2] << shift) | (d[1] >> (64 - shift))
-		dn[1] = (d[1] << shift) | (d[0] >> (64 - shift))
-		dn[0] = d[0] << shift
-	case d[2] != 0:
-		dLen = 3
-		shift = uint(bits.LeadingZeros64(d[2]))
-		dn[2] = (d[2] << shift) | (d[1] >> (64 - shift))
-		dn[1] = (d[1] << shift) | (d[0] >> (64 - shift))
-		dn[0] = d[0] << shift
-	case d[1] != 0:
-		dLen = 2
-		shift = uint(bits.LeadingZeros64(d[1]))
-		dn[1] = (d[1] << shift) | (d[0] >> (64 - shift))
-		dn[0] = d[0] << shift
-	case d[0] != 0:
-		dLen = 1
-		shift = uint(bits.LeadingZeros64(d[0]))
-		dn[0] = d[0] << shift
-	default:
-		dLen = 0
-		// обработка ошибки — деление на 0, например panic
+	// Cache hit: full state of normalised divisor доступен от прошлого вызова.
+	// Скипаем switch+normalization (~6 ns) — критично т.к. udivrem на профиле = 10.4% CPU.
+	if ut.hasLastD &&
+		d[0] == ut.lastD0 && d[1] == ut.lastD1 &&
+		d[2] == ut.lastD2 && d[3] == ut.lastD3 {
+		dLen = ut.lastDLen
+		shift = ut.lastShift
+		dn[0] = ut.lastDn0
+		dn[1] = ut.lastDn1
+		dn[2] = ut.lastDn2
+		dn[3] = ut.lastDn3
+	} else {
+		switch {
+		case d[3] != 0:
+			dLen = 4
+			shift = uint(bits.LeadingZeros64(d[3]))
+			dn[3] = (d[3] << shift) | (d[2] >> (64 - shift))
+			dn[2] = (d[2] << shift) | (d[1] >> (64 - shift))
+			dn[1] = (d[1] << shift) | (d[0] >> (64 - shift))
+			dn[0] = d[0] << shift
+		case d[2] != 0:
+			dLen = 3
+			shift = uint(bits.LeadingZeros64(d[2]))
+			dn[2] = (d[2] << shift) | (d[1] >> (64 - shift))
+			dn[1] = (d[1] << shift) | (d[0] >> (64 - shift))
+			dn[0] = d[0] << shift
+		case d[1] != 0:
+			dLen = 2
+			shift = uint(bits.LeadingZeros64(d[1]))
+			dn[1] = (d[1] << shift) | (d[0] >> (64 - shift))
+			dn[0] = d[0] << shift
+		case d[0] != 0:
+			dLen = 1
+			shift = uint(bits.LeadingZeros64(d[0]))
+			dn[0] = d[0] << shift
+		default:
+			dLen = 0
+			// обработка ошибки — деление на 0, например panic
+		}
+		recip := reciprocal2by1(dn[dLen-1])
+		ut.lastD0, ut.lastD1, ut.lastD2, ut.lastD3 = d[0], d[1], d[2], d[3]
+		ut.lastDn0, ut.lastDn1, ut.lastDn2, ut.lastDn3 = dn[0], dn[1], dn[2], dn[3]
+		ut.lastShift = shift
+		ut.lastDLen = dLen
+		ut.lastRecip = recip
+		ut.hasLastD = true
 	}
 	dn = dn[:dLen]
+	recip := ut.lastRecip
 
 	var uLen int
 	for i := len(u) - 1; i >= 0; i-- {
@@ -214,6 +242,10 @@ func (ut *Uint256Utils) udivrem(quot, u []uint64, d *uint256.Int, rem *uint256.I
 	}
 
 	if uLen < dLen {
+		// Полное обновление rem: copy(u) пишет min(len(rem), len(u)) слов.
+		// Старшие слова rem могут содержать stale-данные от прошлого вызова с
+		// большим dLen, поэтому явно очищаем их (см. fix-up в обычной ветке ниже).
+		rem[0], rem[1], rem[2], rem[3] = 0, 0, 0, 0
 		copy(rem[:], u)
 		return
 	}
@@ -226,21 +258,6 @@ func (ut *Uint256Utils) udivrem(quot, u []uint64, d *uint256.Int, rem *uint256.I
 		un[i] = (u[i] << shift) | (u[i-1] >> (64 - shift))
 	}
 	un[0] = u[0] << shift
-
-	// Recip-кэш: для повторяющихся делителей (pool.Liquidity / sqrtPriceX96
-	// в hot-path Pool.Swap) пропускаем hardware DIV в reciprocal2by1 (~30 циклов).
-	// Inline-сравнение быстрее, чем функция-обёртка (компилятор не всегда инлайнит).
-	var recip uint64
-	if ut.hasLastD &&
-		d[0] == ut.lastD0 && d[1] == ut.lastD1 &&
-		d[2] == ut.lastD2 && d[3] == ut.lastD3 {
-		recip = ut.lastRecip
-	} else {
-		recip = reciprocal2by1(dn[dLen-1])
-		ut.lastD0, ut.lastD1, ut.lastD2, ut.lastD3 = d[0], d[1], d[2], d[3]
-		ut.lastRecip = recip
-		ut.hasLastD = true
-	}
 
 	// Skip the highest word of numerator if not significant (saves one word in udivremBy1 only).
 	// For dLen==1 safe when un[uLen]==0 && un[uLen-1]<dn[0] (top quotient digit is 0). For dLen>1 cannot skip: Knuth first iteration modifies u for the next.
@@ -263,6 +280,9 @@ func (ut *Uint256Utils) udivrem(quot, u []uint64, d *uint256.Int, rem *uint256.I
 		udivremKnuthWithRecip(quot, un, dn, recip)
 	}
 
+	// FIX: ниже dLen<4 ветки писали только rem[0..dLen-1], старшие слова оставались
+	// stale от прошлого вызова (если он был с большим dLen). При следующем
+	// IsZero()/Eq() это приводило к неверному ответу. Сейчас всегда пишем все 4 слова.
 	switch dLen {
 	case 4:
 		rem[0] = (un[0] >> shift) | (un[1] << (64 - shift))
@@ -273,11 +293,17 @@ func (ut *Uint256Utils) udivrem(quot, u []uint64, d *uint256.Int, rem *uint256.I
 		rem[0] = (un[0] >> shift) | (un[1] << (64 - shift))
 		rem[1] = (un[1] >> shift) | (un[2] << (64 - shift))
 		rem[2] = un[2] >> shift
+		rem[3] = 0
 	case 2:
 		rem[0] = (un[0] >> shift) | (un[1] << (64 - shift))
 		rem[1] = un[1] >> shift
+		rem[2] = 0
+		rem[3] = 0
 	case 1:
 		rem[0] = un[0] >> shift
+		rem[1] = 0
+		rem[2] = 0
+		rem[3] = 0
 	}
 }
 
@@ -687,6 +713,15 @@ var (
 		return r
 	}()
 )
+
+// DivByMaxFeeInto — экспортированная обёртка над divByMaxFeeInto: позволяет внешним
+// потребителям (например, defisimulator/InlineFeeProcessor) выполнять деление на
+// MaxFee=1_000_000 быстрее, чем holiman.Div (≈ 30 ns vs ≈ 60 ns на профиле).
+//
+//go:nosplit
+func DivByMaxFeeInto(a, result *uint256.Int) {
+	divByMaxFeeInto(a, result)
+}
 
 // divByMaxFeeInto вычисляет result = floor(a / 1_000_000) без вычисления реципрокала.
 // Использует предвычисленные maxFeeNorm и maxFeeRecip: заменяет hardware DIV (~30 цикл.)

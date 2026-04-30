@@ -70,10 +70,13 @@ func (m *FullMath) MulDivV2(x, y, denominator, result, remainder *uint256.Int) e
 	}
 
 	m.quot[7], m.quot[6], m.quot[5], m.quot[4], m.quot[3], m.quot[2], m.quot[1], m.quot[0] = 0, 0, 0, 0, 0, 0, 0, 0
-	m.u256utils.udivrem(m.quot[:], p[:], denominator, m.rem)
+	// Если caller просит remainder — пишем его напрямую в udivrem, минуя
+	// внутренний m.rem и лишнюю копию (`Set` = 4-word memcopy).
+	remDst := m.rem
 	if remainder != nil {
-		remainder.Set(m.rem)
+		remDst = remainder
 	}
+	m.u256utils.udivrem(m.quot[:], p[:], denominator, remDst)
 
 	// copy(z[:], m.quot[:4])
 	result[0], result[1], result[2], result[3] = m.quot[0], m.quot[1], m.quot[2], m.quot[3]
