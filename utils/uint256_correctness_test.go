@@ -157,6 +157,110 @@ func TestMulDivV2Roundtrip(t *testing.T) {
 	}
 }
 
+// TestUmulLo3MatchesGenericMultiplication exercises the specialized path used
+// by SqrtPriceMath for (liquidity << 96) * uint160. The broad MulDiv test above
+// almost never generates x[0] == 0, so it does not cover this optimization.
+func TestUmulLo3MatchesGenericMultiplication(t *testing.T) {
+	rng := rand.New(rand.NewSource(0x10_3))
+	const trials = 20_000
+	for trial := 0; trial < trials; trial++ {
+		x := &uint256.Int{0, rng.Uint64(), rng.Uint64(), rng.Uint64()}
+		y := &uint256.Int{rng.Uint64(), rng.Uint64(), rng.Uint64(), 0}
+
+		got := umul_lo3(x, y)
+		want := umul(x, y)
+		if got != want {
+			t.Fatalf("trial %d mismatch:\n  x=%s\n  y=%s\n  got=%x\n  want=%x",
+				trial, x.Hex(), y.Hex(), got, want)
+		}
+	}
+}
+
+// TestMulRsh96_2x3MatchesMathBig covers the specialized amount1-delta path,
+// including its rounding flag. Generic randomized uint256 tests do not prove
+// the carry propagation in this narrower multiplication routine.
+func TestMulRsh96_2x3MatchesMathBig(t *testing.T) {
+	rng := rand.New(rand.NewSource(0x2_3_96))
+	const trials = 20_000
+	mask96 := new(big.Int).Sub(new(big.Int).Lsh(big.NewInt(1), 96), big.NewInt(1))
+	for trial := 0; trial < trials; trial++ {
+		a := &uint256.Int{rng.Uint64(), rng.Uint64(), 0, 0}
+		b := &uint256.Int{rng.Uint64(), rng.Uint64(), rng.Uint64(), 0}
+
+		var got uint256.Int
+		gotRemainder := mulRsh96_2x3(a, b, &got)
+		product := new(big.Int).Mul(a.ToBig(), b.ToBig())
+		wantRemainder := new(big.Int).And(new(big.Int).Set(product), mask96).Sign() != 0
+		wantBig := new(big.Int).Rsh(product, 96)
+		want, overflow := uint256.FromBig(wantBig)
+		if overflow {
+			t.Fatalf("trial %d generated an unexpected overflow", trial)
+		}
+		if !got.Eq(want) || gotRemainder != wantRemainder {
+			t.Fatalf("trial %d mismatch:\n  a=%s\n  b=%s\n  got=%s rem=%t\n  want=%s rem=%t",
+				trial, a.Hex(), b.Hex(), got.Hex(), gotRemainder, want.Hex(), wantRemainder)
+		}
+	}
+}
+
+// TestMulDivV2SqrtPriceFastPathMatchesReference covers the complete fast path
+// selected by x[0] == 0 && y[3] == 0, including division and remainder. The
+// generic roundtrip test practically never generates that operand shape.
+func TestMulDivV2SqrtPriceFastPathMatchesReference(t *testing.T) {
+	rng := rand.New(rand.NewSource(0x5_1_60))
+	fm := NewFullMath()
+	const trials = 20_000
+	for trial := 0; trial < trials; trial++ {
+		x := &uint256.Int{0, rng.Uint64(), rng.Uint64(), rng.Uint64()}
+		y := &uint256.Int{rng.Uint64(), rng.Uint64(), rng.Uint64(), 0}
+		denominator := randUintForRoundtrip(rng)
+		if denominator.IsZero() {
+			denominator.SetOne()
+		}
+
+		want := new(uint256.Int)
+		want, overflow := want.MulDivOverflow(x, y, denominator)
+		var got, gotRemainder uint256.Int
+		err := fm.MulDivV2(x, y, denominator, &got, &gotRemainder)
+		if overflow {
+			if err == nil {
+				t.Fatalf("trial %d: expected overflow", trial)
+			}
+			continue
+		}
+		if err != nil {
+			t.Fatalf("trial %d: unexpected error: %v", trial, err)
+		}
+		product := new(big.Int).Mul(x.ToBig(), y.ToBig())
+		wantRemainderBig := new(big.Int).Mod(product, denominator.ToBig())
+		wantRemainder, remainderOverflow := uint256.FromBig(wantRemainderBig)
+		if remainderOverflow || !got.Eq(want) || !gotRemainder.Eq(wantRemainder) {
+			t.Fatalf("trial %d mismatch:\n  x=%s\n  y=%s\n  denominator=%s\n  got=%s rem=%s\n  want=%s rem=%s",
+				trial, x.Hex(), y.Hex(), denominator.Hex(), got.Hex(), gotRemainder.Hex(), want.Hex(), wantRemainder.Hex())
+		}
+	}
+}
+
+// TestDivByMaxFeeIntoMatchesReference covers every operand width and the
+// in-place form used by ComputeSwapStep.
+func TestDivByMaxFeeIntoMatchesReference(t *testing.T) {
+	rng := rand.New(rand.NewSource(0xFEE_1_000_000))
+	const trials = 20_000
+	for trial := 0; trial < trials; trial++ {
+		a := &uint256.Int{rng.Uint64(), rng.Uint64(), rng.Uint64(), rng.Uint64()}
+		want := new(uint256.Int).Div(a, MaxFeeUint256)
+
+		var got uint256.Int
+		divByMaxFeeInto(a, &got)
+		inPlace := a.Clone()
+		divByMaxFeeInto(inPlace, inPlace)
+		if !got.Eq(want) || !inPlace.Eq(want) {
+			t.Fatalf("trial %d mismatch: a=%s got=%s inPlace=%s want=%s",
+				trial, a.Hex(), got.Hex(), inPlace.Hex(), want.Hex())
+		}
+	}
+}
+
 // TestUdivremRemHigherWordsCleared — regression-guard: до фикса
 // (см. комментарий в udivrem case 1/2/3) старшие слова `rem` могли остаться
 // stale-данными от предыдущего вызова, если предыдущий вызов имел больший
@@ -216,14 +320,14 @@ func TestUdivremCacheConsistency(t *testing.T) {
 	rng := rand.New(rand.NewSource(0xCACECACE))
 
 	divisors := []*uint256.Int{
-		uint256.NewInt(1_000_000),                                                                               // 1-word, fee
-		uint256.MustFromHex("0xde0b6b3a7640000"),                                                                // 1-word liquidity
-		uint256.MustFromHex("0x100000000000000000000"),                                                          // 2-word
-		uint256.MustFromHex("0xffffffffffffffffffffffffffffffff"),                                               // 2-word max
-		uint256.MustFromHex("0x100000000000000000000000000000000000000"),                                        // 3-word sqrt-like
-		uint256.MustFromHex("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffff"),                       // 3-word large
-		uint256.MustFromHex("0x100000000000000000000000000000000000000000000000000000000000001"),                // 4-word
-		uint256.MustFromHex("0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe"),               // 4-word max-ish
+		uint256.NewInt(1_000_000),                                                                 // 1-word, fee
+		uint256.MustFromHex("0xde0b6b3a7640000"),                                                  // 1-word liquidity
+		uint256.MustFromHex("0x100000000000000000000"),                                            // 2-word
+		uint256.MustFromHex("0xffffffffffffffffffffffffffffffff"),                                 // 2-word max
+		uint256.MustFromHex("0x100000000000000000000000000000000000000"),                          // 3-word sqrt-like
+		uint256.MustFromHex("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffff"),         // 3-word large
+		uint256.MustFromHex("0x100000000000000000000000000000000000000000000000000000000000001"),  // 4-word
+		uint256.MustFromHex("0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe"), // 4-word max-ish
 	}
 
 	const trials = 200

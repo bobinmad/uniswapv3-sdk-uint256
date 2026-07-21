@@ -5,10 +5,10 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/vuquang23/int256"
 	"github.com/bobinmad/uniswapv3-sdk-uint256/constants"
 	"github.com/holiman/uint256"
 	"github.com/stretchr/testify/assert"
+	"github.com/vuquang23/int256"
 )
 
 var swapStepCalculator = NewSwapStepCalculator()
@@ -93,4 +93,36 @@ func TestComputeSwapStep(t *testing.T) {
 			assert.Equal(t, tt.expFee, feeAmount.Dec())
 		})
 	}
+}
+
+func TestComputeSwapStepExactOutputAfterExactInputWithReusedAmount(t *testing.T) {
+	calculator := NewSwapStepCalculator()
+	price := EncodeSqrtRatioX96(big.NewInt(1), big.NewInt(1))
+	priceTarget := EncodeSqrtRatioX96(big.NewInt(101), big.NewInt(100))
+	liquidity := uint256.MustFromDecimal("2000000000000000000")
+	amount := int256.MustFromDec("1000000000000000000")
+
+	var sqrtRatioNextX96 Uint160
+	var amountIn, amountOut, feeAmount Uint256
+	calculator.ComputeSwapStep(
+		price, priceTarget, liquidity, amount, 600,
+		&sqrtRatioNextX96, &amountIn, &amountOut, &feeAmount,
+		false, true,
+	)
+
+	// Pool переиспользует один и тот же Int256 между последовательными Swap.
+	// Exact-output не должен менять signed amountRemaining через stale alias,
+	// оставшийся в calculator после предыдущего exact-input.
+	amount.SetFromDec("-1000000000000000000")
+	calculator.ComputeSwapStep(
+		price, priceTarget, liquidity, amount, 600,
+		&sqrtRatioNextX96, &amountIn, &amountOut, &feeAmount,
+		false, false,
+	)
+
+	assert.Equal(t, "-1000000000000000000", amount.Dec())
+	assert.Equal(t, priceTarget.Dec(), sqrtRatioNextX96.Dec())
+	assert.Equal(t, "9975124224178055", amountIn.Dec())
+	assert.Equal(t, "9925619580021728", amountOut.Dec())
+	assert.Equal(t, "5988667735148", feeAmount.Dec())
 }

@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/vuquang23/int256"
 	"github.com/daoleno/uniswap-sdk-core/entities"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/holiman/uint256"
+	"github.com/vuquang23/int256"
 
 	"github.com/bobinmad/uniswapv3-sdk-uint256/constants"
 	"github.com/bobinmad/uniswapv3-sdk-uint256/utils"
@@ -648,19 +648,13 @@ func (p *Pool) Swap(zeroForOne bool, amountSpecified *utils.Int256, sqrtPriceLim
 		// because each iteration of the while loop rounds, we can't optimize this code (relative to the smart contract)
 		// by simply traversing to the next available tick, we instead need to exactly replicate
 		// tickBitmap.nextInitializedTickWithinOneWord
-		if p.step.tickNext, p.step.initialized, err = p.TickDataProvider.NextInitializedTickIndex(p.lastState.tick, zeroForOne); err != nil {
-			// Свап вышел за крайний инициализированный тик — моделируем поведение
-			// реального bitmap-а: шаг до границы (Min/MaxTick) в пустой зоне.
-			// Если амаунт ещё не доел, цикл добьёт цену до sqrtPriceLimitX96 и выйдет.
-			if errors.Is(err, ErrAtOrAboveLargest) {
-				p.step.tickNext = utils.MaxTick
-				p.step.initialized = false
-			} else if errors.Is(err, ErrBelowSmallest) {
-				p.step.tickNext = utils.MinTick
-				p.step.initialized = false
-			} else {
-				return err
-			}
+		if p.step.tickNext, p.step.initialized, err = p.TickDataProvider.NextInitializedTickWithinOneWord(p.lastState.tick, zeroForOne, p.TickSpacing); err != nil {
+			return err
+		}
+		if p.step.tickNext < utils.MinTick {
+			p.step.tickNext = utils.MinTick
+		} else if p.step.tickNext > utils.MaxTick {
+			p.step.tickNext = utils.MaxTick
 		}
 
 		p.TickCalculator.GetSqrtRatioAtTickV2(p.step.tickNext, &p.step.sqrtPriceNextX96)

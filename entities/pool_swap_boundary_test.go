@@ -181,3 +181,97 @@ func TestNextInitializedTickIndex_AtLargestAndBelowSmallest(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, int32(-100), idx)
 }
+
+// TestNextInitializedTickWithinOneWord_EmptyWords locks down the exact Core
+// bitmap boundaries for a fee=0.3% pool (tickSpacing=60). In particular, the
+// oneForZero boundary is an aligned compressed tick; using nextWord*spacing-1
+// is an SDK approximation and changes swap rounding.
+func TestNextInitializedTickWithinOneWord_EmptyWords(t *testing.T) {
+	L := uint256.NewInt(1)
+	th := NewTicksHandler()
+	th.SetTicks([]Tick{
+		{Index: -39120, LiquidityGross: L, LiquidityNet: int256.NewInt(1)},
+		{Index: -6960, LiquidityGross: L, LiquidityNet: int256.NewInt(1)},
+		{Index: -60, LiquidityGross: L, LiquidityNet: int256.NewInt(1)},
+	})
+
+	tests := []struct {
+		name        string
+		tick        int32
+		lte         bool
+		wantTick    int32
+		initialized bool
+	}{
+		{name: "zeroForOne first empty word", tick: -6961, lte: true, wantTick: -15360},
+		{name: "zeroForOne second empty word", tick: -15361, lte: true, wantTick: -30720},
+		{name: "zeroForOne initialized tick", tick: -30721, lte: true, wantTick: -39120, initialized: true},
+		{name: "oneForZero first empty word", tick: -37380, lte: false, wantTick: -30780},
+		{name: "oneForZero second empty word", tick: -30780, lte: false, wantTick: -15420},
+		{name: "oneForZero initialized tick", tick: -15420, lte: false, wantTick: -6960, initialized: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotTick, gotInitialized, err := th.NextInitializedTickWithinOneWord(tt.tick, tt.lte, 60)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.wantTick, gotTick)
+			assert.Equal(t, tt.initialized, gotInitialized)
+		})
+	}
+}
+
+// TestSwap_MainnetEmptyBitmapWordRoundingRegression reproduces two consecutive
+// swaps from Ethereum block 19,200,478 in pool Ee4C...818d. Both cross empty
+// bitmap words. Skipping those words used to change amount/output by 1-2 wei.
+func TestSwap_MainnetEmptyBitmapWordRoundingRegression(t *testing.T) {
+	netLiquidities := []struct {
+		tick int32
+		net  uint64
+	}{
+		{tick: -39120, net: 58287719},
+		{tick: -6960, net: 84330158},
+		{tick: -6900, net: 57452803},
+		{tick: -6840, net: 34458772},
+		{tick: -2220, net: 39875074},
+		{tick: -900, net: 4624204095},
+		{tick: -120, net: 830252627174},
+		{tick: -60, net: 1087164087529},
+	}
+	ticks := make([]Tick, 0, len(netLiquidities))
+	for _, item := range netLiquidities {
+		liquidity := uint256.NewInt(item.net)
+		ticks = append(ticks, Tick{
+			Index:          item.tick,
+			LiquidityGross: liquidity,
+			LiquidityNet:   int256.NewInt(int64(item.net)),
+		})
+	}
+	handler := NewTicksHandler()
+	handler.SetTicks(ticks)
+
+	startPrice := uint256.MustFromDecimal("79099895125889336584214313780")
+	pool := NewPoolV3(common.Address{}, uint16(constants.FeeMedium), -33, startPrice, USDC, DAI, handler)
+	pool.Liquidity.SetUint64(1922315323324)
+
+	firstAmount := int256.NewInt(5772385273)
+	first := &SwapResultV2{}
+	assert.NoError(t, pool.Swap(true, firstAmount, nil, first))
+	assert.Equal(t, "-5419117338", first.AmountCalculated.Dec())
+	assert.Equal(t, "12224680419793842286177254660", first.SqrtRatioX96.Dec())
+	assert.Equal(t, "58287719", first.Liquidity.Dec())
+	assert.Equal(t, int32(-37380), first.CurrentTick)
+	assert.True(t, first.RemainingAmountIn.IsZero())
+
+	pool.SqrtRatioX96.Set(first.SqrtRatioX96)
+	pool.Liquidity.Set(first.Liquidity)
+	pool.TickCurrent = first.CurrentTick
+
+	secondAmount := int256.NewInt(401185315)
+	second := &SwapResultV2{}
+	assert.NoError(t, pool.Swap(false, secondAmount, nil, second))
+	assert.Equal(t, "-702573661", second.AmountCalculated.Dec())
+	assert.Equal(t, "78765700989611136151187343876", second.SqrtRatioX96.Dec())
+	assert.Equal(t, "835151235795", second.Liquidity.Dec())
+	assert.Equal(t, int32(-118), second.CurrentTick)
+	assert.True(t, second.RemainingAmountIn.IsZero())
+}

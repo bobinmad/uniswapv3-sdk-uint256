@@ -3,9 +3,9 @@ package entities
 import (
 	"slices"
 
-	"github.com/vuquang23/int256"
 	"github.com/bobinmad/uniswapv3-sdk-uint256/utils"
 	"github.com/holiman/uint256"
+	"github.com/vuquang23/int256"
 )
 
 type Tick struct {
@@ -16,8 +16,8 @@ type Tick struct {
 
 // наш собственный расширенный TickListDataProvider с блэкджеком и шлюхами
 type TicksHandler struct {
-	Ticks      []Tick
-	TicksLen   int
+	Ticks           []Tick
+	TicksLen        int
 	SmallestTickIdx int32
 	LargestTickIdx  int32
 
@@ -146,6 +146,67 @@ func (h *TicksHandler) NextInitializedTickIndex(tick int32, lte bool) (int32, bo
 	h.lastResultIdx = i
 	t := &h.Ticks[i]
 	return t.Index, !t.LiquidityGross.IsZero(), nil
+}
+
+// NextInitializedTickWithinOneWord exactly mirrors TickBitmap.nextInitializedTickWithinOneWord.
+// Even when a bitmap word contains no initialized ticks, Uniswap V3 Core stops at
+// that word's boundary and performs a separate swap step. Skipping directly to a
+// distant initialized tick changes per-step rounding of amountIn, amountOut and fee.
+func (h *TicksHandler) NextInitializedTickWithinOneWord(tick int32, lte bool, tickSpacing uint16) (int32, bool, error) {
+	if tickSpacing == 0 {
+		return 0, false, utils.ErrInvariant
+	}
+
+	spacing := int32(tickSpacing)
+	compressed := tick / spacing
+	// Solidity's signed division truncates toward zero, followed by an explicit
+	// decrement for negative non-multiples. This is floor(tick / tickSpacing).
+	if tick < 0 && tick%spacing != 0 {
+		compressed--
+	}
+
+	if lte {
+		wordPos := compressed >> 8
+		minimum := (wordPos << 8) * spacing
+		if h.TicksLen == 0 || tick < h.SmallestTickIdx {
+			return minimum, false, nil
+		}
+
+		i := h.binarySearch(tick)
+		for i >= 0 && h.Ticks[i].Index >= minimum {
+			candidate := &h.Ticks[i]
+			if !candidate.LiquidityGross.IsZero() {
+				h.lastResultIdx = i
+				return candidate.Index, true, nil
+			}
+			i--
+		}
+		return minimum, false, nil
+	}
+
+	wordPos := (compressed + 1) >> 8
+	// Core operates on compressed ticks and then multiplies the selected bit
+	// index by tickSpacing. Therefore the empty-word boundary is the last
+	// aligned compressed tick in the word, not the uncompressed tick just
+	// below the next word (the latter is a common SDK approximation).
+	maximum := (((wordPos + 1) << 8) - 1) * spacing
+	if h.TicksLen == 0 || tick >= h.LargestTickIdx {
+		return maximum, false, nil
+	}
+
+	i := 0
+	if tick >= h.SmallestTickIdx {
+		i = h.binarySearch(tick) + 1
+	}
+	for i < h.TicksLen && h.Ticks[i].Index <= maximum {
+		candidate := &h.Ticks[i]
+		if !candidate.LiquidityGross.IsZero() {
+			h.lastResultIdx = i
+			return candidate.Index, true, nil
+		}
+		i++
+	}
+	return maximum, false, nil
 }
 
 // актуализирует состояние тиков пула после историчекого события mint

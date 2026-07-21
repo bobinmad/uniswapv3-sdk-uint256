@@ -52,12 +52,17 @@ func (c *SwapStepCalculator) ComputeSwapStep(
 		c.feePipsU256.SetUint64(feePips)
 	}
 
+	// В exact-input можно читать amountRemaining zero-copy, но нельзя сохранять этот
+	// указатель в scratch-поле calculator-а. Pool переиспользует один и тот же signed
+	// amountSpecifiedRemaining между Swap-вызовами; после exact-input сохранённый alias
+	// заставлял следующий exact-output делать Neg in-place и портить signed remainder.
+	amountRemainingU := c.amountRemainingU
 	if exactIn {
-		c.amountRemainingU = (*uint256.Int)(amountRemaining)
+		amountRemainingU = (*uint256.Int)(amountRemaining)
 
 		// Заменяем holiman.Div на divByMaxFeeInto: пропускает Gt-проверку и использует
 		// предвычисленный реципрокал вместо hardware DIV в reciprocal2by1 (~30 цикл.).
-		c.tmpUint256.Mul(c.amountRemainingU, c.maxFeeMinusFeePips)
+		c.tmpUint256.Mul(amountRemainingU, c.maxFeeMinusFeePips)
 		divByMaxFeeInto(c.tmpUint256, c.tmpUint256)
 
 		if zeroForOne {
@@ -74,6 +79,7 @@ func (c *SwapStepCalculator) ComputeSwapStep(
 		}
 	} else {
 		c.amountRemainingU.Neg((*uint256.Int)(amountRemaining))
+		amountRemainingU = c.amountRemainingU
 
 		if zeroForOne {
 			c.sqrtPriceCalculator.GetAmount1DeltaV2(sqrtRatioTargetX96, sqrtRatioCurrentX96, liquidity, false, amountOut)
@@ -81,10 +87,10 @@ func (c *SwapStepCalculator) ComputeSwapStep(
 			c.sqrtPriceCalculator.GetAmount0DeltaV2(sqrtRatioCurrentX96, sqrtRatioTargetX96, liquidity, false, amountOut)
 		}
 
-		if !c.amountRemainingU.Lt(amountOut) {
+		if !amountRemainingU.Lt(amountOut) {
 			*sqrtRatioNextX96 = *sqrtRatioTargetX96
 		} else {
-			c.sqrtPriceCalculator.GetNextSqrtPriceFromOutput(sqrtRatioCurrentX96, liquidity, c.amountRemainingU, zeroForOne, sqrtRatioNextX96)
+			c.sqrtPriceCalculator.GetNextSqrtPriceFromOutput(sqrtRatioCurrentX96, liquidity, amountRemainingU, zeroForOne, sqrtRatioNextX96)
 		}
 	}
 
@@ -106,13 +112,13 @@ func (c *SwapStepCalculator) ComputeSwapStep(
 		}
 	}
 
-	if !exactIn && amountOut.Gt(c.amountRemainingU) {
-		*amountOut = *c.amountRemainingU
+	if !exactIn && amountOut.Gt(amountRemainingU) {
+		*amountOut = *amountRemainingU
 	}
 
 	if exactIn && !sqrtRatioNextX96.Eq(sqrtRatioTargetX96) {
 		// we didn't reach the target, so take the remainder of the maximum input as fee
-		feeAmount.Sub(c.amountRemainingU, amountIn)
+		feeAmount.Sub(amountRemainingU, amountIn)
 	} else {
 		c.fullMath.MulDivRoundingUpV2(amountIn, c.feePipsU256, c.maxFeeMinusFeePips, feeAmount)
 	}
