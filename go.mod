@@ -1,6 +1,6 @@
 module github.com/bobinmad/uniswapv3-sdk-uint256
 
-go 1.24
+go 1.26.5
 
 require (
 	github.com/daoleno/uniswap-sdk-core v0.1.5
