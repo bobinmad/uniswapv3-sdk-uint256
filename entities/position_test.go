@@ -75,6 +75,66 @@ func TestPosition(t *testing.T) {
 	assert.ErrorIs(t, err, ErrTickUpperToHigh)
 }
 
+func TestPositionZeroAmountsDoNotAliasMutableGlobals(t *testing.T) {
+	constants.ZeroU256.Clear()
+	Zero.Clear()
+	t.Cleanup(func() {
+		constants.ZeroU256.Clear()
+		Zero.Clear()
+	})
+
+	assertOwnedZero := func(t *testing.T, name string, got, global *uint256.Int) {
+		t.Helper()
+		if got == global {
+			t.Errorf("%s aliases a mutable package-level zero", name)
+			return
+		}
+		got.SetUint64(1)
+		if !global.IsZero() {
+			t.Errorf("%s mutated the package-level zero to %s", name, global.Dec())
+		}
+	}
+
+	pool, currentTick, tickSpacing := initPool()
+	baseTick := NearestUsableTick(currentTick, tickSpacing)
+
+	above, err := NewPosition(
+		pool,
+		uint256.NewInt(1_000_000),
+		baseTick+int32(tickSpacing),
+		baseTick+2*int32(tickSpacing),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, mintAmount1, err := above.MintAmounts()
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertOwnedZero(t, "MintAmounts amount1", mintAmount1, constants.ZeroU256)
+	_, calcAmount1 := above.CalcAmounts()
+	assertOwnedZero(t, "CalcAmounts amount1", calcAmount1, Zero)
+	assertOwnedZero(t, "CalcAmount1", above.CalcAmount1(), Zero)
+
+	below, err := NewPosition(
+		pool,
+		uint256.NewInt(1_000_000),
+		baseTick-2*int32(tickSpacing),
+		baseTick-int32(tickSpacing),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mintAmount0, _, err := below.MintAmounts()
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertOwnedZero(t, "MintAmounts amount0", mintAmount0, constants.ZeroU256)
+	calcAmount0, _ := below.CalcAmounts()
+	assertOwnedZero(t, "CalcAmounts amount0", calcAmount0, Zero)
+	assertOwnedZero(t, "CalcAmount0", below.CalcAmount0(), Zero)
+}
+
 func TestAmount0(t *testing.T) {
 	DAIUSDCPool, poolTickCurrent, tickSpacing := initPool()
 

@@ -132,12 +132,12 @@ func (p *Position) CalcAmount0() *utils.Uint256 {
 		return p.amount2Tmp
 	}
 
-	return Zero
+	return p.amount2Tmp.Clear()
 }
 
 func (p *Position) CalcAmount1() *utils.Uint256 {
 	if p.Pool.TickCurrent < p.TickLower {
-		return Zero
+		return p.amount2Tmp.Clear()
 	}
 
 	if p.Pool.TickCurrent < p.TickUpper {
@@ -154,7 +154,7 @@ func (p *Position) CalcAmounts() (*utils.Uint256, *utils.Uint256) {
 		// calc amount0
 		p.Pool.SqrtPriceCalculator.GetAmount0DeltaV2(p.PriceLower, p.PriceUpper, p.Liquidity, true, p.amount1Tmp)
 		// amount1 is zero
-		return p.amount1Tmp, Zero
+		return p.amount1Tmp, p.amount2Tmp.Clear()
 	}
 
 	if p.Pool.TickCurrent < p.TickUpper {
@@ -168,7 +168,7 @@ func (p *Position) CalcAmounts() (*utils.Uint256, *utils.Uint256) {
 	// calc amount1
 	p.Pool.SqrtPriceCalculator.GetAmount1DeltaV2(p.PriceLower, p.PriceUpper, p.Liquidity, true, p.amount2Tmp)
 	// amount0 is zero
-	return Zero, p.amount2Tmp
+	return p.amount1Tmp.Clear(), p.amount2Tmp
 }
 
 /**
@@ -313,13 +313,11 @@ func (p *Position) MintAmounts() (amount0, amount1 *uint256.Int, err error) {
 
 		if p.Pool.TickCurrent < p.TickLower {
 			p.Pool.SqrtPriceCalculator.GetAmount0DeltaV2(p.PriceLower, p.PriceUpper, p.Liquidity, true, amount0)
-			amount1 = constants.ZeroU256
 			return amount0, amount1, nil
 		} else if p.Pool.TickCurrent < p.TickUpper {
 			p.Pool.SqrtPriceCalculator.GetAmount0DeltaV2(p.Pool.SqrtRatioX96, p.PriceUpper, p.Liquidity, true, amount0)
 			p.Pool.SqrtPriceCalculator.GetAmount1DeltaV2(p.PriceLower, p.Pool.SqrtRatioX96, p.Liquidity, true, amount1)
 		} else {
-			amount0 = constants.ZeroU256
 			p.Pool.SqrtPriceCalculator.GetAmount1DeltaV2(p.PriceLower, p.PriceUpper, p.Liquidity, true, amount1)
 		}
 
