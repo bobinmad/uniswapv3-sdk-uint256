@@ -3,13 +3,13 @@ package periphery
 import (
 	"math/big"
 
-	"github.com/vuquang23/int256"
 	"github.com/bobinmad/uniswapv3-sdk-uint256/constants"
 	"github.com/bobinmad/uniswapv3-sdk-uint256/entities"
 	"github.com/bobinmad/uniswapv3-sdk-uint256/utils"
 	core "github.com/daoleno/uniswap-sdk-core/entities"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/holiman/uint256"
+	"github.com/vuquang23/int256"
 )
 
 var (
@@ -55,10 +55,14 @@ var (
 		},
 	}
 
-	p, _     = entities.NewTickListDataProvider(ticks, constants.TickSpacings[feeAmount])
+	p = func() *entities.TicksHandler {
+		handler := entities.NewTicksHandler()
+		handler.SetTicks(ticks)
+		return handler
+	}()
 	makePool = func(token0, token1 *core.Token) *entities.Pool {
 		// pool, _ := entities.NewPool(token0, token1, feeAmount, sqrtRatioX96, liquidity, tick, p)
-		pool := entities.NewPoolV3(uint16(constants.FeeMedium), int32(0), sqrtRatioX96, token0, token1, p)
+		pool := entities.NewPoolV3(common.Address{}, uint16(constants.FeeMedium), 0, sqrtRatioX96, token0, token1, p)
 		pool.Liquidity = liquidity
 		pool.TickCurrent = tick
 		return pool

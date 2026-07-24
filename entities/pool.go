@@ -157,15 +157,17 @@ func NewPoolV2(tokenA, tokenB *entities.Token, fee constants.FeeAmount, sqrtRati
 		token1 = tokenA
 	}
 
-	return &Pool{
-		Token0:           token0,
-		Token1:           token1,
-		Fee:              fee,
-		SqrtRatioX96:     sqrtRatioX96,
-		Liquidity:        liquidity,
-		TickCurrent:      tickCurrent,
-		TickDataProvider: ticks,
-	}, nil
+	pool := newPool(
+		common.Address{},
+		fee,
+		tickCurrent,
+		sqrtRatioX96,
+		token0,
+		token1,
+		ticks,
+	)
+	pool.Liquidity = liquidity
+	return pool, nil
 }
 
 func NewPoolV3(
@@ -176,10 +178,29 @@ func NewPoolV3(
 	token0, token1 *entities.Token,
 	ticksHandler *TicksHandler,
 ) *Pool {
+	return newPool(
+		address,
+		constants.FeeAmount(fee),
+		initTick,
+		initSqrtPriceX96,
+		token0,
+		token1,
+		ticksHandler,
+	)
+}
+
+func newPool(
+	address common.Address,
+	fee constants.FeeAmount,
+	initTick int32,
+	initSqrtPriceX96 *utils.Uint160,
+	token0, token1 *entities.Token,
+	ticksHandler *TicksHandler,
+) *Pool {
 	return &Pool{
 		Address:          address,
-		Fee:              constants.FeeAmount(fee),
-		TickSpacing:      constants.TickSpacings[constants.FeeAmount(fee)],
+		Fee:              fee,
+		TickSpacing:      constants.TickSpacings[fee],
 		TickDataProvider: ticksHandler,
 		TickCurrent:      initTick,
 		SqrtRatioX96:     initSqrtPriceX96.Clone(),

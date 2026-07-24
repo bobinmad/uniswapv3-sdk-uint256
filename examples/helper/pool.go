@@ -4,9 +4,9 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/vuquang23/int256"
 	"github.com/bobinmad/uniswapv3-sdk-uint256/examples/contract"
 	"github.com/holiman/uint256"
+	"github.com/vuquang23/int256"
 
 	"github.com/bobinmad/uniswapv3-sdk-uint256/constants"
 	"github.com/bobinmad/uniswapv3-sdk-uint256/entities"
@@ -74,12 +74,13 @@ func ConstructV3Pool(client *ethclient.Client, token0, token1 *coreEntities.Toke
 		},
 	}
 
-	// create tick data provider
-	p, err := entities.NewTickListDataProvider(ticks, constants.TickSpacings[feeAmount])
-	if err != nil {
+	tickSpacing := constants.TickSpacings[feeAmount]
+	if err := entities.ValidateList(ticks, int(tickSpacing)); err != nil {
 		return nil, err
 	}
+	p := entities.NewTicksHandler()
+	p.SetTicks(ticks)
 
 	return entities.NewPool(token0, token1, constants.FeeAmount(poolFee),
-		slot0.SqrtPriceX96, liquidity, int(slot0.Tick.Int64()), p)
+		slot0.SqrtPriceX96, liquidity, int32(slot0.Tick.Int64()), p)
 }

@@ -16,6 +16,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/holiman/uint256"
 )
 
 // mint a new liquidity
@@ -30,7 +31,14 @@ func mintOrAdd(client *ethclient.Client, wallet *helper.Wallet, tokenID *big.Int
 	//0.1 MATIC
 	amount0 := helper.IntWithDecimal(1, 17)
 	amount1 := helper.FloatStringToBigInt("5", 18)
-	pos, err := entities.FromAmounts(pool, -43260, 29400, amount0, amount1, false)
+	pos, err := entities.FromAmounts(
+		pool,
+		-43260,
+		29400,
+		uint256.MustFromBig(amount0),
+		uint256.MustFromBig(amount1),
+		false,
+	)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -104,9 +112,9 @@ func remove(client *ethclient.Client, wallet *helper.Wallet, tokenID *big.Int) {
 	fullPercent := coreEntities.NewPercent(contractPos.Liquidity, big.NewInt(1))
 	removingLiquidity := fullPercent.Multiply(percent25)
 
-	pos, err := entities.NewPosition(pool, removingLiquidity.Quotient(),
-		int(contractPos.TickLower.Int64()),
-		int(contractPos.TickUpper.Int64()),
+	pos, err := entities.NewPosition(pool, uint256.MustFromBig(removingLiquidity.Quotient()),
+		int32(contractPos.TickLower.Int64()),
+		int32(contractPos.TickUpper.Int64()),
 	)
 	if err != nil {
 		log.Fatal(err)
