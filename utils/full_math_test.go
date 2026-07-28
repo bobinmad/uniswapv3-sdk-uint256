@@ -332,12 +332,12 @@ func TestMulDivRoundingUpV2(t *testing.T) {
 
 // BenchmarkMulDivV2_DivBy1Word_WithSkip: denominator one word, product triggers "skip top word" in udivrem (un[uLen]==0 && un[uLen-1]<dn[0]).
 func BenchmarkMulDivV2_DivBy1Word_WithSkip(b *testing.B) {
-	a := uint256.MustFromHex("0x100000000000000000000000000000000")  // 2^128
+	a := uint256.MustFromHex("0x100000000000000000000000000000000")    // 2^128
 	mult := uint256.MustFromHex("0x100000000000000000000000000000000") // 2^128
-	deno := uint256.MustFromHex("0xffffffffffffffff")                   // 2^64-1 (one word)
+	deno := uint256.MustFromHex("0xffffffffffffffff")                  // 2^64-1 (one word)
 	var r Uint256
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+
+	for b.Loop() {
 		_ = fullMath.MulDivV2(a, mult, deno, &r, nil)
 	}
 }
@@ -348,20 +348,20 @@ func BenchmarkMulDivV2_DivBy1Word_NoSkip(b *testing.B) {
 	mult := uint256.MustFromHex("0x100000000000000000000000000000000")
 	deno := uint256.NewInt(1)
 	var r Uint256
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+
+	for b.Loop() {
 		_ = fullMath.MulDivV2(a, mult, deno, &r, nil)
 	}
 }
 
 // BenchmarkMulDivV2_DivBy1Word_WithSkip_6Words: product 6 words (2^384), deno one word — skip saves one udivremBy1 iteration (5 vs 6).
 func BenchmarkMulDivV2_DivBy1Word_WithSkip_6Words(b *testing.B) {
-	a := uint256.MustFromHex("0x1000000000000000000000000000000000000000000000000")   // 2^192
-	mult := uint256.MustFromHex("0x1000000000000000000000000000000000000000000000000")  // 2^192
+	a := uint256.MustFromHex("0x1000000000000000000000000000000000000000000000000")    // 2^192
+	mult := uint256.MustFromHex("0x1000000000000000000000000000000000000000000000000") // 2^192
 	deno := uint256.MustFromHex("0xffffffffffffffff")
 	var r Uint256
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+
+	for b.Loop() {
 		_ = fullMath.MulDivV2(a, mult, deno, &r, nil)
 	}
 }
@@ -372,8 +372,8 @@ func BenchmarkMulDivV2_DivBy1Word_NoSkip_6Words(b *testing.B) {
 	mult := uint256.MustFromHex("0x1000000000000000000000000000000000000000000000000")
 	deno := uint256.NewInt(1)
 	var r Uint256
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+
+	for b.Loop() {
 		_ = fullMath.MulDivV2(a, mult, deno, &r, nil)
 	}
 }

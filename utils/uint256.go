@@ -60,7 +60,6 @@ func NewUint256Utils() *Uint256Utils {
 	return &Uint256Utils{}
 }
 
-
 // umul computes full 256 x 256 -> 512 multiplication.
 func umul(x, y *uint256.Int) [8]uint64 {
 	var (
@@ -110,7 +109,8 @@ func umulStep(z, x, y, carry uint64) (hi, lo uint64) {
 	return hi, lo
 }
 
-// udivrem divides u by d and produces both quotient and remainder.
+// udivrem divides u by d and produces the quotient and, when rem != nil,
+// the remainder.
 // The quotient is stored in provided quot - len(u)-len(d)+1 words.
 // It loosely follows the Knuth's division algorithm (sometimes referenced as "schoolbook" division) using 64-bit words.
 // See Knuth, Volume 2, section 4.3.1, Algorithm D.
@@ -242,11 +242,13 @@ func (ut *Uint256Utils) udivrem(quot, u []uint64, d *uint256.Int, rem *uint256.I
 	}
 
 	if uLen < dLen {
-		// Полное обновление rem: copy(u) пишет min(len(rem), len(u)) слов.
-		// Старшие слова rem могут содержать stale-данные от прошлого вызова с
-		// большим dLen, поэтому явно очищаем их (см. fix-up в обычной ветке ниже).
-		rem[0], rem[1], rem[2], rem[3] = 0, 0, 0, 0
-		copy(rem[:], u)
+		if rem != nil {
+			// Полное обновление rem: copy(u) пишет min(len(rem), len(u)) слов.
+			// Старшие слова rem могут содержать stale-данные от прошлого вызова с
+			// большим dLen, поэтому явно очищаем их (см. fix-up в обычной ветке ниже).
+			rem[0], rem[1], rem[2], rem[3] = 0, 0, 0, 0
+			copy(rem[:], u)
+		}
 		return
 	}
 
@@ -263,12 +265,18 @@ func (ut *Uint256Utils) udivrem(quot, u []uint64, d *uint256.Int, rem *uint256.I
 	// For dLen==1 safe when un[uLen]==0 && un[uLen-1]<dn[0] (top quotient digit is 0). For dLen>1 cannot skip: Knuth first iteration modifies u for the next.
 	if dLen == 1 && un[uLen] == 0 && un[uLen-1] < dn[0] && uLen >= 2 {
 		un = un[:uLen]
-		rem.SetUint64(udivremBy1WithRecip(quot, un, dn[0], recip) >> shift)
+		remainder := udivremBy1WithRecip(quot, un, dn[0], recip) >> shift
+		if rem != nil {
+			rem.SetUint64(remainder)
+		}
 		quot[uLen-1] = 0
 		return
 	}
 	if dLen == 1 {
-		rem.SetUint64(udivremBy1WithRecip(quot, un, dn[0], recip) >> shift)
+		remainder := udivremBy1WithRecip(quot, un, dn[0], recip) >> shift
+		if rem != nil {
+			rem.SetUint64(remainder)
+		}
 		return
 	}
 	switch dLen {
@@ -278,6 +286,10 @@ func (ut *Uint256Utils) udivrem(quot, u []uint64, d *uint256.Int, rem *uint256.I
 		udivremKnuth3WithRecip(quot, un, dn[0], dn[1], dn[2], recip)
 	default:
 		udivremKnuthWithRecip(quot, un, dn, recip)
+	}
+
+	if rem == nil {
+		return
 	}
 
 	// FIX: ниже dLen<4 ветки писали только rem[0..dLen-1], старшие слова оставались
@@ -326,6 +338,7 @@ func udivremBy1(quot, u []uint64, d uint64) (rem uint64) {
 //  2. Замена на function-variable dispatch (`var udivrem... = ...`) ломает
 //     компилятору возможность инлайнить эту функцию в (*Uint256Utils).udivrem,
 //     добавляя cost ~1-2 ns indirect call на каждый вызов.
+//
 // Поэтому сейчас держим pure-Go как единственную реализацию.
 func udivremBy1WithRecip(quot, u []uint64, d, reciprocal uint64) (rem uint64) {
 	lenU := len(u)

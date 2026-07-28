@@ -38,6 +38,50 @@ func BenchmarkFullMathDivIntoFeeReward(b *testing.B) {
 	}
 }
 
+// BenchmarkFullMathDivRoundingUpFeeTier фиксирует округляющее деление из
+// ComputeSwapStep после сокращения 0.05% fee ratio до amountIn/1999.
+func BenchmarkFullMathDivRoundingUpFeeTier(b *testing.B) {
+	amountIn := uint256.MustFromDecimal("6135792468123456789012345")
+	denominator := uint256.NewInt(1_999)
+	fullMath := NewFullMath()
+	var result Uint256
+	b.ReportAllocs()
+	b.ResetTimer()
+	for b.Loop() {
+		fullMath.DivRoundingUp(amountIn, denominator, &result)
+	}
+	benchmarkUint256Result = result
+}
+
+func divIntoWithRemainderCandidate(fullMath *FullMath, numerator, denominator, result *uint256.Int) {
+	fullMath.divIntoGeneral(numerator, denominator, result, fullMath.rem)
+}
+
+// BenchmarkFullMathDivIntoRemainderCandidates проверяет, окупается ли
+// quotient-only путь общего Knuth-деления без materialization remainder.
+func BenchmarkFullMathDivIntoRemainderCandidates(b *testing.B) {
+	numerator := uint256.MustFromDecimal("6135792468123456789012345")
+	denominator := uint256.MustFromDecimal("98765432101234567890")
+	for _, candidate := range []struct {
+		name string
+		div  func(*FullMath, *uint256.Int, *uint256.Int, *uint256.Int)
+	}{
+		{name: "production", div: (*FullMath).DivInto},
+		{name: "with_remainder", div: divIntoWithRemainderCandidate},
+	} {
+		b.Run(candidate.name, func(b *testing.B) {
+			fullMath := NewFullMath()
+			var result Uint256
+			b.ReportAllocs()
+			b.ResetTimer()
+			for b.Loop() {
+				candidate.div(fullMath, numerator, denominator, &result)
+			}
+			benchmarkUint256Result = result
+		})
+	}
+}
+
 // BenchmarkComputeSwapStepBaseWETHUSDC фиксирует форму ComputeSwapStep из
 // Base WETH/USDC 0.05%: tick около -200k, spacing=10 и exact-input swaps в
 // обе стороны. Оба случая достигают следующего tick boundary и включают

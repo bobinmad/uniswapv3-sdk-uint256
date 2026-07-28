@@ -114,16 +114,18 @@ func (m *FullMath) MulDiv(a, b, denominator *uint256.Int) (*uint256.Int, error) 
 //   - стек-аллокации var quot, rem Int (64 байта)
 //   - двух Set-копий (8 слов каждая)
 //
-// Остаток сохраняется в m.rem.
 // Пресловажно: denominator != 0; a < d обрабатывается корректно (result = 0, rem = a).
 func (m *FullMath) DivInto(a, denominator, result *uint256.Int) {
 	if denominator[1]|denominator[2]|denominator[3] == 0 {
 		m.divByUint64Into(a, denominator[0], result)
 		return
 	}
+	m.divIntoGeneral(a, denominator, result, nil)
+}
 
+func (m *FullMath) divIntoGeneral(a, denominator, result, remainder *uint256.Int) {
 	m.quot[0], m.quot[1], m.quot[2], m.quot[3] = 0, 0, 0, 0
-	m.u256utils.udivrem(m.quot[:4], a[:], denominator, m.rem)
+	m.u256utils.udivrem(m.quot[:4], a[:], denominator, remainder)
 	result[0], result[1], result[2], result[3] = m.quot[0], m.quot[1], m.quot[2], m.quot[3]
 }
 
@@ -132,7 +134,9 @@ func (m *FullMath) DivInto(a, denominator, result *uint256.Int) {
 // dividend держится в локальных переменных, без записи/чтения unStorage.
 //
 // result может совпадать с a: исходные limbs читаются до записи результата.
-func (m *FullMath) divByUint64Into(a *uint256.Int, denominator uint64, result *uint256.Int) {
+// Возвращаем remainder напрямую: обычному DivInto он не нужен, а
+// DivRoundingUp проверяет локальное значение без четырёх записей в m.rem.
+func (m *FullMath) divByUint64Into(a *uint256.Int, denominator uint64, result *uint256.Int) uint64 {
 	shift, normalized, reciprocal := m.lastUint64Shift, m.lastUint64Norm, m.lastUint64Recip
 	if !m.hasUint64Divisor || m.lastUint64Divisor != denominator {
 		shift = uint(bits.LeadingZeros64(denominator))
@@ -196,12 +200,18 @@ func (m *FullMath) divByUint64Into(a *uint256.Int, denominator uint64, result *u
 	}
 
 	result[0], result[1], result[2], result[3] = q0, q1, q2, q3
-	m.rem[0], m.rem[1], m.rem[2], m.rem[3] = rem>>shift, 0, 0, 0
+	return rem >> shift
 }
 
 // DivRoundingUp Returns ceil(x / y)
 func (m *FullMath) DivRoundingUp(a, denominator, result *uint256.Int) {
-	m.DivInto(a, denominator, result)
+	if denominator[1]|denominator[2]|denominator[3] == 0 {
+		if m.divByUint64Into(a, denominator[0], result) != 0 {
+			result.AddUint64(result, 1)
+		}
+		return
+	}
+	m.divIntoGeneral(a, denominator, result, m.rem)
 	if !m.rem.IsZero() {
 		result.AddUint64(result, 1)
 	}
