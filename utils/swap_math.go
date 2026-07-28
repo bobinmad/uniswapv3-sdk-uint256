@@ -15,11 +15,14 @@ type SwapStepCalculator struct {
 	fullMath            *FullMath
 	intTypes            *IntTypes
 
-	tmpUint256         *uint256.Int
-	amountRemainingU   *uint256.Int
-	maxFeeMinusFeePips *uint256.Int
-	feePipsU256        *uint256.Int
-	cachedFeePips      uint64
+	tmpUint256             *uint256.Int
+	amountRemainingU       *uint256.Int
+	maxFeeMinusFeePips     *uint256.Int
+	feeRatioNumerator      *uint256.Int
+	feeRatioDenominator    *uint256.Int
+	cachedFeePips          uint64
+	feeRatioIsZero         bool
+	feeRatioNumeratorIsOne bool
 }
 
 func NewSwapStepCalculator() *SwapStepCalculator {
@@ -28,12 +31,50 @@ func NewSwapStepCalculator() *SwapStepCalculator {
 		fullMath:            NewFullMath(),
 		intTypes:            NewIntTypes(),
 
-		tmpUint256:         new(uint256.Int),
-		amountRemainingU:   new(uint256.Int),
-		maxFeeMinusFeePips: new(uint256.Int),
-		feePipsU256:        new(uint256.Int),
-		cachedFeePips:      math.MaxUint64, // sentinel: not yet initialized
+		tmpUint256:          new(uint256.Int),
+		amountRemainingU:    new(uint256.Int),
+		maxFeeMinusFeePips:  new(uint256.Int),
+		feeRatioNumerator:   new(uint256.Int),
+		feeRatioDenominator: new(uint256.Int),
+		cachedFeePips:       math.MaxUint64, // sentinel: not yet initialized
 	}
+}
+
+func gcdUint64(a, b uint64) uint64 {
+	for b != 0 {
+		a, b = b, a%b
+	}
+	return a
+}
+
+func (c *SwapStepCalculator) setFeePips(feePips uint64) {
+	if c.cachedFeePips == feePips {
+		return
+	}
+
+	c.cachedFeePips = feePips
+	maxFeeMinusFeePips := uint64(MaxFeeInt) - feePips
+	c.maxFeeMinusFeePips.SetUint64(maxFeeMinusFeePips)
+
+	gcd := gcdUint64(feePips, maxFeeMinusFeePips)
+	numerator := feePips / gcd
+	denominator := maxFeeMinusFeePips / gcd
+	c.feeRatioNumerator.SetUint64(numerator)
+	c.feeRatioDenominator.SetUint64(denominator)
+	c.feeRatioIsZero = numerator == 0
+	c.feeRatioNumeratorIsOne = numerator == 1
+}
+
+func (c *SwapStepCalculator) computeFeeAmount(amountIn, feeAmount *uint256.Int) {
+	if c.feeRatioIsZero {
+		feeAmount.Clear()
+		return
+	}
+	if c.feeRatioNumeratorIsOne {
+		c.fullMath.DivRoundingUp(amountIn, c.feeRatioDenominator, feeAmount)
+		return
+	}
+	c.fullMath.MulDivRoundingUpV2(amountIn, c.feeRatioNumerator, c.feeRatioDenominator, feeAmount)
 }
 
 func (c *SwapStepCalculator) ComputeSwapStep(
@@ -46,11 +87,7 @@ func (c *SwapStepCalculator) ComputeSwapStep(
 	zeroForOne, exactIn bool,
 ) {
 	// cache fee constants: typically constant across all steps of one swap
-	if c.cachedFeePips != feePips {
-		c.cachedFeePips = feePips
-		c.maxFeeMinusFeePips.SetUint64(MaxFeeInt - feePips)
-		c.feePipsU256.SetUint64(feePips)
-	}
+	c.setFeePips(feePips)
 
 	// В exact-input можно читать amountRemaining zero-copy, но нельзя сохранять этот
 	// указатель в scratch-поле calculator-а. Pool переиспользует один и тот же signed
@@ -120,6 +157,9 @@ func (c *SwapStepCalculator) ComputeSwapStep(
 		// we didn't reach the target, so take the remainder of the maximum input as fee
 		feeAmount.Sub(amountRemainingU, amountIn)
 	} else {
-		c.fullMath.MulDivRoundingUpV2(amountIn, c.feePipsU256, c.maxFeeMinusFeePips, feeAmount)
+		// Сокращаем feePips/(MaxFee-feePips) при смене fee tier. Для
+		// 0.01%, 0.05% и 1% числитель становится 1, поэтому общий 512-bit
+		// MulDiv заменяется на одно DivRoundingUp.
+		c.computeFeeAmount(amountIn, feeAmount)
 	}
 }

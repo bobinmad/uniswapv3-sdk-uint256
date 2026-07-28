@@ -3,6 +3,7 @@ package utils
 import (
 	"errors"
 	"math/big"
+	"math/bits"
 
 	"github.com/holiman/uint256"
 )
@@ -17,6 +18,15 @@ type FullMath struct {
 	rem, result *uint256.Int
 	remainder   *Uint256
 	quot        [8]uint64
+
+	// Однословная liquidity — основной делитель при расчёте fee в
+	// defisimulator. Храним отдельный компактный cache, чтобы DivInto не
+	// проходил общий udivrem с поиском длины и materialization unStorage.
+	lastUint64Divisor uint64
+	lastUint64Norm    uint64
+	lastUint64Recip   uint64
+	lastUint64Shift   uint
+	hasUint64Divisor  bool
 }
 
 func NewFullMath() *FullMath {
@@ -107,9 +117,86 @@ func (m *FullMath) MulDiv(a, b, denominator *uint256.Int) (*uint256.Int, error) 
 // Остаток сохраняется в m.rem.
 // Пресловажно: denominator != 0; a < d обрабатывается корректно (result = 0, rem = a).
 func (m *FullMath) DivInto(a, denominator, result *uint256.Int) {
+	if denominator[1]|denominator[2]|denominator[3] == 0 {
+		m.divByUint64Into(a, denominator[0], result)
+		return
+	}
+
 	m.quot[0], m.quot[1], m.quot[2], m.quot[3] = 0, 0, 0, 0
 	m.u256utils.udivrem(m.quot[:4], a[:], denominator, m.rem)
 	result[0], result[1], result[2], result[3] = m.quot[0], m.quot[1], m.quot[2], m.quot[3]
+}
+
+// divByUint64Into — specialization DivInto для однословного denominator.
+// Нормализация и reciprocal кэшируются по последнему делителю; нормализованный
+// dividend держится в локальных переменных, без записи/чтения unStorage.
+//
+// result может совпадать с a: исходные limbs читаются до записи результата.
+func (m *FullMath) divByUint64Into(a *uint256.Int, denominator uint64, result *uint256.Int) {
+	shift, normalized, reciprocal := m.lastUint64Shift, m.lastUint64Norm, m.lastUint64Recip
+	if !m.hasUint64Divisor || m.lastUint64Divisor != denominator {
+		shift = uint(bits.LeadingZeros64(denominator))
+		normalized = denominator << shift
+		reciprocal = reciprocal2by1(normalized)
+		m.lastUint64Divisor = denominator
+		m.lastUint64Shift = shift
+		m.lastUint64Norm = normalized
+		m.lastUint64Recip = reciprocal
+		m.hasUint64Divisor = true
+	}
+
+	rshift := 64 - shift
+	a0, a1, a2, a3 := a[0], a[1], a[2], a[3]
+	var q0, q1, q2, q3, rem uint64
+
+	switch {
+	case a3 != 0:
+		un4 := a3 >> rshift
+		un3 := (a3 << shift) | (a2 >> rshift)
+		un2 := (a2 << shift) | (a1 >> rshift)
+		un1 := (a1 << shift) | (a0 >> rshift)
+		un0 := a0 << shift
+		if un4 == 0 && un3 < normalized {
+			rem = un3
+		} else {
+			q3, rem = udivrem2by1(un4, un3, normalized, reciprocal)
+		}
+		q2, rem = udivrem2by1(rem, un2, normalized, reciprocal)
+		q1, rem = udivrem2by1(rem, un1, normalized, reciprocal)
+		q0, rem = udivrem2by1(rem, un0, normalized, reciprocal)
+
+	case a2 != 0:
+		un3 := a2 >> rshift
+		un2 := (a2 << shift) | (a1 >> rshift)
+		un1 := (a1 << shift) | (a0 >> rshift)
+		un0 := a0 << shift
+		if un3 == 0 && un2 < normalized {
+			rem = un2
+		} else {
+			q2, rem = udivrem2by1(un3, un2, normalized, reciprocal)
+		}
+		q1, rem = udivrem2by1(rem, un1, normalized, reciprocal)
+		q0, rem = udivrem2by1(rem, un0, normalized, reciprocal)
+
+	case a1 != 0:
+		un2 := a1 >> rshift
+		un1 := (a1 << shift) | (a0 >> rshift)
+		un0 := a0 << shift
+		if un2 == 0 && un1 < normalized {
+			rem = un1
+		} else {
+			q1, rem = udivrem2by1(un2, un1, normalized, reciprocal)
+		}
+		q0, rem = udivrem2by1(rem, un0, normalized, reciprocal)
+
+	default:
+		un1 := a0 >> rshift
+		un0 := a0 << shift
+		q0, rem = udivrem2by1(un1, un0, normalized, reciprocal)
+	}
+
+	result[0], result[1], result[2], result[3] = q0, q1, q2, q3
+	m.rem[0], m.rem[1], m.rem[2], m.rem[3] = rem>>shift, 0, 0, 0
 }
 
 // DivRoundingUp Returns ceil(x / y)

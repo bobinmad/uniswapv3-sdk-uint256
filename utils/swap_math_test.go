@@ -3,6 +3,7 @@ package utils
 import (
 	"fmt"
 	"math/big"
+	"math/rand"
 	"testing"
 
 	"github.com/bobinmad/uniswapv3-sdk-uint256/constants"
@@ -125,4 +126,38 @@ func TestComputeSwapStepExactOutputAfterExactInputWithReusedAmount(t *testing.T)
 	assert.Equal(t, "9975124224178055", amountIn.Dec())
 	assert.Equal(t, "9925619580021728", amountOut.Dec())
 	assert.Equal(t, "5988667735148", feeAmount.Dec())
+}
+
+func TestComputeFeeAmountReducedRatioMatchesMulDiv(t *testing.T) {
+	rng := rand.New(rand.NewSource(0xFEE_500))
+	calculator := NewSwapStepCalculator()
+	reference := NewFullMath()
+	fees := []uint64{0, 1, 100, 500, 3_000, 10_000, 100_000}
+
+	for trial := 0; trial < 20_000; trial++ {
+		amountIn := &uint256.Int{rng.Uint64(), rng.Uint64(), 0, 0}
+		feePips := fees[trial%len(fees)]
+		calculator.setFeePips(feePips)
+
+		var got, want uint256.Int
+		calculator.computeFeeAmount(amountIn, &got)
+		if err := reference.MulDivRoundingUpV2(
+			amountIn,
+			uint256.NewInt(feePips),
+			uint256.NewInt(MaxFeeInt-feePips),
+			&want,
+		); err != nil {
+			t.Fatalf("trial %d reference error: %v", trial, err)
+		}
+		if !got.Eq(&want) {
+			t.Fatalf(
+				"trial %d mismatch: amountIn=%s feePips=%d got=%s want=%s",
+				trial,
+				amountIn.Hex(),
+				feePips,
+				got.Hex(),
+				want.Hex(),
+			)
+		}
+	}
 }

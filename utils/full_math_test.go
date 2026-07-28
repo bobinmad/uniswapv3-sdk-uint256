@@ -94,6 +94,77 @@ func RandUint256() *Uint256 {
 	return uint256.MustFromHex("0x" + s)
 }
 
+func TestDivIntoUint64MatchesReference(t *testing.T) {
+	rng := rand.New(rand.NewSource(0xD1_64))
+	fullMath := NewFullMath()
+	divisors := []uint64{
+		1,
+		2,
+		500,
+		1_000_000,
+		987654321012345678,
+		^uint64(0),
+	}
+
+	for trial := 0; trial < 20_000; trial++ {
+		a := &uint256.Int{rng.Uint64(), rng.Uint64(), rng.Uint64(), rng.Uint64()}
+		denominator := uint256.NewInt(divisors[trial%len(divisors)])
+		want := new(uint256.Int).Div(a, denominator)
+
+		var got uint256.Int
+		fullMath.DivInto(a, denominator, &got)
+		inPlace := a.Clone()
+		fullMath.DivInto(inPlace, denominator, inPlace)
+		if !got.Eq(want) || !inPlace.Eq(want) {
+			t.Fatalf(
+				"trial %d mismatch: a=%s denominator=%s got=%s inPlace=%s want=%s",
+				trial,
+				a.Hex(),
+				denominator.Hex(),
+				got.Hex(),
+				inPlace.Hex(),
+				want.Hex(),
+			)
+		}
+	}
+}
+
+func TestDivRoundingUpUint64MatchesReference(t *testing.T) {
+	rng := rand.New(rand.NewSource(0xD1_64_CE1))
+	fullMath := NewFullMath()
+
+	for trial := 0; trial < 20_000; trial++ {
+		a := &uint256.Int{rng.Uint64(), rng.Uint64(), rng.Uint64(), rng.Uint64()}
+		denominator := uint256.NewInt(rng.Uint64() | 1)
+		want := new(uint256.Int).AddUint64(a, denominator.Uint64()-1)
+		overflow := want.Lt(a)
+		if !overflow {
+			want.Div(want, denominator)
+		} else {
+			// Избегаем переполнения reference-сложения:
+			// ceil(a/d) = floor(a/d) + [a%d != 0].
+			remainder := new(uint256.Int)
+			want.DivMod(a, denominator, remainder)
+			if !remainder.IsZero() {
+				want.AddUint64(want, 1)
+			}
+		}
+
+		var got uint256.Int
+		fullMath.DivRoundingUp(a, denominator, &got)
+		if !got.Eq(want) {
+			t.Fatalf(
+				"trial %d mismatch: a=%s denominator=%s got=%s want=%s",
+				trial,
+				a.Hex(),
+				denominator.Hex(),
+				got.Hex(),
+				want.Hex(),
+			)
+		}
+	}
+}
+
 func TestMulDivV2(t *testing.T) {
 	for i := 0; i < 500; i++ {
 		a := RandUint256()
